@@ -1,0 +1,23 @@
+{
+  "name": "vibe-rounds",
+  "version": "1.0.0",
+  "description": "Vibe Rounds: FHIR preprocessing and clinical analytics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node evidence.js --selftest && node terminology.js --selftest && node snomed-query.js --selftest && node notebook.js --selftest",
+    "smoke": "node evidence.js --smoke"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "pg": "^8.23.1",
+    "pg-copy-streams": "^7.0.0"
+  }
+}
