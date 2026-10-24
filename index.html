@@ -2218,16 +2218,19 @@ conn.close()
     const get = () => { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } };
     const set = v => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) {} };
     window.vrImportLock = () => set('');
+    // Status 403, not 401: the page-wide handler further down sends every 401 to /login, which this app does not have.
+    // No password (cancel) or a wrong one reloads the app instead.
+    const denied = msg => { setTimeout(() => location.reload(), 0); return new Response(JSON.stringify({ success: false, error: msg }), { status: 403, headers: { 'Content-Type': 'application/json' } }); };
     window.fetch = async function (url, opts) {
         if (!gated(url, opts)) return realFetch(url, opts);
         for (let attempt = 0; attempt < 3; attempt++) {
             let pw = get();
-            if (!pw) { pw = window.prompt(attempt ? 'Wrong password. Import password:' : 'Import password (required to add data to the database):'); if (!pw) return new Response(JSON.stringify({ success: false, error: 'Import cancelled: no password entered.' }), { status: 401, headers: { 'Content-Type': 'application/json' } }); set(pw); }
+            if (!pw) { pw = window.prompt((attempt ? 'Wrong password. ' : '') + 'Import password (required to add data to the database).\n\nDon\'t have the password? Click Cancel and use the already available datasets.'); if (!pw) return denied('Import cancelled: no password entered. Use the already available datasets instead.'); set(pw); }
             const r = await realFetch(url, Object.assign({}, opts, { headers: Object.assign({}, (opts && opts.headers) || {}, { 'X-Import-Password': pw }) }));
             if (r.status !== 401) return r;
             set('');
         }
-        return new Response(JSON.stringify({ success: false, error: 'Wrong import password.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        return denied('Wrong import password.');
     };
 })();
 </script>
