@@ -5,7 +5,7 @@ const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
 const app = express();
-const port = 3001;
+const port = parseInt(process.env.PORT || '3001', 10); // Render sets PORT
 console.log('Server.js loaded');
 
 // Sanitize batch ID for use as table name suffix
@@ -54,16 +54,27 @@ app.use((req, res, next) => {
 });
 
 // Database connection config - using environment variables for Docker compatibility
-const pool = new Pool({
+// Database config. On Render set DATABASE_URL (the Postgres "Internal Database URL").
+// Without it, the separate DB_* variables are used (local Docker / development).
+// SSL: needed for Render's *external* URL (host ends in .render.com); not needed for the internal URL.
+const dbUrl = process.env.DATABASE_URL;
+const useSsl = process.env.DB_SSL === 'true' || (process.env.DB_SSL !== 'false' && !!dbUrl && /\.render\.com/.test(dbUrl));
+const pool = new Pool(dbUrl ? {
+  connectionString: dbUrl,
+  ssl: useSsl ? { rejectUnauthorized: false } : false,
+} : {
   user: process.env.DB_USER || 'user',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'testdb',
   password: process.env.DB_PASSWORD || 'password',
   port: parseInt(process.env.DB_PORT || '5433', 10),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-// Log database connection attempt for debugging
-console.log(`Database config: ${pool.options.user}@${pool.options.host}:${pool.options.port}/${pool.options.database}`);
+// Log the target without the password
+console.log(dbUrl
+  ? `Database config: DATABASE_URL (${(() => { try { const u = new URL(dbUrl); return u.hostname + ':' + (u.port || 5432) + u.pathname; } catch (e) { return 'unparseable URL'; } })()}), ssl=${useSsl}`
+  : `Database config: ${process.env.DB_USER || 'user'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5433'}/${process.env.DB_NAME || 'testdb'}`);
 
 // Endpoint to fetch the "hello world" message from the DB
 app.get('/api/hello', async (req, res) => {
@@ -1187,7 +1198,8 @@ require('./snomed-query')(app, pool, { sanitizeBatchId });
 require('./notebook')(app, pool, { sanitizeBatchId });
 
 // Serve static files from the current directory (for the web interface) - after API routes
-app.use(express.static('.'));
+const path = require('path');
+app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // Initialize database schema on server start (creates tables if they don't exist)
 async function initializeDatabaseSchema() {
@@ -1213,7 +1225,7 @@ function startServer(cb) {
 initializeDatabaseSchema().then(() => {
   startServer(() => {
     console.log(`Server running at http://localhost:${port}`);
-    console.log(`Database connected to: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5433'}/${process.env.DB_NAME || 'testdb'}`);
+    
   });
 }).catch(err => {
   console.error('Failed to initialize database schema:', err);

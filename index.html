@@ -1341,6 +1341,122 @@ div.modal {
 }
     </style>
 
+<style id="vr-ds">
+/* Vibe Rounds design system: one calm, neutral workbench. Single accent, one radius scale, one button hierarchy. */
+:root{--ink:#18232b;--ink-2:#3b4a54;--muted:#66747d;--canvas:#f5f6f7;--surface:#fff;--tint:#f8f9fa;--line:#e1e6e9;--line-strong:#c9d1d6;
+--accent:#0d6b50;--accent-hover:#0a553f;--accent-l:#e7f3ee;--danger:#b42318;--r-sm:6px;--r-md:8px;--r-lg:10px;
+--green:#0d6b50;--green-d:#0d6b50;--green-hover:#0a553f;--green-l:#e7f3ee;--blue:#0d6b50;--blue-hover:#0a553f;--amber:#0d6b50;--amber-hover:#0a553f;--red:#b42318;--red-hover:#8f1c12;
+--font-display:"IBM Plex Sans",system-ui,sans-serif}
+body{background:var(--canvas);color:var(--ink);font:14px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+/* App bar: brand, tabs and connection status in one white strip */
+.branding{background:var(--surface)!important;background-image:none!important;color:var(--ink)!important;box-shadow:none!important;border-bottom:1px solid var(--line);padding:0 28px!important;height:56px;gap:12px;position:sticky;top:0;z-index:40}
+.branding::before,.branding::after{display:none!important}
+.branding .brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);border:0}
+.branding .brand-mark svg{width:20px;height:20px}
+.branding h1{font:600 16px "IBM Plex Sans",sans-serif!important;color:var(--ink)!important;letter-spacing:-.01em}
+.branding p{display:none!important}
+.branding .conn-pill{color:var(--ink-2);background:var(--tint);border-color:var(--line);font-size:12.5px}
+.branding .conn-pill:hover{background:var(--canvas)}
+.branding .site-link{background:none!important;color:var(--muted)!important;border:0;padding:6px 8px;font-size:12.5px}
+.branding .site-link:hover{color:var(--ink)!important}
+.tab-container{max-width:none!important;margin:0!important}
+.tab-container .tabs{background:var(--surface)!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;padding:0 28px!important;gap:2px;display:flex;overflow-x:auto}
+.tab-container .tabs .tab{background:none!important;color:var(--muted)!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;box-shadow:none!important;padding:12px 14px!important;margin:0 0 -1px!important;font:500 14px "IBM Plex Sans",sans-serif!important;bottom:0!important}
+.tab-container .tabs .tab:hover{color:var(--ink)!important}
+.tab-container .tabs .tab.active{color:var(--accent)!important;border-bottom-color:var(--accent)!important;font-weight:600!important}
+.tab-container .tabs .tab.is-guide.active{color:var(--accent)!important}
+.tab-container .tabs .tab-sep{background:var(--line)}
+/* Pages: flat, one readable column; no card around the whole page */
+.tab-content{max-width:1120px;margin:0 auto;padding:28px 28px 8px}
+.tab-container .tab-panel{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
+.tab-panel h1,.tab-panel h2,.plan-section h2{font:600 22px/1.25 "IBM Plex Sans",sans-serif!important;color:var(--ink)!important;letter-spacing:-.015em;border:0!important;padding:0!important;margin:0 0 6px!important}
+.tab-panel h3,.plan-section h3{font:600 16px/1.3 "IBM Plex Sans",sans-serif!important;color:var(--ink)!important;border:0!important;padding:0!important;margin:20px 0 8px}
+.tab-panel h4{font:600 14px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.tab-panel p,.tab-panel li{color:var(--ink-2);max-width:78ch}
+.page-head{margin:0 0 20px}.page-head p{color:var(--muted);font-size:14px;margin:0}
+.tab-panel>p{color:var(--muted);margin:0 0 18px}
+/* Sections: the only bordered surface. Nested sections are plain, separated by a rule */
+.analytics-section,.plan-section,.an-card,.conn-card,.ext-group{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-lg)!important;box-shadow:none!important;padding:20px 22px!important;margin:0 0 16px!important}
+.analytics-section .analytics-section{background:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;padding:20px 0 0!important;margin:20px 0 0!important}
+#tab6>.analytics-section{background:none!important;border:0!important;padding:0!important}
+#tab6>.analytics-section>h3{display:none}
+#anCohorts>#anGenerator,#anCohorts>details,#anCohorts>div[style]{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-lg)!important;padding:14px 20px!important;margin:0 0 12px!important}
+#anCohorts>#anRun,#anCohorts>#anKG,#anCohorts>#outputSection{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-lg)!important;padding:20px 22px!important;margin:0 0 16px!important}
+.analytics-section h3{color:var(--ink)!important;font-size:16px!important;margin:0 0 10px!important}
+details>summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:6px;height:6px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details[open]>summary::before{transform:rotate(45deg)}
+details>summary h3,details>summary h4{display:inline;margin:0!important;font-size:14.5px!important}
+.an-collapse>summary.an-sum:hover h3,.an-collapse>summary.an-sum:hover h4{text-decoration:none;color:var(--accent)}
+/* Sub-navigation of the Analytics page */
+.sub-nav{top:57px!important;background:var(--canvas)!important;backdrop-filter:none!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;padding:8px 0!important;margin:0 0 16px!important}
+.sub-nav a{color:var(--muted)!important;border-radius:var(--r-sm)!important;padding:5px 12px!important}
+.sub-nav a:hover{background:var(--surface)!important;color:var(--ink)!important}
+.sub-nav a.is-current{background:var(--surface)!important;color:var(--accent)!important;box-shadow:0 0 0 1px var(--line)}
+#anCohorts,#anGenerator,#anRun,#anKG,#outputSection{scroll-margin-top:120px}
+/* Buttons: one solid primary, everything else outlined */
+button,.btn-secondary,.btn-success,.btn-warning,.btn-danger,.download-btn,.copy-btn{font:500 13.5px "IBM Plex Sans",sans-serif!important;padding:7px 14px!important;margin:0!important;border-radius:var(--r-sm)!important;border:1px solid var(--line-strong)!important;background:var(--surface)!important;color:var(--ink)!important;box-shadow:none!important;cursor:pointer;transition:background-color .12s,border-color .12s}
+button:hover,.btn-secondary:hover,.btn-success:hover,.btn-warning:hover,.download-btn:hover,.copy-btn:hover{background:var(--tint)!important;border-color:var(--muted)!important}
+button.btn-primary,.preprocess-section button.btn-primary{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}
+button.btn-primary:hover{background:var(--accent-hover)!important;border-color:var(--accent-hover)!important}
+.btn-danger,button.btn-danger{color:var(--danger)!important}.btn-danger:hover{background:#fdf0ee!important;border-color:var(--danger)!important}
+button#deletePopulationBtn{color:var(--danger)!important}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-row,.button-group,.an-vis-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+/* Inputs */
+input[type=text],input[type=number],input[type=password],select,textarea{font:400 13.5px "IBM Plex Sans",sans-serif;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong)!important;border-radius:var(--r-sm)!important;padding:7px 10px!important}
+select{max-width:100%}input[type=file]{font-size:13px}
+label{color:var(--ink-2)}
+.an-params label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.an-params{gap:14px 16px}
+/* Tool panels inside the catalog share one quiet look instead of one colour each */
+#anLlmBox,#anAskBox,#anTemplateBox,#anCompareBox,#anModeInfo,#activeCohortBar,#batchDetailView{background:var(--tint)!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;padding:12px 14px!important;margin:12px 0!important;font-size:13px;color:var(--ink-2)}
+#anRun>div{border-left:0!important;padding-left:0!important}
+#activeCohortBar{background:var(--accent-l)!important;border-color:#c5e1d6!important;color:var(--ink)}
+#anRun>div[style*="margin-top:30px"]{margin-top:16px!important}
+.an-muted{color:var(--muted)!important;font-size:12.5px}
+.status-output,#result{font:400 12.5px/1.5 "IBM Plex Mono",ui-monospace,monospace;background:var(--tint)!important;border:1px solid var(--line)!important;border-left:3px solid var(--line-strong)!important;border-radius:var(--r-sm)!important;color:var(--ink-2)!important;padding:10px 12px!important}
+.status-output:empty,#result:empty{display:none}
+.status-output.success,#result.success{border-left-color:var(--accent)!important;background:var(--accent-l)!important}
+.status-output.error,#result.error,.error{border-left-color:var(--danger)!important;background:#fdf0ee!important;color:#7a1a12!important}
+/* Tables */
+.tab-panel table{border-collapse:collapse;font-size:13px;background:var(--surface)}
+.tab-panel th,.an-table th{background:var(--tint)!important;color:var(--muted);font-weight:600;font-size:12px;text-align:left;border:0!important;border-bottom:1px solid var(--line)!important;padding:8px 12px!important;text-transform:none}
+.tab-panel td,.an-table td{border:0!important;border-bottom:1px solid var(--line)!important;padding:7px 12px!important}
+.tab-panel tbody tr:nth-child(even) td{background:none!important}.tab-panel tbody tr:hover td{background:var(--tint)!important}
+.an-tablewrap,.cohorts-table-container{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md)}
+.an-tablewrap table,.cohorts-table-container table{margin:0;width:100%}
+/* Output runs */
+.an-run-block{border:1px solid var(--line)!important;border-left:1px solid var(--line)!important;border-radius:var(--r-md)!important;background:var(--surface)!important;padding:14px 16px!important}
+.an-chart svg{border:0!important;background:none!important}
+#anEmpty{border:1px dashed var(--line-strong);background:none!important;color:var(--muted);padding:32px 16px}
+.an-badge{background:var(--accent)!important;font-weight:600}.an-v1,.an-v3,.an-v4{background:var(--ink-2)!important}
+.cohort-item{border:1px solid var(--line)!important;border-radius:var(--r-md)!important;padding:12px 14px!important}
+/* Import, summary cards, code */
+.preprocess-section button{background:var(--surface)}
+.summary-card,.detail-card,.overview-card,.db-kpi{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;box-shadow:none!important}
+.summary-card .value,.db-kpi .v{color:var(--ink)!important}
+.preprocess-results,.explorer-content{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.code-block,.architecture-diagram{background:#16212a!important;color:#d9e4ea!important;border-radius:var(--r-md);font:12.5px/1.6 "IBM Plex Mono",monospace!important}
+.app-foot{max-width:1120px;padding:20px 28px 40px;border-top:1px solid var(--line);margin-top:24px}
+@media(max-width:760px){.tab-content{padding:18px 14px}.branding{padding:0 14px!important}.tab-container .tabs{padding:0 8px!important}.analytics-section,.plan-section{padding:16px!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Align app bar, tabs, content and footer on one column */
+.branding,.tab-container .tabs{padding-left:max(28px,calc((100% - 1120px)/2 + 28px))!important;padding-right:max(28px,calc((100% - 1120px)/2 + 28px))!important}
+.branding .conn-pill{margin-left:auto!important}
+.tab-content{padding-left:28px;padding-right:28px}
+.app-foot{padding-left:28px;padding-right:28px}
+.tab-container .tabs{margin:0!important;width:100%;box-sizing:border-box;position:sticky;top:56px;z-index:30}
+.tab-content,.app-foot{max-width:1176px!important;box-sizing:border-box;margin-left:auto!important;margin-right:auto!important}
+.branding,.tab-container .tabs{padding-left:max(28px,calc((100% - 1176px)/2 + 28px))!important;padding-right:max(28px,calc((100% - 1176px)/2 + 28px))!important}
+.sub-nav{top:98px!important}
+.tab-container{padding:0!important;width:100%!important;box-sizing:border-box}
+.tab-container .tab-content{padding:32px 28px 8px!important;background:none!important;border:0!important;box-shadow:none!important}
+.app-foot{padding:20px 28px 40px!important}
+
+</style>
 </head>
 <body>
     <header class="branding">
@@ -1352,7 +1468,7 @@ div.modal {
     </header>
     <div class="tab-container">
     <div class="tabs" role="navigation" aria-label="Sections">
-        <button class="tab active" data-tab="tab1">Connect</button>
+        <button class="tab active" data-tab="tab1">Database</button>
         <button class="tab" data-tab="tab4">Import data</button>
         <button class="tab" data-tab="tab6">Analytics</button>
         <button class="tab" data-tab="tab7">Dashboard</button>
@@ -1366,15 +1482,19 @@ div.modal {
         <!-- Tab 1: Hello World & DB Details -->
         <div class="tab-panel active" id="tab1">
             <div class="page-head">
-                <span class="eyebrow">Setup</span>
+                
                 <h1>Database connection</h1>
                 <p>Vibe Rounds keeps standardized FHIR data in PostgreSQL. Initialize the schema once, then check the connection before you import data.</p>
             </div>
-            <div class="btn-row">
-                <button id="startDbBtn">Initialize database</button>
-                <button id="fetchBtn">Run test query</button>
-                <button id="infoBtn">Connection details</button>
-            </div>
+            <div id="connCard" class="conn-card" style="display:none;"></div>
+            <details id="connTools" open>
+                <summary id="connToolsSum">Database tools</summary>
+                <div class="btn-row">
+                    <button id="startDbBtn" class="btn-primary">Initialize database</button>
+                    <button id="fetchBtn">Run test query</button>
+                    <button id="infoBtn">Connection details</button>
+                </div>
+            </details>
             <div id="result"></div>
         </div>
         
@@ -1382,7 +1502,7 @@ div.modal {
         <div class="tab-panel" id="tab2">
             <!-- Architecture Plan Section -->
             <div class="plan-section">
-                <div class="page-head"><span class="eyebrow">Guide</span><h2>Architecture</h2><p>How data moves from FHIR sources into a standardized database and on to analytics.</p></div>
+                <div class="page-head"><h2>Architecture</h2><p>How data moves from FHIR sources into a standardized database and on to analytics.</p></div>
                 <p>This is the complete architecture for your healthcare data analytics system.</p>
                 
                 <h3>Goal</h3>
@@ -1630,7 +1750,7 @@ df = pd.read_sql_query("""
         <!-- Tab 3: Analytics Capabilities -->
         <div class="tab-panel" id="tab3">
                 <!-- Analytics Capabilities Section -->
-                <div class="page-head"><span class="eyebrow">Guide</span><h2>Analytics capabilities</h2><p>What the platform can analyse today, and what becomes possible once the standardized schema is loaded.</p></div>
+                <div class="page-head"><h2>Analytics capabilities</h2><p>What the platform can analyse today, and what becomes possible once the standardized schema is loaded.</p></div>
                 <p>This section details the healthcare analytics capabilities possible with this system once FHIR data is loaded into the standardized schema.</p>
                 
                 <h3>What Analytics Can Be Done *Today* with the Current System</h3>
@@ -1851,7 +1971,7 @@ df = pd.read_sql_query("""
         
         <!-- Tab 5: Jupyter Python Notebook -->
         <div class="tab-panel" id="tab5">
-            <div class="page-head"><span class="eyebrow">Workspace</span><h2>Notebook</h2></div>
+            <div class="page-head"><h2>Notebook</h2></div>
             <p>Generate a ready-to-run <strong>Jupyter notebook</strong> for exactly the data you are looking at: any population or batch, any cohort (including one made with <em>Build SNOMED CT Query</em>), plus recipes for analyses the app does not offer. Everything is also shown as cells you can copy one by one.</p>
 
             <details class="ext-group" open>
@@ -1951,21 +2071,21 @@ conn.close()
 
         <!-- Tab 6: Analytics -->
         <div class="tab-panel" id="tab6">
-            <div class="page-head"><span class="eyebrow">Workspace</span><h2>Analytics workspace</h2></div>
+            <div class="page-head"><h2>Analytics workspace</h2></div>
             <p>Run cohort-based analytics on your imported FHIR data.</p>
             
             
 <nav class="sub-nav" aria-label="Analytics sections">
                 <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anRun">Run analytics</a><a href="#anKG">Knowledge graph</a><a href="#outputSection">Output</a>
             </nav>
-<!-- Cohort Management Section -->
+<!-- Population and cohorts Section -->
             <div class="analytics-section" id="anCohorts">
-                <h3>Cohort Management</h3>
+                <h3>Population and cohorts</h3>
                 
                 <!-- Synthetic FHIR generator -->
                 <details class="an-collapse analytics-section" id="anGenerator" style="margin-bottom:20px;">
-                    <summary class="an-sum"><h3 style="display:inline; margin:0;">Synthetic FHIR Data Generator</h3></summary>
-                    <p style="color:#666; font-size:13px;">Creates clinically correlated FHIR R4 patients (conditions, labs that respond to treatment, medications, encounters, admissions and readmissions, screenings, allergies) with narratives, SNOMED CT / LOINC / RxNorm codes and dates, so V1, V3 and V4 analytics all have something to find. Deterministic per seed. Import time is roughly 25 s per 1,000 patients.</p>
+                    <summary class="an-sum"><h3 style="display:inline; margin:0;">Generate synthetic data</h3></summary>
+                    <p style=" font-size:13px;">Creates clinically correlated FHIR R4 patients (conditions, labs that respond to treatment, medications, encounters, admissions and readmissions, screenings, allergies) with narratives, SNOMED CT / LOINC / RxNorm codes and dates, so V1, V3 and V4 analytics all have something to find. Deterministic per seed. Import time is roughly 25 s per 1,000 patients.</p>
                     <div class="an-params">
                         <label>Patients<br><input type="number" id="synCount" value="300" min="1" max="5000"></label>
                         <label>History (years)<br><input type="number" id="synYears" value="8" min="1" max="20"></label>
@@ -1983,38 +2103,38 @@ conn.close()
                 </details>
 
                 <!-- Step 1: Select Population/Batch -->
-                <details class="an-collapse" style="margin-bottom:20px; padding:15px; background:#f8f9fa; border-radius:8px; border:1px solid #e0e0e0;">
-                    <summary class="an-sum"><h4 style=" display:inline; margin:0;">Step 1: Select Population / Batch</h4></summary>
-                    <p style="color:#666; font-size:13px; margin-bottom:10px;">Choose a batch/population to use as-is or to build a custom cohort from.</p>
+                <details class="an-collapse" style="margin-bottom:20px; padding:15px;  border-radius:8px; ">
+                    <summary class="an-sum"><h4 style=" display:inline; margin:0;">Population / batch</h4></summary>
+                    <p style=" font-size:13px; margin-bottom:10px;">Choose a batch/population to use as-is or to build a custom cohort from.</p>
                     <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
                         <div style="flex:1; min-width:250px;">
                             <label for="cohortBatchSelector" style="font-weight:bold; display:block; margin-bottom:5px;">Population / Batch:</label>
-                            <select id="cohortBatchSelector" style="width:100%; padding:10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;">
+                            <select id="cohortBatchSelector" style="width:100%; padding:10px;  border-radius:6px; font-size:14px;">
                                 <option value="">-- Loading populations... --</option>
                             </select>
                         </div>
                         <button id="loadBatchDetailsBtn" class="btn-primary" style="padding:10px 20px; font-size:14px; height:fit-content;">View Population Details
                         </button>
-                        <button id="useFullBatchBtn" class="btn-success" style="padding:10px 20px; font-size:14px; height:fit-content; background:#4CAF50;">Use Full Population
+                        <button id="useFullBatchBtn" class="btn-success" style="padding:10px 20px; font-size:14px; height:fit-content; ">Use Full Population
                         </button>
-                        <button id="deletePopulationBtn" style="padding:10px 20px; font-size:14px; height:fit-content; background:#f44336; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="deleteSelectedPopulation()">Delete Population / Batch
+                        <button id="deletePopulationBtn" style="padding:10px 20px; font-size:14px; height:fit-content;  color:white; border:none; border-radius:6px; cursor:pointer;" onclick="deleteSelectedPopulation()">Delete Population / Batch
                         </button>
                     </div>
                 </details>
                 
                 <!-- Step 2: Population Detail View -->
-                <div id="batchDetailView" style="display:none; margin-bottom:20px; padding:15px; background:#fff; border:1px solid #e0e0e0; border-radius:8px;">
+                <div id="batchDetailView" style="display:none; margin-bottom:20px; padding:15px;   border-radius:8px;">
                     <h4 style="margin-top:0;">Population Details</h4>
                     <div id="batchDetailContent" style="font-size:13px;"></div>
-                    <div style="margin-top:15px; padding:10px; background:#e8f5e9; border-radius:4px;">
+                    <div style="margin-top:15px; padding:10px;  border-radius:4px;">
                         <strong>Ready to use this population?</strong> Click "Use Full Population" above to proceed with all data, or customize below to create a subset cohort.
                     </div>
                 </div>
                 
                 <!-- Step 3: Create Custom Cohort (Optional) -->
-                <details class="an-collapse" style="margin-bottom:20px; padding:15px; background:#fff3e0; border:1px solid #ffe0b2; border-radius:8px;">
-                    <summary class="an-sum"><h4 style=" display:inline; margin:0;">Step 2: Create Custom Cohort (Optional)</h4></summary>
-                    <p style="color:#666; font-size:13px; margin-bottom:10px;">Refine the selected population with SQL criteria to create a targeted subset.</p>
+                <details class="an-collapse" style="margin-bottom:20px; padding:15px;   border-radius:8px;">
+                    <summary class="an-sum"><h4 style=" display:inline; margin:0;">Create a cohort</h4></summary>
+                    <p style=" font-size:13px; margin-bottom:10px;">Refine the selected population with SQL criteria to create a targeted subset.</p>
                     <div class="cohort-form">
                         <div class="form-row">
                             <input type="text" id="cohortName" placeholder="Cohort Name (e.g., 'Diabetic Females over 65')" style="flex: 1;">
@@ -2024,7 +2144,7 @@ conn.close()
                             <textarea id="cohortCriteria" placeholder="SQL WHERE clause for cohort criteria (e.g., gender = 'female' AND birth_date > '1980-01-01' AND patient_id IN (SELECT patient_id FROM fhir_diagnosis WHERE code = '73211009'))" style="width: 100%; min-height: 80px; font-family: monospace; font-size: 13px;"></textarea>
                         </div>
                         <div class="form-row" style="gap:8px;">
-                            <button id="buildQueryBtn" class="btn-secondary" style="flex: 1; background:#9c27b0;">Build SNOMED CT Query</button>
+                            <button id="buildQueryBtn" class="btn-secondary" style="flex: 1; ">Build SNOMED CT Query</button>
                         </div>
                         <div class="button-group">
                             <button id="createCohortBtn" class="btn-primary">Create Custom Cohort</button>
@@ -2035,95 +2155,92 @@ conn.close()
                 
                 <!-- Existing Cohorts List -->
                 <div style="margin-top:20px;">
-                    <div id="activeCohortBar" style="padding:10px 14px; border-radius:8px; border:1px solid #c8e6c9; background:#e8f5e9; font-size:13px; margin-bottom:10px;" aria-live="polite">Loading active cohort…</div>
+                    <div id="activeCohortBar" style="padding:10px 14px; border-radius:8px;   font-size:13px; margin-bottom:10px;" aria-live="polite">Loading active cohort…</div>
                     <details class="an-collapse" id="cohortsDetails">
-                        <summary class="an-sum"><h4 style="display:inline; margin:0;">Existing Cohorts <span id="cohortsCount" style="font-weight:400; font-size:13px; color:#666;"></span></h4></summary>
+                        <summary class="an-sum"><h4 style="display:inline; margin:0;">Existing Cohorts <span id="cohortsCount" style="font-weight:400; font-size:13px; "></span></h4></summary>
                         <div id="cohortsList" class="cohorts-table-container" style="margin-top: 10px;"></div>
                     </details>
                 </div>
                 
                 <!-- Clinical Analytics Section -->
                 <div class="analytics-section" id="anRun" style="margin-top:30px;">
-                    <h3 style="margin-top:0;">Clinical Analytics</h3>
+                    <h3>Run analytics</h3>
                     
                     <!-- Mode Selector -->
                     <div style="margin-top:15px; display:flex; align-items:center; gap:15px; font-size:13px;">
-                        <label style="font-weight:bold;">Analytics Mode:</label>
+                        <label style="font-weight:bold;">Method</label>
                         <div style="display:flex; gap:12px; align-items:center;">
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="analyticsMode" value="v1" checked>
-                                v1
+                                V1 · Text
                             </label>
-                            <label style="display:flex; align-items:center; gap:4px;">
-                                <input type="radio" name="analyticsMode" value="v2" disabled>
-                                v2
-                            </label>
+                            
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="analyticsMode" value="v3">
-                                v3
+                                V3 · Codes
                             </label>
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="analyticsMode" value="v4">
-                                v4
+                                V4 · Codes + time
                             </label>
                         </div>
-                        <span style="color:#666; font-size:12px;">(v2 not included in this release)</span>
+                        <span style=" font-size:12px;"></span>
                     </div>
                     
-                    <div id="anModeInfo" style="margin-top:10px; padding:10px 12px; background:#fce4ec; border-radius:6px; font-size:13px; color:#555;"></div>
+                    <div id="anModeInfo" style="margin-top:10px; padding:10px 12px;  border-radius:6px; font-size:13px; "></div>
 
                     <!-- Clinical analytics catalog -->
                     <div style="margin-top:30px; padding-left:20px; border-left:3px solid #1565c0;">
-                        <h4 style="color:#1565c0; margin-top:0;">Clinical Analytics Catalog</h4>
-                        <p style="color:#666; font-size:13px;">Every analytic runs in V1 (text), V3 (codes) and V4 (codes + time) on the population selected in "Population / Batch" above, always restricted to the active cohort (activate a different one under "Existing Cohorts").</p>
-                        <p id="anActiveCohort" style="font-size:13px; margin:6px 0 0 0; color:#2e7d32;"></p>
-                        <details id="anLlmBox" style="margin-top:10px; padding:8px 12px; background:#f3e5f5; border-radius:6px; font-size:13px;">
+                        <h4 style=" margin-top:0;">Analytics catalog</h4>
+                        <p style=" font-size:13px;">Every analytic runs in V1 (text), V3 (codes) and V4 (codes + time) on the population selected in "Population / Batch" above, always restricted to the active cohort (activate a different one under "Existing Cohorts").</p>
+                        <p id="anActiveCohort" style="font-size:13px; margin:6px 0 0 0; "></p>
+                        <details id="anLlmBox" style="margin-top:10px; padding:8px 12px;  border-radius:6px; font-size:13px;">
                             <summary style="cursor:pointer; font-weight:bold;">AI settings (OpenRouter) <span id="anLlmSummary" class="an-muted"></span></summary>
                             <p class="an-muted" style="margin:8px 0;">Used only to turn a typed question into the PICO/PECO form. The model never sees patient data and never writes SQL. The key is kept on the server (saved in this database as plain text: fine for a local demo; on a shared server use <code>.env</code>) and is never shown again. Do not expose this app without authentication.</p>
                             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; color:#555;">API key (leave blank to keep the saved key)
-                                    <input id="anLlmKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-or-..." style="padding:7px; min-width:240px; border:1px solid #ccc; border-radius:4px; font-size:13px;"></label>
-                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; color:#555;">Model (openrouter.ai/models)
-                                    <input id="anLlmModel" type="text" spellcheck="false" placeholder="provider/model-name" style="padding:7px; min-width:240px; border:1px solid #ccc; border-radius:4px; font-size:13px;"></label>
+                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">API key (leave blank to keep the saved key)
+                                    <input id="anLlmKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-or-..." style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
+                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">Model (openrouter.ai/models)
+                                    <input id="anLlmModel" type="text" spellcheck="false" placeholder="provider/model-name" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
                                 <button id="anLlmSave" class="btn-secondary" onclick="saveLlmSettings()">Save</button>
                                 <button id="anLlmTest" class="btn-secondary" onclick="testLlm()">Test connection</button>
                             </div>
                             <div id="anLlmStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                         </details>
-                        <div style="margin-top:10px;"><select id="anSelect" style="width:100%; padding:10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;"></select></div>
-                        <p id="anDesc" style="font-size:13px; color:#555;"></p>
-                        <div id="anAskBox" style="display:none; margin-bottom:12px; padding:10px 12px; background:#ede7f6; border-radius:6px; font-size:13px;">
+                        <div style="margin-top:10px;"><select id="anSelect" style="width:100%; padding:10px;  border-radius:6px; font-size:14px;"></select></div>
+                        <p id="anDesc" style="font-size:13px; "></p>
+                        <div id="anAskBox" style="display:none; margin-bottom:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
                             <strong>Ask in plain English</strong> <span class="an-muted">(AI fills the form below; you review it, then run. Needs the AI settings above.)</span>
                             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:flex-start;">
-                                <textarea id="anAskInput" rows="2" maxlength="500" placeholder="e.g. In diabetics, does metformin vs no treatment reduce ED visits?" style="flex:1; min-width:260px; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
+                                <textarea id="anAskInput" rows="2" maxlength="500" placeholder="e.g. In diabetics, does metformin vs no treatment reduce ED visits?" style="flex:1; min-width:260px; padding:7px;  border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
                                 <button id="anAskBtn" class="btn-secondary" onclick="askPico()">Fill the form</button>
                             </div>
                             <div id="anAskStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                             <div id="anAskResult"></div>
                         </div>
                         <div id="anParams" class="an-params"></div>
-                        <div id="anTemplateBox" style="display:none; margin-top:12px; padding:10px 12px; background:#e3f2fd; border-radius:6px; font-size:13px;">
+                        <div id="anTemplateBox" style="display:none; margin-top:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
                             <strong>PICO / PECO templates</strong> <span class="an-muted">(saves the form values only, never patient data)</span>
                             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
-                                <select id="anTemplateSelect" onchange="applyPicoTemplate()" style="padding:7px; min-width:240px; border:1px solid #ccc; border-radius:4px; font-size:13px;"><option value="">(no saved templates)</option></select>
+                                <select id="anTemplateSelect" onchange="applyPicoTemplate()" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"><option value="">(no saved templates)</option></select>
                                 <button class="btn-secondary" onclick="savePicoTemplate()">Save these parameters</button>
                                 <button class="btn-secondary" onclick="deletePicoTemplate()">Delete template</button>
                             </div>
                             <div id="anTemplateStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                         </div>
-                        <div id="anCompareBox" style="margin-top:12px; padding:10px 12px; background:#fff8e1; border-radius:6px; font-size:13px;">
+                        <div id="anCompareBox" style="margin-top:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
                             <strong>Compare A vs B</strong> <span class="an-muted">(scope A is the Population / Batch selected above; same analytic, mode and parameters on both sides)</span>
                             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
                                 <label for="anCompareSelect" style="font-weight:bold;">Compare with (scope B):</label>
-                                <select id="anCompareSelect" onfocus="refreshCompareOptions()" style="padding:7px; min-width:240px; border:1px solid #ccc; border-radius:4px; font-size:13px;"><option value="">(choose scope B)</option></select>
+                                <select id="anCompareSelect" onfocus="refreshCompareOptions()" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"><option value="">(choose scope B)</option></select>
                                 <button id="anCompareBtn" class="btn-secondary" onclick="compareScopes()">Compare A vs B</button>
                             </div>
                             <div class="an-muted" style="margin-top:6px;">The active cohort applies to both sides unless scope B is itself a cohort (then B runs on all batches restricted to that cohort).</div>
                         </div>
                         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="runCatalogAnalytic([demoMode()])">▶️ Run (selected mode)</button>
-                            <button class="btn-primary" style="background:#1565c0;" onclick="runCatalogAnalytic(['v1','v3','v4'])">Compare V1 / V3 / V4</button>
-                            <button class="btn-secondary" onclick="runCatalogAll()">Run ALL analytics (selected mode)</button>
+                            <button class="btn-primary" onclick="runCatalogAnalytic([demoMode()])">Run analytic</button>
+                            <button class="btn-secondary" onclick="runCatalogAnalytic(['v1','v3','v4'])">Compare V1 / V3 / V4</button>
+                            <button class="btn-secondary" onclick="runCatalogAll()">Run all analytics</button>
                             <button class="btn-secondary" onclick="runPopulationHealth()">Population Health quick-run</button>
                         </div>
                         <div id="anStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
@@ -2136,20 +2253,20 @@ conn.close()
                     <div class="an-muted" style="margin-bottom:10px;">Demo links between conditions, drugs, labs and procedures (static, no patient data; not a clinical reference).</div>
                     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                         <label for="kgConcept" style="font-weight:bold;">Concept:</label>
-                        <select id="kgConcept" style="padding:7px; min-width:200px; border:1px solid #ccc; border-radius:4px;"></select>
+                        <select id="kgConcept" style="padding:7px; min-width:200px;  border-radius:4px;"></select>
                         <label for="kgDepth" style="font-weight:bold;">Depth:</label>
-                        <select id="kgDepth" style="padding:7px; border:1px solid #ccc; border-radius:4px;">
+                        <select id="kgDepth" style="padding:7px;  border-radius:4px;">
                             <option value="1">1</option><option value="2">2</option><option value="3">3</option>
                         </select>
                         <button class="btn-primary" onclick="kgShow()">Show</button>
                         <button class="btn-secondary" onclick="kgReset()">Reset</button>
                     </div>
                     <div id="kgTypes" style="margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px;">
-                        <label><input type="checkbox" class="kgType" value="treated_by" checked onchange="kgTypeChanged()"> treated_by</label>
-                        <label><input type="checkbox" class="kgType" value="monitored_by" checked onchange="kgTypeChanged()"> monitored_by</label>
-                        <label><input type="checkbox" class="kgType" value="interacts_with" checked onchange="kgTypeChanged()"> interacts_with</label>
-                        <label><input type="checkbox" class="kgType" value="screened_by" checked onchange="kgTypeChanged()"> screened_by</label>
-                        <label><input type="checkbox" class="kgType" value="leads_to" checked onchange="kgTypeChanged()"> leads_to</label>
+                        <label><input type="checkbox" class="kgType" value="treated_by" checked onchange="kgTypeChanged()"> treated by</label>
+                        <label><input type="checkbox" class="kgType" value="monitored_by" checked onchange="kgTypeChanged()"> monitored by</label>
+                        <label><input type="checkbox" class="kgType" value="interacts_with" checked onchange="kgTypeChanged()"> interacts with</label>
+                        <label><input type="checkbox" class="kgType" value="screened_by" checked onchange="kgTypeChanged()"> screened by</label>
+                        <label><input type="checkbox" class="kgType" value="leads_to" checked onchange="kgTypeChanged()"> leads to</label>
                     </div>
                     <div id="kgStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
                     <div class="an-muted">Results appear in the Output section below.</div>
@@ -2160,15 +2277,17 @@ conn.close()
                     <h3 style="margin-top:0;">Output</h3>
                     <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Download the whole section as JSON, or upload a file you downloaded earlier to view it again.</div>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
-                        <button class="btn-primary" onclick="anDownloadOutput()">Download output JSON</button>
+                        <button class="btn-secondary" onclick="anDownloadOutput()">Download output JSON</button>
                         <button class="btn-secondary" onclick="document.getElementById('anUploadInput').click()">Upload output JSON</button>
                         <input type="file" id="anUploadInput" accept=".json,application/json" style="display:none" onchange="anUploadOutput(this)">
                         <button class="btn-secondary" onclick="clearAnalyticsHistory()">Clear output</button>
                         <button class="btn-secondary" id="anVisCharts" onclick="ancToggleAll('charts')" title="Hide or show the charts of every run">Hide all charts</button>
                         <button class="btn-secondary" id="anVisTables" onclick="ancToggleAll('tables')" title="Hide or show the tables of every run">Hide all tables</button>
+                        <button class="btn-secondary" id="anInsAll" onclick="anInsightsAll()" title="Sends the result tables of every run below to the AI model (OpenRouter) and shows its insights. Patient-id columns are removed and large tables are cut.">Insights on all output (AI)</button>
                         <span id="anHistoryCount" class="an-muted"></span>
                     </div>
                     <div id="anUploadStatus" class="status-output" style="margin-top:8px; min-height:18px;"></div>
+                    <div id="anInsAllOut"></div>
                     <div id="anEmpty" class="an-muted" style="margin-top:10px;">No output yet. Run an analytic above, or show a knowledge graph.</div>
                     <div id="anResults" style="margin-top:10px;"></div>
                 </div>
@@ -2179,7 +2298,7 @@ conn.close()
         </div>
         <!-- Tab 7: Dashboard (runs the whole catalog for the active cohort and shows it as one page) -->
         <div class="tab-panel" id="tab7">
-            <div class="page-head"><span class="eyebrow">Workspace</span><h2>Clinical dashboard</h2></div>
+            <div class="page-head"><h2>Clinical dashboard</h2></div>
             <p>Runs every analytic in the catalog for the <strong>active cohort</strong> and organizes the results the way a clinical intelligence review runs: an executive scorecard first, then flow, quality, safety, risk, prescribing, laboratory, equity, pathways and data trust. Population / batch is the one chosen on the Analytics tab. Use <strong>V4</strong> (default) for the scorecard; it needs dates.</p>
 
             <div class="db-controls" id="dbControls">
@@ -2206,11 +2325,12 @@ conn.close()
             <div id="dbToolbar" class="db-toolbar" style="display:none;"></div>
             <div id="dbKpis" class="db-kpis"></div>
             <div id="dbScore"></div>
+            <div id="dbInsOut"></div>
             <div id="dbBody"><p class="an-muted db-empty">No results yet. Choose a method and press <strong>Run Analytics</strong>.</p></div>
         </div>
 
         <div class="tab-panel" id="tab4">
-        <h2><div class="page-head"><span class="eyebrow">Setup</span><h2>Import data</h2></div>
+        <div class="page-head"><h2>Import data</h2></div>
         <p>Upload FHIR files (JSON Bundle, NDJSON, or CSV) to extract structured data with standardized codes. The preprocessing extracts patient demographics, conditions, observations, and medications with their standardized codes (SNOMED CT, LOINC, RxNorm, ICD-10) for immediate use in analytics. Download the normalized summary for database import or further processing.</p>
         
         <!-- File Selection Input -->
@@ -2219,7 +2339,7 @@ conn.close()
             <span style="color:#666; font-size:14px;">(Hold Ctrl/Cmd to select multiple files, or select a whole folder)</span>
         </div>
         <div style="margin-bottom:10px;">
-            <button id="processBtn">Extract & Normalize FHIR Data</button>
+            <button id="processBtn" class="btn-primary">Extract and normalize</button>
         </div>
         
         <!-- File Selection Info -->
@@ -5968,8 +6088,9 @@ function anStartRun(label, opts) {
     const wrap = document.createElement('div');
     wrap.className = 'an-run-block'; run.wrap = wrap;
     wrap.classList.toggle('is-imported', !!run.imported);
-    wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><div><strong>Run #${run.n}</strong> <span class="an-muted">· ${escapeHtml(label)}</span>${run.imported ? ' <span class="an-tag">uploaded</span>' : ''}</div><div class="an-vis-btns"><button class="btn-secondary an-vis-charts" onclick="ancToggleRun(this, 'charts')" title="Hide or show the charts of this run">Hide charts</button><button class="btn-secondary an-vis-tables" onclick="ancToggleRun(this, 'tables')" title="Hide or show the tables of this run">Hide tables</button><button class="btn-secondary an-run-remove" title="Remove this run">✖ Remove</button></div></div><div class="an-run-meta an-muted" style="font-size:12px; margin:4px 0 8px;"></div><div class="an-run-body"></div>`;
+    wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><div><strong>Run #${run.n}</strong> <span class="an-muted">· ${escapeHtml(label)}</span>${run.imported ? ' <span class="an-tag">uploaded</span>' : ''}</div><div class="an-vis-btns"><button class="btn-secondary an-vis-charts" onclick="ancToggleRun(this, 'charts')" title="Hide or show the charts of this run">Hide charts</button><button class="btn-secondary an-vis-tables" onclick="ancToggleRun(this, 'tables')" title="Hide or show the tables of this run">Hide tables</button><button class="btn-secondary an-run-ins" title="Sends this run's result tables to the AI model (OpenRouter) and shows its insights">✨ Insights (AI)</button><button class="btn-secondary an-run-remove" title="Remove this run">✖ Remove</button></div></div><div class="an-run-meta an-muted" style="font-size:12px; margin:4px 0 8px;"></div><div class="an-run-body"></div><div class="an-run-ins-out"></div>`;
     run.body = wrap.querySelector('.an-run-body');
+    wrap.querySelector('.an-run-ins').onclick = () => anInsights(run, wrap);
     wrap.querySelector('.an-run-remove').onclick = () => {
         wrap.remove();
         CAT.history = CAT.history.filter(h => h !== run);
@@ -5989,6 +6110,41 @@ function anStartRun(label, opts) {
         anRunMeta(run); anSyncLast();
     };
     return run;
+}
+// ---- AI insights on Output runs (one button per run, one for the whole Output section) ----
+// Sends the result tables of the run(s) to POST /api/ai/insights. The server removes patient-id style columns, cuts large tables and
+// builds the model prompt; the API key never leaves the server.
+function anInsPayload(runs, scope) {
+    return { scope, runs: runs.map(r => ({ n: r.n, label: r.label, cohort: r.cohort, population: r.population, items: r.items.filter(it => it && it.t !== 'kg') })) };
+}
+function anInsShow(out, d, what) {
+    const sent = d.sent || {};
+    out.innerHTML = `<div style="margin-top:10px; padding:10px 12px; background:#fff; border:1px solid #d1c4e9; border-radius:4px;">
+        <div><span class="an-ai-tag">AI-generated, please review</span> <span class="an-muted">${escapeHtml(what)} · model: ${escapeHtml(d.model || '')} · sent ${Number(sent.results) || 0} result${sent.results === 1 ? '' : 's'}${sent.dropped ? ` (${sent.dropped} left out: too large)` : ''}, tables only, capped rows</span></div>
+        <div style="margin:8px 0 4px; white-space:pre-wrap; font-size:13.5px; line-height:1.5;">${escapeHtml(d.text)}</div>
+        <div class="an-muted" style="margin-top:6px;">Descriptive and unadjusted: it points to patterns in the tables, not to causes or treatment advice.</div></div>`;
+}
+async function anInsRequest(runs, scope, btn, out, what) {
+    if (!runs.length || !runs.some(r => r.items && r.items.some(it => it.t !== 'kg'))) {
+        out.innerHTML = '<div style="margin-top:8px; font-size:13px; color:#c62828;">Nothing to analyse here yet: run an analytic first.</div>'; return;
+    }
+    const label = btn.textContent;
+    try {
+        btn.disabled = true; btn.textContent = 'Analysing...';
+        out.innerHTML = '<div class="an-muted" style="margin-top:8px;">Asking the model (up to 60 seconds)...</div>';
+        const d = await anPost('/api/ai/insights', anInsPayload(runs, scope));
+        if (!d.success) throw new Error(d.error || 'Could not get insights');
+        anInsShow(out, d, what);
+    } catch (e) {
+        out.innerHTML = `<div style="margin-top:8px; font-size:13px; color:#c62828;">Error: ${escapeHtml(e.message)}</div>`;
+    } finally { btn.disabled = false; btn.textContent = label; }
+}
+function anInsights(run, wrap) {
+    anInsRequest([run], 'run', wrap.querySelector('.an-run-ins'), wrap.querySelector('.an-run-ins-out'), `Insights on run #${run.n}`);
+}
+function anInsightsAll() {
+    const runs = CAT.history.slice().reverse();   // oldest first, so the model reads them in the order they were run
+    anInsRequest(runs, 'all', document.getElementById('anInsAll'), document.getElementById('anInsAllOut'), `Insights on all output (${runs.length} run${runs.length === 1 ? '' : 's'})`);
 }
 function anReorder() {
     CAT.history.sort((a, b) => new Date(b.ranAt) - new Date(a.ranAt));
@@ -6507,7 +6663,7 @@ document.addEventListener('DOMContentLoaded', () => { loadCatalogUI(); refreshMo
 </script>
 <script>
 /* ===== Dashboard tab: run the whole analytics catalog for the active cohort and show it as one page ===== */
-const DASH = { running: false, cancel: false, run: null, cohort: null, filter: { cat: '', q: '' } };
+const DASH = { running: false, cancel: false, run: null, cohort: null, filter: { cat: '', q: '' }, vis: { charts: true, tables: true } };
 const DASH_CONCURRENCY = 3;
 const DASH_VALUE_COLS = ['count', 'patients', 'n', 'records', 'episodes', 'events', 'prescriptions', 'encounters', 'percentage', 'pct', 'percent'];
 
@@ -6678,12 +6834,16 @@ function dashSectionHtml(s) {
     // one row: show every column as a stat tile
     if (rows.length === 1) {
         const r = rows[0];
-        return { wide: false, html: title + `<div class="db-stats">${cols.map(c => `<div class="db-stat"><div class="v">${dashFmt(r[c], c)}</div><div class="l">${escapeHtml(c.replace(/_/g, ' '))}</div></div>`).join('')}</div>` };
+        return { wide: false, html: title + `<div class="an-tablewrap db-stats">${cols.map(c => `<div class="db-stat"><div class="v">${dashFmt(r[c], c)}</div><div class="l">${escapeHtml(c.replace(/_/g, ' '))}</div></div>`).join('')}</div>` };
+    }
+    const anc = ancChartBlock(s);
+    if (anc) {
+        return { wide: false, html: title + anc + `<details class="an-tablewrap"><summary>Table (${rows.length} row${rows.length === 1 ? '' : 's'})</summary>${renderTable(s)}</details>` };
     }
     const labCol = cols.find(c => rows.some(r => typeof r[c] === 'string')) || cols[0];
     const numCols = cols.filter(c => c !== labCol && rows.every(r => r[c] == null || dashIsNum(r[c])) && rows.some(r => dashIsNum(r[c])));
     const valCol = DASH_VALUE_COLS.map(n => numCols.find(c => c.toLowerCase() === n)).find(Boolean) || numCols[0];
-    const full = `<details><summary>Full table (${rows.length} row${rows.length === 1 ? '' : 's'})</summary>${renderTable(s)}</details>`;
+    const full = `<details class="an-tablewrap"><summary>Full table (${rows.length} row${rows.length === 1 ? '' : 's'})</summary>${renderTable(s)}</details>`;
     const namedVal = DASH_VALUE_COLS.some(n => numCols.some(c => c.toLowerCase() === n));
     // a chart only when the value column is unambiguous (a known name, or at most two numeric columns); otherwise a table
     if (labCol && valCol && rows.length <= 80 && (namedVal || numCols.length <= 2)) {
@@ -6700,7 +6860,7 @@ function dashSectionHtml(s) {
     }
     // fallback: first rows as a table
     const head = { columns: cols, rows: rows.slice(0, 8) };
-    return { wide: cols.length > 5, html: title + renderTable(head) + (rows.length > 8 ? `<details><summary>All ${rows.length} rows</summary>${renderTable(s)}</details>` : '') };
+    return { wide: cols.length > 5, html: title + `<div class="an-tablewrap">` + renderTable(head) + (rows.length > 8 ? `<details><summary>All ${rows.length} rows</summary>${renderTable(s)}</details>` : '') + `</div>` };
 }
 function dashCardHtml(r) {
     const parts = (r.sections || []).map(dashSectionHtml).filter(p => p.html);
@@ -6709,7 +6869,8 @@ function dashCardHtml(r) {
     return `<div class="db-card${parts.some(p => p.wide) ? ' wide' : ''}" data-cat="${escapeHtml(dashDomainOf(r.id).title)}" data-title="${escapeHtml((r.title || '').toLowerCase())}">
         <h4><span class="an-badge an-${r.mode}">${(r.mode || '').toUpperCase()}</span>${escapeHtml(r.title)}</h4>
         <div class="sub">${escapeHtml(r.category || '')}${sc.patients != null ? ` · ${Number(sc.patients).toLocaleString()} patients` : ''}</div>
-        ${parts.map(p => p.html).join('')}
+        ${parts.map(p => p.html).join('')}${kmRun(r) ? kmBlock(r) : ''}${trajRun(r) ? trajBlock(r) : ''}
+        <div style="margin-top:10px;"><button class="btn-secondary db-ins-btn" onclick="dashInsCard('${escapeHtml(String(r.id))}', this)" title="Sends this analytic's result tables to the AI model (OpenRouter)">✨ Insights (AI)</button></div><div class="db-ins-out"></div>
     </div>`;
 }
 function dashRender() {
@@ -6728,10 +6889,10 @@ function dashRender() {
     dashEl('dbScore').innerHTML = dashScoreHtml(run);
     // group by clinical domain, in the fixed review order; inside a domain keep the order listed above
     const domains = [...DASH_DOMAINS, DASH_OTHER].map(d => ({ d, items: ok.filter(x => dashDomainOf(x.r.id) === d).sort((p, q) => d.ids.indexOf(p.r.id) - d.ids.indexOf(q.r.id)) })).filter(x => x.items.length);
-    const head = d => `<div class="db-domain-head"><h3>${escapeHtml(d.title)}</h3>${d.q ? `<div class="q">${escapeHtml(d.q)}</div>` : ''}</div>`;
+    const head = d => `<div class="db-domain-head"><h3>${escapeHtml(d.title)}</h3>${d.q ? `<div class="q">${escapeHtml(d.q)}</div>` : ''}<button class="btn-secondary db-ins-btn" style="margin-top:6px;" onclick="event.preventDefault(); event.stopPropagation(); dashInsDomain('${escapeHtml(d.key)}', this)" title="Sends the result tables of this domain to the AI model (OpenRouter)">✨ Insights on this domain (AI)</button></div>`;
     dashEl('dbBody').innerHTML = (domains.length ? domains.map(({ d, items }) => {
         const grid = `<div class="db-grid">${items.map(x => x.card).join('')}</div>`;
-        return d.collapsed ? `<details class="db-domain" data-dom="${escapeHtml(d.title)}"><summary>${head(d)}</summary>${grid}</details>` : `<section class="db-domain" data-dom="${escapeHtml(d.title)}">${head(d)}${grid}</section>`;
+        return d.collapsed ? `<details class="db-domain" data-dom="${escapeHtml(d.title)}"><summary>${head(d)}</summary><div class="db-ins-out"></div>${grid}</details>` : `<section class="db-domain" data-dom="${escapeHtml(d.title)}">${head(d)}<div class="db-ins-out"></div>${grid}</section>`;
     }).join('') : '<p class="an-muted db-empty">No analytic returned data for this scope.</p>') +
         dashSkippedHtml(empty, failed, run.notAvail, run.choice);
     // toolbar
@@ -6739,9 +6900,34 @@ function dashRender() {
     tb.style.display = 'flex';
     tb.innerHTML = `<input type="search" id="dbSearch" placeholder="Search analytics..." oninput="dashSetFilter()">` +
         `<span class="db-chip active" data-c="" onclick="dashPickCat(this)">All</span>` + domains.map(({ d }) => `<span class="db-chip" data-c="${escapeHtml(d.title)}" onclick="dashPickCat(this)">${escapeHtml(d.title)}</span>`).join('') +
-        `<span style="flex:1"></span><button class="btn-secondary" onclick="dashToggleAll(true)">Expand all</button><button class="btn-secondary" onclick="dashToggleAll(false)">Collapse all</button><button class="btn-secondary" onclick="dashDownload()">⬇️ Download JSON</button>`;
+        `<button class="btn-primary" id="dbInsAll" onclick="dashInsAll()" title="Sends the result tables of every analytic on this dashboard, grouped by domain, to the AI model (OpenRouter). Patient-id columns are removed and large tables are cut.">✨ Insights on whole dashboard (AI)</button><span style="flex:1"></span><label style="font-size:13px;white-space:nowrap;"><input type="checkbox" ${DASH.vis.charts ? 'checked' : ''} onchange="dashSetVis('charts',this.checked)"> Charts</label> <label style="font-size:13px;white-space:nowrap;"><input type="checkbox" ${DASH.vis.tables ? 'checked' : ''} onchange="dashSetVis('tables',this.checked)"> Tables</label> <button class="btn-secondary" onclick="dashToggleAll(true)">Expand all</button><button class="btn-secondary" onclick="dashToggleAll(false)">Collapse all</button><button class="btn-secondary" onclick="dashDownload()">⬇️ Download JSON</button>`;
     DASH.filter = { cat: '', q: '' };
+    dashApplyVis();
 }
+// ---- AI insights on the Dashboard: one button per card, one per domain, one for the whole dashboard (same route as the Output buttons) ----
+function dashInsRun(label, results) {
+    const run = DASH.run, ok = results.filter(r => r && r.success && (r.sections || []).length);
+    return { n: undefined, label, cohort: run && run.cohort ? run.cohort.name : null, population: run ? run.population : '', items: ok.map(d => ({ t: 'result', d })) };
+}
+function dashInsCard(id, btn) {
+    const run = DASH.run; if (!run) return;
+    const r = run.results.find(x => String(x.id) === id);
+    anInsRequest([dashInsRun(r ? (r.title || id) : id, r ? [r] : [])], 'run', btn, btn.parentElement.nextElementSibling, `Insights on ${r ? r.title : id}`);
+}
+function dashInsDomain(key, btn) {
+    const run = DASH.run; if (!run) return;
+    const d = [...DASH_DOMAINS, DASH_OTHER].find(x => x.key === key); if (!d) return;
+    const res = run.results.filter(r => dashDomainOf(r.id) === d);
+    const box = btn.closest('.db-domain').querySelector('.db-ins-out');
+    anInsRequest([dashInsRun(d.title, res)], 'run', btn, box, `Insights on ${d.title}`);
+}
+function dashInsAll() {
+    const run = DASH.run; if (!run) return;
+    const runs = [...DASH_DOMAINS, DASH_OTHER].map(d => dashInsRun(d.title, run.results.filter(r => dashDomainOf(r.id) === d))).filter(x => x.items.length);
+    anInsRequest(runs, 'all', dashEl('dbInsAll'), dashEl('dbInsOut'), `Insights on the whole dashboard (${runs.length} domain${runs.length === 1 ? '' : 's'})`);
+}
+function dashApplyVis() { const b = dashEl('dbBody'); if (!b) return; b.classList.toggle('an-hide-charts', !DASH.vis.charts); b.classList.toggle('an-hide-tables', !DASH.vis.tables); }
+function dashSetVis(w, on) { DASH.vis[w] = on; dashApplyVis(); }
 function dashSkippedHtml(empty, failed, notAvail, choice) {
     if (!empty.length && !failed.length && !notAvail.length) return '';
     const li = (t, why) => `<li><strong>${escapeHtml(t)}</strong> <span class="an-muted">${escapeHtml(why)}</span></li>`;
@@ -6886,8 +7072,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!(res.ok && d && d.success)) throw new Error('not connected');
                 pill.dataset.state = 'ok';
                 label.textContent = 'Database connected' + (d.database && d.database.name ? ' · ' + d.database.name : '');
-            } catch (e) { pill.dataset.state = 'down'; label.textContent = 'Database not connected'; }
+                // connected: show a compact card, fold the setup buttons away
+                const card = document.getElementById('connCard'), tools = document.getElementById('connTools');
+                if (card) {
+                    const db = d.database || {};
+                    card.style.display = '';
+                    card.innerHTML = `<strong>✓ Connected</strong> <span class="an-muted">${escapeHtml([db.name, db.host && (db.host + (db.port ? ':' + db.port : ''))].filter(Boolean).join(' · '))}${db.tables ? ' · ' + db.tables.length + ' tables' : ''}</span>`;
+                    card.style.cssText = 'display:block;padding:10px 14px;margin-bottom:12px;border:1px solid var(--green,#2e7d5b);border-radius:8px;background:rgba(46,125,91,.08);';
+                }
+                if (tools && !tools.dataset.touched) { tools.open = false; document.getElementById('connToolsSum').textContent = 'Manage database (initialize, test, details)'; }
+                // first load with no remembered tab: go straight to the Dashboard
+                if (!pill.dataset.landed) {
+                    pill.dataset.landed = '1';
+                    let saved = null; try { saved = localStorage.getItem('activeTab'); } catch (e2) {}
+                    if (!saved) { const t = document.querySelector('.tab[data-tab="tab7"]'); if (t) t.click(); }
+                }
+            } catch (e) {
+                pill.dataset.state = 'down'; label.textContent = 'Database not connected';
+                const card = document.getElementById('connCard'), tools = document.getElementById('connTools');
+                if (card) card.style.display = 'none';
+                if (tools) { tools.open = true; document.getElementById('connToolsSum').textContent = 'Database tools'; }
+            }
         };
+        const ct = document.getElementById('connTools'); if (ct) ct.addEventListener('toggle', () => { ct.dataset.touched = '1'; });
         pill.addEventListener('click', check);
         ['startDbBtn', 'fetchBtn', 'infoBtn'].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => setTimeout(check, 1200)); });
         check();
