@@ -898,6 +898,7 @@ function register(app, pool, helpers = {}) {
   });
 
   require('./evidence').registerStudies(app, pool, engine, { catalog: () => CATALOG, fail, scopeOf });
+  require('./kg-cohort')(app, pool, engine, { fail });                         // cohort knowledge graph: GET /api/kg/cohort
 
   app.post('/api/synthetic/generate', (req, res) => {
     try { const { count, seed, years, endDate, messy, inpatient, enrich } = req.body || {}; const out = generateBundle({ count, seed: seed ?? Date.now() % 100000, years, messy, inpatient, enrich, endDate: endDate || new Date().toISOString().slice(0, 10) }); res.json({ success: true, ...out }); }

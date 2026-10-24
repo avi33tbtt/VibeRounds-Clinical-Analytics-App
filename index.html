@@ -1456,6 +1456,61 @@ label{color:var(--ink-2)}
 .tab-container .tab-content{padding:32px 28px 8px!important;background:none!important;border:0!important;box-shadow:none!important}
 .app-foot{padding:20px 28px 40px!important}
 
+.about{display:grid;grid-template-columns:200px minmax(0,1fr);gap:40px;align-items:start}
+.about-toc{position:sticky;top:120px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.about-toc a{padding:5px 10px;border-left:2px solid var(--line);color:var(--muted);text-decoration:none}
+.about-toc a:hover{color:var(--ink);border-left-color:var(--accent)}
+.about-body section{padding:0 0 28px;margin:0 0 28px;border-bottom:1px solid var(--line);scroll-margin-top:120px}
+.about-body section:last-child{border:0}
+.about-body h3{margin-top:0!important}
+.about-body p,.about-body li{max-width:74ch;line-height:1.65}
+.about-body p.about-callout{background:var(--tint);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-md);padding:12px 16px;font-size:15px;max-width:none}
+.about-flow{margin:0 0 28px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.about-flow figcaption{font-size:15px;line-height:1.5;margin:0 0 14px;color:var(--ink)}
+.about-flow figcaption strong{color:var(--accent)}
+.about-flow .flow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px 18px;align-items:center}
+.about-flow .flow-src{padding:14px 18px;border:2px solid var(--ink-2);border-radius:var(--r-md);font-weight:600;text-align:center;background:var(--tint)}
+.about-flow .flow-src small,.about-flow .flow-node small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.about-flow .flow-rows{display:flex;flex-direction:column;gap:12px}
+.about-flow .flow-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:stretch}
+.about-flow .flow-node{padding:10px 14px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--tint);font-weight:600;display:flex;flex-direction:column;justify-content:center}
+.about-flow .flow-arr{align-self:center;font-size:20px;color:var(--muted)}
+.about-flow .is-light .flow-node{border:2px solid var(--accent);background:var(--accent-l)}
+.about-flow .is-light .flow-arr{color:var(--accent)}
+.about-flow .is-heavy .flow-node{border-style:dashed}
+.about-flow .flow-tag{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.about-flow .is-light .flow-tag{color:var(--accent)}
+.about-flow .flow-note{margin:12px 0 0;font-size:13px;color:var(--ink-2)}
+@media(max-width:700px){.about-flow .flow{grid-template-columns:1fr}.about-flow .flow-row{grid-template-columns:1fr}.about-flow .flow-rows{gap:18px}.about-flow .is-light{padding-top:18px;border-top:2px solid var(--line)}.about-flow .flow-arr{transform:rotate(90deg);justify-self:center}}
+.about-body code{font:12.5px "IBM Plex Mono",monospace;background:var(--tint);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.about-body table{width:100%;margin:10px 0 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+.about-body td{vertical-align:top}.about-cols{columns:2;column-gap:32px}
+@media(max-width:860px){.about{grid-template-columns:1fr}.about-toc{display:none}.about-cols{columns:1}}
+/* Research assistant */
+.assist{margin:16px 0}.assist[hidden]{display:none}
+.as-step{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--r-md);padding:16px 18px;margin:0 0 12px}
+.as-step{scroll-margin-top:200px}
+.as-step h5{font:600 13px "IBM Plex Sans",sans-serif;margin:14px 0 6px;color:var(--ink)}
+.as-sum{margin:8px 0 0;color:var(--ink)}.as-foot{margin:12px 0 0}
+.as-find{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.as-f{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:start;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm)}
+.as-chip{font:600 11.5px "IBM Plex Sans",sans-serif;padding:2px 8px;border-radius:999px;text-align:center;background:var(--tint);color:var(--ink-2);border:1px solid var(--line)}
+.as-important .as-chip{background:var(--accent);border-color:var(--accent);color:#fff}
+.as-unusual .as-chip{background:#fff4e0;border-color:#e8c27a;color:#7a4b00}
+.as-caution .as-chip{background:#fdf0ee;border-color:#e9b3ac;color:#8f1c12}
+.as-data_quality .as-chip{background:#eef2f6;border-color:#c5d0da;color:#34495e}
+.as-t{color:var(--ink)}.as-act{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.as-f .as-act button{font-size:12px!important;padding:3px 9px!important}
+.as-f.is-confirmed{border-color:var(--accent);background:var(--accent-l)}.as-f.is-dismissed{opacity:.55}
+.as-sugs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.as-sug{border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.as-sug p{margin:0}.as-sug .as-act{margin-top:auto;padding-top:6px}
+.as-sug.is-skipped{opacity:.55}.as-sug.is-ran{background:var(--accent-l);border-color:#c5e1d6}
+.as-pri{font-size:12px;color:var(--muted)}.as-pri-high{color:var(--accent);font-weight:600}
+.as-wait,.as-notice{padding:10px 14px;border:1px dashed var(--line-strong);border-radius:var(--r-md);color:var(--muted);margin:0 0 10px;font-size:13px}
+.as-notice.is-error{border-style:solid;border-color:#e9b3ac;background:#fdf0ee;color:#8f1c12}
+.an-run-sug{margin-left:6px!important}
+@media(max-width:700px){.as-f{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1464,6 +1519,7 @@ label{color:var(--ink-2)}
         <h1>Vibe Rounds</h1>
         <p>Clinical analytics on FHIR data</p>
         <button type="button" class="conn-pill" id="connPill" data-state="unknown" title="Click to re-check the database connection"><i></i><span>Checking database…</span></button>
+        <span id="whoami" class="an-muted" style="font-size:12.5px"></span><button type="button" id="signOutBtn" style="display:none">Sign out</button>
         <a href="https://avi33tbtt.github.io" target="_blank" rel="noopener" class="site-link">Project site</a>
     </header>
     <div class="tab-container">
@@ -1476,6 +1532,7 @@ label{color:var(--ink-2)}
         <span class="tab-sep" aria-hidden="true"></span>
         <button class="tab is-guide" data-tab="tab2">Architecture</button>
         <button class="tab is-guide" data-tab="tab3">Capabilities</button>
+        <button class="tab is-guide" data-tab="tab8">About</button>
     </div>
     
     <div class="tab-content">
@@ -2076,7 +2133,7 @@ conn.close()
             
             
 <nav class="sub-nav" aria-label="Analytics sections">
-                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anRun">Run analytics</a><a href="#anKG">Knowledge graph</a><a href="#outputSection">Output</a>
+                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#outputSection">Output</a>
             </nav>
 <!-- Population and cohorts Section -->
             <div class="analytics-section" id="anCohorts">
@@ -2210,13 +2267,15 @@ conn.close()
                         <div style="margin-top:10px;"><select id="anSelect" style="width:100%; padding:10px;  border-radius:6px; font-size:14px;"></select></div>
                         <p id="anDesc" style="font-size:13px; "></p>
                         <div id="anAskBox" style="display:none; margin-bottom:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
-                            <strong>Ask in plain English</strong> <span class="an-muted">(AI fills the form below; you review it, then run. Needs the AI settings above.)</span>
+                            <strong>Ask in plain English, or get ideas</strong> <span class="an-muted">(AI fills the form below from your question, or suggests a few studies to pick from. You review the form, then run. Needs the AI settings above.)</span>
                             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:flex-start;">
                                 <textarea id="anAskInput" rows="2" maxlength="500" placeholder="e.g. In diabetics, does metformin vs no treatment reduce ED visits?" style="flex:1; min-width:260px; padding:7px;  border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
                                 <button id="anAskBtn" class="btn-secondary" onclick="askPico()">Fill the form</button>
+                                <button id="anSuggestStudyBtn" class="btn-secondary" onclick="suggestPico()" title="Uses what you typed as an optional topic, for example kidney or blood pressure">Suggest a few studies</button>
                             </div>
                             <div id="anAskStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                             <div id="anAskResult"></div>
+                            <div id="anSuggestResult"></div>
                         </div>
                         <div id="anParams" class="an-params"></div>
                         <div id="anTemplateBox" style="display:none; margin-top:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
@@ -2247,29 +2306,112 @@ conn.close()
                     </div>
                 </div>
 
-                <!-- Knowledge graph (Step 6.4a): neighbor table from /api/kg/neighbors -->
-                <div class="analytics-section" id="anKG" style="margin-top:30px;">
-                    <h3 style="margin-top:0;">Knowledge graph</h3>
-                    <div class="an-muted" style="margin-bottom:10px;">Demo links between conditions, drugs, labs and procedures (static, no patient data; not a clinical reference).</div>
-                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-                        <label for="kgConcept" style="font-weight:bold;">Concept:</label>
-                        <select id="kgConcept" style="padding:7px; min-width:200px;  border-radius:4px;"></select>
-                        <label for="kgDepth" style="font-weight:bold;">Depth:</label>
-                        <select id="kgDepth" style="padding:7px;  border-radius:4px;">
-                            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                        </select>
-                        <button class="btn-primary" onclick="kgShow()">Show</button>
-                        <button class="btn-secondary" onclick="kgReset()">Reset</button>
+                <!-- Cohort knowledge graph: built from the patients of the current population / cohort (GET /api/kg/cohort) -->
+                <style>
+                    .kgc-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+                    .kgc-row label { font-size:13px; }
+                    .kgc-panel { display:flex; gap:22px; flex-wrap:wrap; margin-top:10px; padding:10px 12px; background:#f7f8f9; border:1px solid #e0e0e0; border-radius:6px; font-size:13px; }
+                    .kgc-panel fieldset { border:0; padding:0; margin:0; min-width:150px; }
+                    .kgc-panel legend { font-weight:bold; padding:0; margin-bottom:3px; }
+                    .kgc-panel fieldset label { display:block; white-space:nowrap; }
+                    .kgc-slide { display:flex; align-items:center; gap:6px; margin:2px 0; white-space:nowrap; }
+                    .kgc-slide input[type=range] { width:130px; }
+                    .kgc-tabs label { padding:5px 12px; border:1px solid #ccc; border-radius:14px; cursor:pointer; background:#fff; }
+                    .kgc-tabs input { margin-right:5px; }
+                    .kgc-main { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; align-items:flex-start; }
+                    .kgc-canvas { flex:1 1 560px; min-width:300px; overflow:auto; }
+                    .kgc-detail { flex:0 1 330px; min-width:250px; font-size:13px; border:1px solid #e0e0e0; border-radius:6px; padding:8px 10px; background:#fff; max-height:640px; overflow:auto; }
+                    .kgc-detail h4 { margin:0 0 4px 0; }
+                    .kgc-mx { border-collapse:collapse; font-size:10px; }
+                    .kgc-mx td, .kgc-mx th { width:17px; height:17px; min-width:17px; padding:0; border:1px solid #f0f0f0; text-align:center; cursor:pointer; }
+                    .kgc-mx th.r { width:auto; text-align:right; padding:0 6px; white-space:nowrap; font-weight:normal; max-width:190px; overflow:hidden; text-overflow:ellipsis; }
+                    .kgc-mx th.c { height:auto; padding:4px 0; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; font-weight:normal; max-height:150px; overflow:hidden; text-overflow:ellipsis; }
+                    .kgc-chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; border:1px solid #bbb; margin:1px 2px 1px 0; background:#fafafa; }
+                </style>
+                <div class="analytics-section" id="anCKG" style="margin-top:30px;">
+                    <h3 style="margin-top:0;">Cohort knowledge graph</h3>
+                    <div class="an-muted" style="margin-bottom:6px;">Built from the patients in the selected <em>Population / Batch</em> and the <em>active cohort</em>: every condition, drug, lab / vital and procedure in the data becomes a node, and two nodes are linked when the same patients have both. Links are associations seen in this data (counts, lift, order in time), not clinical claims. Links that also exist in the built-in reference links (<code>terminology.js</code>) are marked, and those links that never occur in this cohort can be shown as dashed lines.</div>
+
+                    <div class="kgc-row">
+                        <button class="btn-primary" id="kgcBuild" onclick="KGC.build()">Build graph from cohort</button>
+                        <label>Concepts per kind <select id="kgcPool"><option>15</option><option selected>25</option><option>40</option><option>60</option><option>80</option><option>100</option></select></label>
+                        <label>Sex <select id="kgcSex"><option value="">all</option><option value="female">female</option><option value="male">male</option></select></label>
+                        <label>Age <input type="number" id="kgcAgeMin" min="0" max="120" placeholder="from" style="width:58px;"> to <input type="number" id="kgcAgeMax" min="0" max="120" placeholder="to" style="width:58px;"></label>
+                        <label>Patients sampled for projection <select id="kgcSample"><option value="0">none</option><option value="150">150</option><option value="250" selected>250</option><option value="500">500</option></select></label>
                     </div>
-                    <div id="kgTypes" style="margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px;">
-                        <label><input type="checkbox" class="kgType" value="treated_by" checked onchange="kgTypeChanged()"> treated by</label>
-                        <label><input type="checkbox" class="kgType" value="monitored_by" checked onchange="kgTypeChanged()"> monitored by</label>
-                        <label><input type="checkbox" class="kgType" value="interacts_with" checked onchange="kgTypeChanged()"> interacts with</label>
-                        <label><input type="checkbox" class="kgType" value="screened_by" checked onchange="kgTypeChanged()"> screened by</label>
-                        <label><input type="checkbox" class="kgType" value="leads_to" checked onchange="kgTypeChanged()"> leads to</label>
+                    <div id="kgcStatus" class="status-output" style="margin-top:8px; min-height:20px;"></div>
+
+                    <div id="kgcBody" style="display:none;">
+                        <div class="kgc-row kgc-tabs" id="kgcViews">
+                            <strong style="font-size:13px;">View:</strong>
+                            <label title="Concepts as nodes, patients in common as links"><input type="radio" name="kgcView" value="graph" checked onchange="KGC.setView(this.value)">Concept graph</label>
+                            <label title="Patients as nodes, joined when they share (rarer) concepts: shows phenotype clusters"><input type="radio" name="kgcView" value="patients" onchange="KGC.setView(this.value)">Patient projection</label>
+                            <label title="Every pair of concepts as a heat-map"><input type="radio" name="kgcView" value="matrix" onchange="KGC.setView(this.value)">Matrix</label>
+                            <button class="btn-secondary" onclick="KGC.resetView()" title="Re-run the layout, un-pin nodes, show hidden nodes, clear selection and focus">Reset layout</button>
+                        </div>
+
+                        <div class="kgc-panel" id="kgcControls" onchange="KGC.changed(event)" oninput="KGC.changed(event)">
+                            <fieldset><legend>Node kinds</legend>
+                                <label><input type="checkbox" class="kgcKind" value="condition" checked> conditions</label>
+                                <label><input type="checkbox" class="kgcKind" value="medication" checked> medications</label>
+                                <label><input type="checkbox" class="kgcKind" value="lab" checked> labs / vitals</label>
+                                <label><input type="checkbox" class="kgcKind" value="procedure" checked> procedures</label>
+                            </fieldset>
+                            <fieldset data-for="graph matrix"><legend>Link types</legend>
+                                <label><input type="checkbox" class="kgcType" value="comorbid" checked> condition + condition</label>
+                                <label><input type="checkbox" class="kgcType" value="prescribed_with" checked> condition + drug</label>
+                                <label><input type="checkbox" class="kgcType" value="measured_with"> condition + lab</label>
+                                <label><input type="checkbox" class="kgcType" value="procedure_with" checked> condition + procedure</label>
+                                <label><input type="checkbox" class="kgcType" value="co_prescribed" checked> drug + drug</label>
+                                <label><input type="checkbox" class="kgcType" value="co_occurs"> any other pair</label>
+                            </fieldset>
+                            <fieldset data-for="graph matrix"><legend>Evidence</legend>
+                                <label><input type="checkbox" class="kgcEv" value="both" checked> seen here and in reference graph</label>
+                                <label><input type="checkbox" class="kgcEv" value="obs" checked> seen here only (new)</label>
+                                <label><input type="checkbox" class="kgcEv" value="known"> reference only (not seen here)</label>
+                            </fieldset>
+                            <fieldset data-for="graph matrix"><legend>Thresholds</legend>
+                                <div class="kgc-slide">Min patients per link <input type="range" id="kgcMinN" min="1" max="100" value="5"><span id="kgcMinNv">5</span></div>
+                                <div class="kgc-slide">Min lift <input type="range" id="kgcMinLift" min="0" max="50" value="13"><span id="kgcMinLiftv">1.3</span></div>
+                                <div class="kgc-slide">Nodes per kind <input type="range" id="kgcPerKind" min="2" max="100" value="8"><span id="kgcPerKindv">8</span></div>
+                                <div class="kgc-slide" title="Keep only the strongest links of each node. Raise to 'all' to see everything the other filters allow.">Links per node <input type="range" id="kgcTopK" min="1" max="16" value="4"><span id="kgcTopKv">4</span></div>
+                            </fieldset>
+                            <fieldset data-for="graph"><legend>Look</legend>
+                                <label>Size by <select id="kgcSize"><option value="patients">patients</option><option value="abn">% abnormal (labs)</option><option value="same">same size</option></select></label>
+                                <label>Colour by <select id="kgcColor"><option value="kind">kind</option><option value="community">community</option></select></label>
+                                <label>Link width by <select id="kgcWidth"><option value="n">patients</option><option value="lift">lift</option><option value="jaccard">overlap (Jaccard)</option></select></label>
+                                <label><input type="checkbox" id="kgcLabels" checked> labels</label>
+                                <label><input type="checkbox" id="kgcArrows" checked> arrow = usually first in time</label>
+                                <label><input type="checkbox" id="kgcLone" checked> hide nodes without links</label>
+                            </fieldset>
+                            <fieldset data-for="graph"><legend>Focus</legend>
+                                <label>Depth <select id="kgcDepth"><option value="1">1 link</option><option value="2">2 links</option></select></label>
+                                <div class="an-muted" id="kgcFocusTxt">click a node, then <em>Focus</em></div>
+                                <button class="btn-secondary" onclick="KGC.setFocus(null)">Clear focus</button>
+                                <div id="kgcHiddenTxt" class="an-muted"></div>
+                            </fieldset>
+                            <fieldset data-for="matrix"><legend>Matrix</legend>
+                                <label>Cell value <select id="kgcMxMetric"><option value="lift">lift</option><option value="n">patients</option><option value="jaccard">overlap (Jaccard)</option><option value="pab">P(column | row)</option></select></label>
+                            </fieldset>
+                            <fieldset data-for="patients"><legend>Patient projection</legend>
+                                <div class="kgc-slide">Min similarity <input type="range" id="kgcSim" min="5" max="95" value="30"><span id="kgcSimv">0.30</span></div>
+                                <label>Colour by <select id="kgcPColor"><option value="cluster">cluster</option><option value="sex">sex</option><option value="age">age band</option><option value="count">number of concepts</option></select></label>
+                                <div class="an-muted" style="max-width:240px;">Rarer concepts weigh more; near-universal ones (such as routine vitals) hardly count. Kind and node-per-kind settings apply.</div>
+                            </fieldset>
+                        </div>
+
+                        <div class="kgc-main">
+                            <div class="kgc-canvas" id="kgcCanvas"></div>
+                            <div class="kgc-detail" id="kgcDetail"></div>
+                        </div>
+                        <div class="kgc-row">
+                            <button class="btn-secondary" onclick="KGC.exportJson()">Download graph JSON</button>
+                            <button class="btn-secondary" onclick="KGC.exportCsv()">Download links CSV</button>
+                            <button class="btn-secondary" onclick="KGC.exportPicture()" title="Saves the graph or the patient projection as it is on screen">Download picture (PNG)</button>
+                            <button class="btn-primary" onclick="KGC.addToOutput()" title="Adds the current view, with its filters, to the Output section below">Add this view to Output</button><span class="an-muted" id="kgcOutMsg"></span>
+                            <span class="an-muted" id="kgcCounts"></span>
+                        </div>
                     </div>
-                    <div id="kgStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
-                    <div class="an-muted">Results appear in the Output section below.</div>
                 </div>
 
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
@@ -2283,11 +2425,13 @@ conn.close()
                         <button class="btn-secondary" onclick="clearAnalyticsHistory()">Clear output</button>
                         <button class="btn-secondary" id="anVisCharts" onclick="ancToggleAll('charts')" title="Hide or show the charts of every run">Hide all charts</button>
                         <button class="btn-secondary" id="anVisTables" onclick="ancToggleAll('tables')" title="Hide or show the tables of every run">Hide all tables</button>
+                        <button class="btn-primary" id="anSuggestBtn" onclick="anSuggest()" title="The AI model reads every run below plus your earlier choices and proposes what to look at next. Nothing runs until you click.">Suggest next steps</button>
                         <button class="btn-secondary" id="anInsAll" onclick="anInsightsAll()" title="Sends the result tables of every run below to the AI model (OpenRouter) and shows its insights. Patient-id columns are removed and large tables are cut.">Insights on all output (AI)</button>
                         <span id="anHistoryCount" class="an-muted"></span>
                     </div>
                     <div id="anUploadStatus" class="status-output" style="margin-top:8px; min-height:18px;"></div>
                     <div id="anInsAllOut"></div>
+                    <div id="anAssist" class="assist" hidden></div>
                     <div id="anEmpty" class="an-muted" style="margin-top:10px;">No output yet. Run an analytic above, or show a knowledge graph.</div>
                     <div id="anResults" style="margin-top:10px;"></div>
                 </div>
@@ -2297,6 +2441,99 @@ conn.close()
 
         </div>
         <!-- Tab 7: Dashboard (runs the whole catalog for the active cohort and shows it as one page) -->
+        <div class="tab-panel" id="tab8">
+<div class="page-head"><h2>About Vibe Rounds</h2><p>Ask better questions of clinical data, and know how far to trust the answers. An AI research assistant for FHIR data that shows its working.</p></div>
+<div class="about">
+<nav class="about-toc" aria-label="On this page">
+<a href="#ab-why">Why it exists</a><a href="#ab-what">What it does</a><a href="#ab-loop">How a research session works</a><a href="#ab-who">Who it benefits</a><a href="#ab-use">Use cases</a><a href="#ab-fit">Where it fits</a><a href="#ab-notfor">When not to use it</a><a href="#ab-purpose">Scope and intent</a>
+</nav>
+<div class="about-body">
+<figure class="about-flow" aria-label="Two ways to get from FHIR data to analytics">
+<figcaption>FHIR data plus heavy tools gets you analytics. But FHIR data plus a <strong>lightweight tool for quick, AI-assisted scientific exploration</strong>? That is <strong>Vibe Rounds</strong>.</figcaption>
+<div class="flow">
+<div class="flow-src">FHIR data<small>your files or synthetic</small></div>
+<div class="flow-rows">
+<div class="flow-row is-heavy">
+<div class="flow-node"><span class="flow-tag">Heavy tools</span>Convert, load, configure<small>Common data model, warehouse, specialist setup</small></div>
+<span class="flow-arr" aria-hidden="true">&rarr;</span>
+<div class="flow-node"><span class="flow-tag">Result</span>Analytics available<small>Established and powerful, once set up</small></div>
+</div>
+<div class="flow-row is-light">
+<div class="flow-node"><span class="flow-tag">Lightweight + AI</span>Vibe Rounds<small>Works on the FHIR data as it is, with an AI research assistant</small></div>
+<span class="flow-arr" aria-hidden="true">&rarr;</span>
+<div class="flow-node"><span class="flow-tag">Result</span>Quick scientific exploration<small>Questions, cohorts, results and next steps in one place</small></div>
+</div>
+</div>
+</div>
+<p class="flow-note">Already running a heavy platform? Keep using it. Vibe Rounds is for the exploratory step before it: fast, low-setup, and not a replacement.</p>
+</figure>
+
+
+<section id="ab-why"><h3>Why it exists</h3>
+<p>Hospitals and health systems now hold large amounts of patient data in FHIR, but getting a trustworthy answer from it is still slow, specialist work. Four problems come up again and again:</p>
+<table><thead><tr><th>The problem</th><th>What Vibe Rounds gives you</th></tr></thead><tbody>
+<tr><td><strong>The answer depends on how you read the record.</strong> Ask "how many patients have diabetes?" of the notes, of the codes, or of the codes with dates, and you often get three different numbers. Most tools show you one, without saying so.</td><td><strong>Three answers side by side.</strong> Every analytic runs from the clinical notes, the codes, and the codes with dates on the same patients, so you can see how much a result depends on the method and where the data is weak.</td></tr>
+<tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it.</td></tr>
+<tr><td><strong>Turning a clinical question into a study takes skill and time.</strong> You need to know the code sets, write cohort SQL, pick an analysis and decide what to look at next.</td><td><strong>A faster path from question to result.</strong> Type the question in plain English or ask for suggested studies, and the form is filled in for you. A query builder writes the cohort SQL from clinical concepts, including descendants in the SNOMED CT hierarchy.</td></tr>
+<tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic, nothing runs until you click, and you decide each step.</td></tr></tbody></table>
+<p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, either the SQL or a notebook, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
+
+<section id="ab-what"><h3>What it does</h3>
+<p class="about-callout">You bring FHIR patient data, from your own files or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
+<p><strong>The assistant is analyst-led.</strong> After each run it reads every result so far, together with the choices you have already made. It summarizes where the analysis stands, flags what it noticed (important, unusual, caution, data quality), and proposes up to four next analytics with a short reason each. You run a suggestion, skip it, mark a finding important or dismiss it, and those decisions shape the next round.</p>
+<p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers. It never writes SQL, never touches the database, and every figure comes from a deterministic analytic, not from the model.</p></section>
+
+<section id="ab-loop"><h3>How a research session works</h3>
+<ol>
+<li><strong>Ask, get ideas, or define.</strong> Type a question in plain English and the assistant fills in the PICO or PECO study form for you to review. Not sure what to ask? Press <em>Suggest a few studies</em> (optionally after typing a topic such as kidney or blood pressure) and pick one of up to four suggested questions, each checked against the known conditions, drugs and outcomes before it is shown. Or build a cohort yourself, including with the SNOMED CT query builder.</li>
+<li><strong>Run an analytic.</strong> Pick one from the catalog, or run the dashboard to cover everything for the cohort.</li>
+<li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
+<li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions.</li>
+<li><strong>Go deeper.</strong> Export a Jupyter notebook for survival analysis, modelling or anything the interface does not offer.</li></ol>
+<p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
+
+<section id="ab-who"><h3>Who it benefits</h3>
+<table><thead><tr><th>Who</th><th>What they get</th></tr></thead><tbody>
+<tr><td>Clinical researchers and epidemiologists</td><td>A research partner for the exploratory stage: prototype a cohort, see how many patients each rule catches, get flagged findings and suggested follow-ups, then export the SQL or a notebook.</td></tr>
+<tr><td>Health informatics students and educators</td><td>A hands-on environment for phenotyping, terminology hierarchies and data quality, with an assistant that models good analytic habits such as checking data quality first and warning about small counts. Deterministic synthetic data gives every class the same results.</td></tr>
+<tr><td>Quality and population health analysts</td><td>Ready-made views of chronic disease control, screening gaps, polypharmacy, utilization and equity, with plain-language summaries of what stands out.</td></tr>
+<tr><td>Data engineers and FHIR integration teams</td><td>A quick check of what an export actually contains, such as coding coverage, unrecognised code systems and impossible dates, before investing in mapping.</td></tr>
+<tr><td>Developers and vendors</td><td>A realistic, reproducible dataset, including deliberately messy variants, for testing pipelines and analytics code.</td></tr></tbody></table></section>
+
+<section id="ab-use"><h3>Use cases</h3>
+<ul>
+<li><strong>Explore an unfamiliar dataset with a guide.</strong> Run a first analytic, ask the assistant what stands out, and follow its suggestions, skipping what is not useful.</li>
+<li><strong>Turn a question into a study.</strong> Write the question in plain English, or ask for a few suggested studies on a topic, review the PICO or PECO form it fills in, run it, and have the result explained.</li>
+<li><strong>Assess a FHIR export before an ETL project.</strong> Run the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
+<li><strong>Compare phenotype definitions.</strong> Build a diabetes cohort by exact code, by code plus descendants, and by text, then compare how many patients each captures.</li>
+<li><strong>Explore care gaps and safety signals.</strong> Overdue screening, risky drug pairs, and prescribing after an allergy was recorded, on synthetic data you can share freely.</li>
+<li><strong>Teach clinical analytics.</strong> Generate a batch, assign students different cohorts, and have them explain why the text, code and time methods disagree.</li>
+<li><strong>Stress-test analytics code.</strong> Generate messy data with other code systems, local codes, mixed units and duplicates, and see what breaks.</li></ul></section>
+
+<section id="ab-fit"><h3>Where it fits among current tools</h3>
+<p>Vibe Rounds is a small, single-purpose workbench, not a replacement for the established platforms. This is how it compares by category. It is a general comparison, so check the current features of any tool you are evaluating.</p>
+<table><thead><tr><th>Category (examples)</th><th>What these tools are strong at</th><th>How Vibe Rounds differs</th></tr></thead><tbody>
+<tr><td>General AI chat and "talk to your data" tools</td><td>Free-form questions on almost anything, and flexible code or SQL generation</td><td>The model does not write SQL or produce numbers. It reads results from fixed, tested analytics and picks the next one from the catalog, so every figure is reproducible and checkable. It is less flexible by design.</td></tr>
+<tr><td>OMOP and OHDSI stack (OMOP CDM, ATLAS, HADES)</td><td>A standard data model, validated community phenotypes and a large research network</td><td>Works on FHIR-derived tables directly, with no ETL to a common model. It has no network, no shared phenotype library and no validation record behind it.</td></tr>
+<tr><td>Cohort discovery platforms (i2b2, SHRINE and commercial federated networks)</td><td>Cohort counts across institutions, governance and production deployments</td><td>Single database, single user, with no federation or access governance. It adds the text-versus-codes-versus-time comparison, SQL output and an assistant that suggests next steps.</td></tr>
+<tr><td>Synthetic patient generators (Synthea and similar)</td><td>Broad, disease-module-based synthetic populations in FHIR</td><td>The generator is built into the analysis loop, with controlled data defects and correlated outcomes so analytic methods can be tested. It is narrower in scope.</td></tr>
+<tr><td>Clinical NLP (cTAKES, MedCAT and similar)</td><td>Real concept extraction and negation from free text</td><td>The text method is deliberately simple matching with synonyms and basic negation. It is a baseline to compare against codes, not an NLP engine.</td></tr>
+<tr><td>General BI and notebooks (Metabase, Superset, Jupyter)</td><td>Flexible dashboards and unlimited analysis</td><td>Clinical content comes ready-made: terminologies, a hierarchy-aware query builder and analytics with clinical definitions. It exports notebooks for anything beyond that.</td></tr></tbody></table>
+<p><strong>In short:</strong> its niche is the early, exploratory stage between "I have FHIR data" and "I have a validated study". It is useful for learning, prototyping, checking data quality and generating well-founded leads, and not for production research networks or regulated use.</p></section>
+
+<section id="ab-notfor"><h3>When not to use it</h3>
+<ul>
+<li>Clinical decision-making or anything regulated. It is not a medical device, and the assistant gives no treatment advice.</li>
+<li>Treating the assistant's output as findings. Its flags and suggestions are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
+<li>Real patient data without authentication and your organization's approval. The app has no login and runs cohort SQL as written. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy.</li>
+<li>Multi-site studies, formal phenotype validation or publication-grade inference. Counts are descriptive, the bundled terminology is demo content, and there is no peer-reviewed validation of the methods.</li>
+<li>Very large datasets. Import is one insert per resource and some analytics take minutes at thousands of patients.</li></ul></section>
+
+<section id="ab-purpose"><h3>Scope and intent</h3>
+<p>Vibe Rounds is a research and teaching workbench with an AI assistant on top. It loads FHIR R4 data into PostgreSQL, lets you define cohorts, and runs a catalog of clinical analytics in three ways that differ in what evidence they use: narrative text, codes, or codes plus time. The assistant helps you read the results and decide what to ask next. Its central question is practical: how much do results change depending on whether you read the notes, trust the codes, or reason over dates?</p>
+<p><strong>It is not</strong> a medical device, a clinical decision support system, or a certified terminology service. It is not an OMOP CDM implementation and does not transform data into one. Outputs are descriptive counts and associations for exploration, method comparison and education, and the human analyst stays in charge of every step.</p></section>
+</div></div></div>
+
         <div class="tab-panel" id="tab7">
             <div class="page-head"><h2>Clinical dashboard</h2></div>
             <p>Runs every analytic in the catalog for the <strong>active cohort</strong> and organizes the results the way a clinical intelligence review runs: an executive scorecard first, then flow, quality, safety, risk, prescribing, laboratory, equity, pathways and data trust. Population / batch is the one chosen on the Analytics tab. Use <strong>V4</strong> (default) for the scorecard; it needs dates.</p>
@@ -2431,6 +2668,7 @@ conn.close()
         const res = await nativeFetch(input, init);
         const isApi = /^\/api\//.test(url) || /^https?:\/\/[^/]+\/api\//.test(url);
         const type = (res.headers.get('content-type') || '').toLowerCase();
+        if (isApi && res.status === 401 && !/\/api\/auth\/login/.test(url)) { location.href = '/login'; return res; }
         if (isApi && type.includes('text/html')) {
             const msg = 'The Vibe Rounds API did not answer (' + url.split('?')[0] + ' returned a web page, HTTP ' + res.status + '). '
                 + 'Start the server with "npm start" and open this page from it (for example http://localhost:3001), not from a file or another web host.';
@@ -5810,6 +6048,50 @@ async function askPico() {
     finally { btn.disabled = false; }
 }
 
+// ---- Suggested studies: the model proposes a few PICO/PECO questions; the server checks every one against the dictionary. ----
+// Picking one fills the form from the checked values (no second model call). Nothing runs until you press Run.
+CAT.suggested = [];
+function renderSuggestions() {
+    const box = document.getElementById('anSuggestResult'), btn = document.getElementById('anSuggestStudyBtn');
+    box.innerHTML = '';
+    if (btn) btn.textContent = CAT.suggested.length ? 'Suggest different ones' : 'Suggest a few studies';
+    if (!CAT.suggested.length) return;
+    const head = document.createElement('div'); head.style.cssText = 'margin-top:10px;';
+    head.innerHTML = '<span class="an-ai-tag">AI-generated, please review</span> <span class="an-muted">Pick one to fill the form. Ideas to explore, not conclusions.</span>';
+    box.appendChild(head);
+    CAT.suggested.forEach(sg => {
+        const c = document.createElement('div');
+        c.style.cssText = 'margin-top:8px; padding:8px 10px; background:#fff; border:1px solid #d1c4e9; border-radius:4px;';
+        c.innerHTML = `<div><strong>${escapeHtml(sg.title)}</strong> <span class="an-badge an-v4">${sg.type === 'peco' ? 'PECO' : 'PICO'}</span></div>
+            ${sg.why ? `<div class="an-muted" style="margin-top:3px;">${escapeHtml(sg.why)}</div>` : ''}
+            <div style="margin-top:6px;"><button type="button" class="btn-secondary" data-d="use">Use this study</button></div>`;
+        c.querySelector('[data-d=use]').onclick = () => {
+            try {
+                applyAiForm(sg); showAskResult(sg);
+                setLlmStatus('Form filled from the suggestion. Check every field, then run.', false, 'anAskStatus');
+                document.getElementById('anParams').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (e) { setLlmStatus('Error: ' + e.message, true, 'anAskStatus'); }
+        };
+        box.appendChild(c);
+    });
+}
+async function suggestPico() {
+    const btn = document.getElementById('anSuggestStudyBtn'), askBtn = document.getElementById('anAskBtn'), input = document.getElementById('anAskInput');
+    try {
+        const hint = input.value.trim();
+        if (hint.length > 200) { setLlmStatus('For ideas, type a short topic (at most 200 characters), or leave the box empty.', true, 'anAskStatus'); return; }
+        btn.disabled = true; askBtn.disabled = true;
+        setLlmStatus('Asking the model for ideas (up to 45 seconds)...', false, 'anAskStatus');
+        await ensureCatalog();
+        const r = await anPost('/api/pico/suggest', { hint, avoid: CAT.suggested.map(x => x.title) });
+        if (!r.success) throw new Error(r.error || 'Could not get suggestions');
+        CAT.suggested = r.suggestions || [];
+        renderSuggestions();
+        setLlmStatus(`${CAT.suggested.length} suggestion${CAT.suggested.length === 1 ? '' : 's'}${hint ? ' for "' + hint.slice(0, 40) + '"' : ''}. Pick one to fill the form.`, false, 'anAskStatus');
+    } catch (e) { setLlmStatus('Error: ' + e.message, true, 'anAskStatus'); }
+    finally { btn.disabled = false; askBtn.disabled = false; }
+}
+
 // ---- Plain-language explanation of a PICO/PECO result (Step 4.10) ----
 // Only the numbers of the effect row (no note text, no patient data) and the form values used are sent; the server adds fixed caveats.
 CAT.byId = {}; CAT.seq = 0;
@@ -6068,6 +6350,7 @@ function anRenderItem(run, t, d) {
         if (t === 'result') run.body.insertAdjacentHTML('beforeend', renderRun(d));
         else if (t === 'compare') run.body.insertAdjacentHTML('beforeend', renderCompare(d));
         else if (t === 'all') run.body.insertAdjacentHTML('beforeend', d.results.map(r => `<details ${r.success ? '' : 'open'} style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:bold;">${escapeHtml(r.title || r.id)} ${r.success ? '' : '⚠️'}</summary>${renderRun(Object.assign({ mode: d.mode }, r))}</details>`).join(''));
+        else if (t === 'ckg') run.body.appendChild(KGC.renderOutput(d));
         else if (t === 'kg') {
             const rows = d.rows || [], viaName = k => KG_LABEL[k] || k, g = document.createElement('div');
             g.innerHTML = (rows.length ? '<table class="an-table kg-table"><thead><tr><th>Concept</th><th>Kind</th><th>Relation</th><th>Direction</th><th>Depth</th><th>Via</th></tr></thead><tbody>' +
@@ -6091,6 +6374,8 @@ function anStartRun(label, opts) {
     wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><div><strong>Run #${run.n}</strong> <span class="an-muted">· ${escapeHtml(label)}</span>${run.imported ? ' <span class="an-tag">uploaded</span>' : ''}</div><div class="an-vis-btns"><button class="btn-secondary an-vis-charts" onclick="ancToggleRun(this, 'charts')" title="Hide or show the charts of this run">Hide charts</button><button class="btn-secondary an-vis-tables" onclick="ancToggleRun(this, 'tables')" title="Hide or show the tables of this run">Hide tables</button><button class="btn-secondary an-run-ins" title="Sends this run's result tables to the AI model (OpenRouter) and shows its insights">✨ Insights (AI)</button><button class="btn-secondary an-run-remove" title="Remove this run">✖ Remove</button></div></div><div class="an-run-meta an-muted" style="font-size:12px; margin:4px 0 8px;"></div><div class="an-run-body"></div><div class="an-run-ins-out"></div>`;
     run.body = wrap.querySelector('.an-run-body');
     wrap.querySelector('.an-run-ins').onclick = () => anInsights(run, wrap);
+    wrap.querySelector('.an-run-ins').insertAdjacentHTML('afterend', ' <button type="button" class="an-run-sug">Suggest next steps</button>');
+    wrap.querySelector('.an-run-sug').onclick = () => anSuggest();
     wrap.querySelector('.an-run-remove').onclick = () => {
         wrap.remove();
         CAT.history = CAT.history.filter(h => h !== run);
@@ -6146,10 +6431,97 @@ function anInsightsAll() {
     const runs = CAT.history.slice().reverse();   // oldest first, so the model reads them in the order they were run
     anInsRequest(runs, 'all', document.getElementById('anInsAll'), document.getElementById('anInsAllOut'), `Insights on all output (${runs.length} run${runs.length === 1 ? '' : 's'})`);
 }
+
+// ===== Research assistant: LLM-assisted, analyst-led. The model reads every run plus your earlier choices, flags findings and proposes next analytics.
+// It only picks from the catalog; nothing runs until you press Run. Your choices (run, skip, important, dismiss) go back with the next request.
+CAT.research = { steps: [], decisions: [], busy: false };
+const AS_FLAG = { important: 'Important', unusual: 'Unusual', caution: 'Caution', data_quality: 'Data quality', note: 'Note' };
+function anCatalogForAi() {
+    return CAT.list.map(a => ({ id: a.id, title: a.title, modes: a.modes || [],
+        params: (a.params || []).filter(q => q.type === 'select' && Array.isArray(q.options)).map(q => ({ name: q.name, values: q.options.slice(0, 40).map(o => String(o.value)) })) }));
+}
+function asDecide(d) { CAT.research.decisions.push(d); }
+async function anSuggest() {
+    const R = CAT.research, box = document.getElementById('anAssist'), btn = document.getElementById('anSuggestBtn');
+    if (R.busy) return;
+    const runs = CAT.history.slice().reverse();
+    box.hidden = false;
+    if (!runs.some(r => r.items && r.items.some(it => it.t !== 'kg'))) { asNotice(box, 'Run an analytic first: the assistant needs results to read.'); return; }
+    R.busy = true; const label = btn.textContent; btn.disabled = true; btn.textContent = 'Thinking...';
+    const wait = document.createElement('div'); wait.className = 'as-wait'; wait.textContent = `Reading ${runs.length} run${runs.length === 1 ? '' : 's'} and your earlier choices (up to 90 seconds)...`;
+    box.prepend(wait);
+    try {
+        await ensureCatalog();
+        const d = await anPost('/api/ai/next-steps', { runs: anInsPayload(runs, 'all').runs, catalog: anCatalogForAi(), decisions: R.decisions,
+            cohort: anActiveCohortName() || 'none (all patients)', population: anPopulationLabel() });
+        if (!d.success) throw new Error(d.error || 'Could not get next steps');
+        const step = { n: R.steps.length + 1, runsRead: runs.length, model: d.model, at: new Date(), ...d };
+        R.steps.push(step); asRenderStep(step);
+        step.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { asNotice(box, 'Error: ' + e.message, true); }
+    finally { wait.remove(); asTidy(box); R.busy = false; btn.disabled = false; btn.textContent = label; }
+}
+function asTidy(box) { box.hidden = !box.children.length; }   // the small status box above the output hides itself when empty
+function asNotice(box, text, isErr) {
+    const n = document.createElement('div'); n.className = 'as-notice' + (isErr ? ' is-error' : ''); n.textContent = text; box.prepend(n);
+    setTimeout(() => { n.remove(); asTidy(box); }, isErr ? 12000 : 6000);
+}
+function asRenderStep(step) {
+    // Step cards live in the same stream as the runs (#anResults), newest on top, so a run started from a suggestion sits right under the step that follows it.
+    const el = document.createElement('article'); el.className = 'as-step'; step.el = el;
+    const e = escapeHtml;
+    el.innerHTML = `<header><strong>Research step ${step.n}</strong> <span class="an-muted">· ${step.runsRead} run${step.runsRead === 1 ? '' : 's'} read · ${e(step.model || '')} · ${step.at.toLocaleTimeString()}</span> <span class="an-ai-tag">AI-generated, please review</span></header>
+        ${step.summary ? `<p class="as-sum">${e(step.summary)}</p>` : ''}
+        ${step.findings.length ? '<h5>What it noticed</h5><ul class="as-find"></ul>' : ''}
+        ${step.suggestions.length ? '<h5>Suggested next analytics <span class="an-muted">(runs on the current population and active cohort)</span></h5><div class="as-sugs"></div>' : '<p class="an-muted">No further analytics suggested. Add your own, or change the cohort.</p>'}
+        <p class="an-muted as-foot">Descriptive and unadjusted. These are leads to check, not conclusions or treatment advice.</p>`;
+    const fl = el.querySelector('.as-find');
+    (step.findings || []).forEach(f => {
+        const li = document.createElement('li'); li.className = 'as-f as-' + f.flag;
+        li.innerHTML = `<span class="as-chip">${e(AS_FLAG[f.flag] || 'Note')}</span><span class="as-t">${e(f.text)}${f.run ? ` <span class="an-muted">(run #${f.run})</span>` : ''}</span><span class="as-act"><button type="button" data-d="important">Mark important</button><button type="button" data-d="dismissed">Dismiss</button></span>`;
+        li.querySelectorAll('button').forEach(b => b.onclick = () => {
+            const dec = b.dataset.d; asDecide({ kind: 'finding', text: f.text, decision: dec });
+            li.classList.toggle('is-confirmed', dec === 'important'); li.classList.toggle('is-dismissed', dec === 'dismissed');
+            li.querySelector('.as-act').innerHTML = `<span class="an-muted">${dec === 'important' ? 'Marked important' : 'Dismissed'}</span>`; });
+        fl.appendChild(li);
+    });
+    const sl = el.querySelector('.as-sugs');
+    (step.suggestions || []).forEach(sg => {
+        const c = document.createElement('div'); c.className = 'as-sug';
+        const argTxt = Object.entries(sg.args || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+        c.innerHTML = `<div class="as-sug-h"><strong>${e(sg.title)}</strong> <span class="an-badge an-${e(sg.mode)}">${e(sg.mode.toUpperCase())}</span> <span class="as-pri as-pri-${e(sg.priority)}">${e(sg.priority)} priority</span></div>
+            <p>${e(sg.why)}</p>${argTxt ? `<p class="an-muted">Settings: ${e(argTxt)}</p>` : ''}
+            <div class="as-act"><button type="button" class="btn-primary" data-d="run">Run and continue</button><button type="button" data-d="skip">Skip</button></div>`;
+        c.querySelector('[data-d=skip]').onclick = () => { asDecide({ kind: 'suggestion', analytic: sg.analytic, mode: sg.mode, decision: 'skipped' }); c.classList.add('is-skipped'); c.querySelector('.as-act').innerHTML = '<span class="an-muted">Skipped. The assistant will not suggest this again.</span>'; };
+        c.querySelector('[data-d=run]').onclick = () => asRun(sg, c);
+        sl.appendChild(c);
+    });
+    document.getElementById('anResults').prepend(el);
+}
+async function asRun(sg, card) {
+    const act = card.querySelector('.as-act'); act.innerHTML = '<span class="an-muted">Running...</span>';
+    try {
+        await ensureCatalog();
+        const sel = document.getElementById('anSelect'); sel.value = sg.analytic;
+        const radio = document.querySelector(`input[name="analyticsMode"][value="${sg.mode}"]`); if (radio) radio.checked = true;
+        refreshModeUI();
+        Object.entries(sg.args || {}).forEach(([k, v]) => { const el = document.getElementById('anParams__' + k); if (el) el.value = v; });
+        const before = CAT.runSeq;
+        await runCatalogAnalytic([sg.mode]);
+        if (CAT.runSeq === before) throw new Error('The analytic did not run: see the status line above');
+        asDecide({ kind: 'suggestion', analytic: sg.analytic, mode: sg.mode, decision: 'ran' });
+        card.classList.add('is-ran'); act.innerHTML = `<span class="an-muted">Ran as run #${CAT.runSeq}. Reading the new result...</span>`;
+        await anSuggest();
+        act.innerHTML = `<span class="an-muted">Ran as run #${CAT.history[0] ? CAT.history[0].n : ''}.</span>`;
+    } catch (e) { act.innerHTML = `<span class="an-muted">Could not run: ${escapeHtml(e.message)}</span>`; }
+}
 function anReorder() {
     CAT.history.sort((a, b) => new Date(b.ranAt) - new Date(a.ranAt));
     const out = document.getElementById('anResults');
-    CAT.history.forEach(r => out.appendChild(r.wrap));
+    // runs and the assistant's step cards form one timeline, newest first
+    const items = CAT.history.map(r => ({ el: r.wrap, t: new Date(r.ranAt).getTime() }))
+        .concat(CAT.research.steps.filter(st => st.el && st.el.isConnected).map(st => ({ el: st.el, t: st.at.getTime() })));
+    items.sort((a, b) => b.t - a.t).forEach(x => out.appendChild(x.el));
 }
 function anDownloadOutput() {
     if (!CAT.history.length) { alert('There is no output to download yet.'); return; }
@@ -6169,7 +6541,7 @@ async function anUploadOutput(input) {
             if (!r || !Array.isArray(r.items)) { bad++; return; }
             const run = anStartRun(String(r.label || 'Run'), { imported: true, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
                 cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
             n++;
         });
         anReorder(); anSyncLast(); anUpdateHistoryBar();
@@ -6181,6 +6553,7 @@ function clearAnalyticsHistory() {
     if (CAT.history.length && !confirm('Remove all runs from the Output section?')) return;
     document.getElementById('anResults').innerHTML = '';
     CAT.history = []; CAT.last = null;
+    CAT.research.steps = []; CAT.research.decisions = [];   // the step cards were cleared with the output: start the assistant fresh
     anUpdateHistoryBar();
 }
 
@@ -7111,5 +7484,902 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 </script>
 
+<script>
+(async function(){
+  try{const r=await fetch('/api/auth/me');const d=await r.json();if(!d.success)return;
+    document.getElementById('whoami').textContent=d.user.email;
+    const b=document.getElementById('signOutBtn');b.style.display='';
+    b.onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.href='/login';};
+  }catch(e){}
+})();
+</script>
+<script>
+/* ===== Cohort knowledge graph: card #anCKG, data from GET /api/kg/cohort =====
+   Filters (kinds, link types, evidence, thresholds, nodes per kind, focus, hidden nodes) work on the fetched data in the browser, so they answer at once.
+   Layout is deterministic (no Math.random). Views: concept graph, patient projection, matrix. */
+const KGC = (function () {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const NS = 'http://www.w3.org/2000/svg', W = 860, H = 560;
+    const KINDS = ['condition', 'medication', 'lab', 'procedure'];
+    const KIND_COL = { condition: ['#ffcdd2', '#c62828'], medication: ['#bbdefb', '#1565c0'], lab: ['#c8e6c9', '#2e7d32'], procedure: ['#e1bee7', '#6a1b9a'] };
+    const KIND_NAME = { condition: 'condition', medication: 'drug', lab: 'lab / vital', procedure: 'procedure' };
+    const TYPE_COL = { comorbid: '#c62828', prescribed_with: '#1565c0', measured_with: '#2e7d32', procedure_with: '#6a1b9a', co_prescribed: '#ef6c00', co_occurs: '#757575' };
+    const TYPE_NAME = { comorbid: 'condition + condition', prescribed_with: 'condition + drug', measured_with: 'condition + lab', procedure_with: 'condition + procedure', co_prescribed: 'drug + drug', co_occurs: 'other pair' };
+    const PALETTE = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#00acc1', '#6d4c41', '#d81b60', '#7cb342', '#546e7a'];
+    const S = { data: null, view: 'graph', sel: new Set(), hidden: new Set(), pinned: new Set(), pos: {}, ppos: {}, focus: null, selEdge: null, selPatient: null,
+        vb: { x: 0, y: 0, w: W, h: H }, seq: 0, comb: 'AND', abnOnly: false, pg: null, byId: new Map(), moved: false, cview: null };
+
+    // ---------- helpers ----------
+    const num = (v, d) => (v == null || !Number.isFinite(v) ? '-' : v.toFixed(d == null ? 2 : d));
+    const pct = v => (v == null ? '-' : Math.round(v * 100) + '%');
+    const nm = id => (S.byId.get(id) || {}).display || id;
+    const el = (name, attrs, parent) => { const e = document.createElementNS(NS, name); for (const k in (attrs || {})) e.setAttribute(k, String(attrs[k])); if (parent) parent.appendChild(e); return e; };
+    const clsOf = e => (e.n > 0 ? (e.curated.length ? 'both' : 'obs') : 'known');
+    const trunc = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+    const edgeKey = e => e.a + '\u0001' + e.b;
+
+    function ui() {
+        const chk = sel => new Set(Array.from(document.querySelectorAll(sel)).filter(x => x.checked).map(x => x.value));
+        return { kinds: chk('.kgcKind'), types: chk('.kgcType'), ev: chk('.kgcEv'), minN: +$('kgcMinN').value, minLift: +$('kgcMinLift').value / 10, perKind: +$('kgcPerKind').value, topK: +$('kgcTopK').value,
+            size: $('kgcSize').value, color: $('kgcColor').value, width: $('kgcWidth').value, labels: $('kgcLabels').checked, arrows: $('kgcArrows').checked, lone: $('kgcLone').checked,
+            depth: +$('kgcDepth').value, mx: $('kgcMxMetric').value, sim: +$('kgcSim').value / 100, pcolor: $('kgcPColor').value };
+    }
+
+    // nodes allowed by the kind boxes, the hidden list and "nodes per kind" (data arrive sorted by patients, so rank = size)
+    function pickNodes(u) {
+        const rank = {}, out = [];
+        S.data.nodes.forEach(n => {
+            if (!u.kinds.has(n.kind) || S.hidden.has(n.id)) return;
+            rank[n.kind] = (rank[n.kind] || 0) + 1;
+            if (rank[n.kind] <= u.perKind) out.push(n);
+        });
+        return out;
+    }
+    function strength(e, u, maxN) {
+        if (e.n === 0) return 0.15;
+        if (u.width === 'lift') return Math.min(e.lift || 0, 6) / 6;
+        if (u.width === 'jaccard') return e.jaccard || 0;
+        return e.n / maxN;
+    }
+    function visible(u) {
+        let nodes = pickNodes(u);
+        let ids = new Set(nodes.map(n => n.id));
+        let edges = S.data.edges.filter(e => {
+            if (!ids.has(e.a) || !ids.has(e.b) || !u.types.has(e.type) || !u.ev.has(clsOf(e))) return false;
+            return e.n === 0 || (e.n >= u.minN && (e.lift == null || e.lift >= u.minLift));
+        });
+        if (u.topK < 16) {                                      // strongest K links per node: the usual cure for a hairball
+            const m0 = Math.max(1, ...edges.map(e => e.n)), per = new Map();
+            edges.forEach((e, i) => { if (e.n === 0) return; [e.a, e.b].forEach(id => { if (!per.has(id)) per.set(id, []); per.get(id).push(i); }); });
+            const keepIdx = new Set();
+            per.forEach(list => list.sort((i, j) => strength(edges[j], u, m0) - strength(edges[i], u, m0) || (edges[j].lift || 0) - (edges[i].lift || 0) || i - j).slice(0, u.topK).forEach(i => keepIdx.add(i)));
+            edges = edges.filter((e, i) => e.n === 0 || keepIdx.has(i));
+        }
+        if (S.focus && ids.has(S.focus)) {                      // ego network of the focus node
+            const keep = new Set([S.focus]);
+            for (let d = 0; d < u.depth; d++) {
+                const add = [];
+                edges.forEach(e => { if (keep.has(e.a) && !keep.has(e.b)) add.push(e.b); if (keep.has(e.b) && !keep.has(e.a)) add.push(e.a); });
+                add.forEach(x => keep.add(x));
+            }
+            nodes = nodes.filter(n => keep.has(n.id)); ids = new Set(nodes.map(n => n.id));
+            edges = edges.filter(e => ids.has(e.a) && ids.has(e.b));
+        }
+        if (u.lone) {
+            const deg = new Set(); edges.forEach(e => { deg.add(e.a); deg.add(e.b); });
+            nodes = nodes.filter(n => deg.has(n.id) || S.sel.has(n.id) || n.id === S.focus);
+            ids = new Set(nodes.map(n => n.id));
+        }
+        const maxN = Math.max(1, ...edges.map(e => e.n));
+        edges = edges.map(e => Object.assign({}, e, { _w: strength(e, u, maxN), _cls: clsOf(e) })).sort((p, q) => p._w - q._w);   // weak first, so strong links are drawn on top
+        return { nodes, edges, ids, maxN };
+    }
+
+    // ---------- deterministic force layout (weighted, warm start, pinned nodes) ----------
+    function layout(ids, edges, pos0, pinned, iters, hot, radii, dim) {
+        const n = ids.length, pos = {};
+        if (!n) return pos;
+        const DW = dim ? dim.w : W, DH = dim ? dim.h : H, idx = new Map(ids.map((k, i) => [k, i])), cx = DW / 2, cy = DH / 2, R = Math.min(DW, DH) * 0.38, m = 28;
+        const x = [], y = [];
+        ids.forEach((k, i) => { const p = pos0[k]; if (p) { x[i] = p.x; y[i] = p.y; } else { const a = 2 * Math.PI * i / n; x[i] = cx + R * Math.cos(a); y[i] = cy + R * Math.sin(a); } });
+        const E = [];
+        edges.forEach(e => { const a = idx.get(e.a), b = idx.get(e.b); if (a !== undefined && b !== undefined && a !== b) E.push([a, b, 0.25 + 0.75 * Math.min(1, e.w == null ? 0.5 : e.w)]); });
+        const k = Math.sqrt(DW * DH / n) * 0.8, cut = 4 * k, fixed = ids.map(id => pinned.has(id) && !!pos0[id]), rr = ids.map(id => (radii && radii[id]) || 12);
+        for (let it = 0; it < iters; it++) {
+            const dx = new Array(n).fill(0), dy = new Array(n).fill(0);
+            for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+                let ox = x[i] - x[j], oy = y[i] - y[j], d = Math.sqrt(ox * ox + oy * oy);
+                if (d < 0.01) { ox = 0.01 * (i + 1); oy = 0.01 * (j + 1); d = Math.sqrt(ox * ox + oy * oy); }
+                if (d > cut) continue;                                              // far-away nodes do not repel (keeps big graphs from piling up at the edges)
+                const minD = rr[i] + rr[j] + 14, f = (k * k) / d + (d < minD ? (minD - d) * 6 : 0);   // repulsion, plus a hard push when circles would touch
+                dx[i] += ox / d * f; dy[i] += oy / d * f; dx[j] -= ox / d * f; dy[j] -= oy / d * f;
+            }
+            E.forEach(([a, b, w]) => {
+                const ox = x[a] - x[b], oy = y[a] - y[b], d = Math.sqrt(ox * ox + oy * oy) || 0.01, f = (d * d) / k * w;
+                dx[a] -= ox / d * f; dy[a] -= oy / d * f; dx[b] += ox / d * f; dy[b] += oy / d * f;
+            });
+            const temp = (DW / (hot ? 10 : 40)) * (1 - it / iters) + 0.5;
+            for (let i = 0; i < n; i++) {
+                if (fixed[i]) continue;
+                dx[i] += (cx - x[i]) * 0.03; dy[i] += (cy - y[i]) * 0.03;
+                const d = Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]) || 0.01, s = Math.min(d, temp);
+                x[i] = Math.min(DW - m, Math.max(m, x[i] + dx[i] / d * s)); y[i] = Math.min(DH - m, Math.max(m, y[i] + dy[i] / d * s));
+            }
+        }
+        ids.forEach((id, i) => { pos[id] = { x: x[i], y: y[i] }; });
+        return pos;
+    }
+
+    // deterministic label propagation: returns Map id -> community number (0 = largest)
+    function communities(ids, edges) {
+        const lab = new Map(ids.map(i => [i, i])), nb = new Map(ids.map(i => [i, []]));
+        edges.forEach(e => { if (nb.has(e.a) && nb.has(e.b)) { const w = Math.max(0.01, e.w || 0.1); nb.get(e.a).push([e.b, w]); nb.get(e.b).push([e.a, w]); } });
+        const order = ids.slice().sort();
+        for (let r = 0; r < 30; r++) {
+            let changed = false;
+            for (const id of order) {
+                const sc = new Map(); nb.get(id).forEach(([o, w]) => { const l = lab.get(o); sc.set(l, (sc.get(l) || 0) + w); });
+                if (!sc.size) continue;
+                let best = lab.get(id), bs = -1;
+                Array.from(sc.entries()).sort((p, q) => (p[0] < q[0] ? -1 : 1)).forEach(([l, s]) => { if (s > bs + 1e-12) { bs = s; best = l; } });
+                if (best !== lab.get(id)) { lab.set(id, best); changed = true; }
+            }
+            if (!changed) break;
+        }
+        const size = new Map(); lab.forEach(l => size.set(l, (size.get(l) || 0) + 1));
+        const rank = Array.from(size.entries()).sort((p, q) => q[1] - p[1] || (p[0] < q[0] ? -1 : 1)).map(x => x[0]);
+        const out = new Map(); lab.forEach((l, id) => out.set(id, rank.indexOf(l)));
+        return out;
+    }
+
+    // ---------- view 1: concept graph ----------
+    function nodeRad(u, vis, n) {
+        const maxP = Math.max(1, ...vis.nodes.map(x => x.patients));
+        return u.size === 'same' ? 10 : u.size === 'abn' ? 6 + 15 * (n.abnPct == null ? 0 : n.abnPct) : 6 + 15 * Math.sqrt(n.patients / maxP);
+    }
+    // ---------- drawing engine (canvas): concept graph and patient projection ----------
+    // One canvas for both views. The layout lives in its own world coordinates (S.pos for concepts, S.ppos for patients), S.cview = { k, tx, ty } pans and zooms over it.
+    // Hover or select a concept and everything not connected to it fades; the minimap appears once you zoom in; the picture that goes to Output is this canvas as a PNG.
+    const BASEW = 1400, BASEH = 860, MW = 160, MH = 104;
+    const CV = { canvas: null, ctx: null, box: null, w: BASEW, h: BASEH, dpr: 1, mode: 'graph', u: null, vis: null, pg: null, rad: new Map(), comm: null, order: [], adj: new Map(),
+        hover: null, raf: 0, anim: 0, tip: null, search: null, list: null, ro: null, bbox: null, fitK: 1, mini: [], miniRect: null, pcol: new Map(), hl: null, lastN: 0, refit: false };
+    const worldFor = n => { const f = Math.max(1, Math.sqrt(n / 90)); return { w: Math.round(BASEW * f), h: Math.round(BASEH * f) }; };
+    const nodeR = (rad, k) => rad * Math.min(Math.max(k, 0.4), 2.5);       // nodes shrink a little when zoomed out and stop growing when zoomed in
+    const pDot = k => Math.max(2.5, Math.min(9, 4.5 * Math.sqrt(k)));
+    const TAU = 6.2832;
+
+    function computeBBox() {
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        const add = (x, y, r) => { x0 = Math.min(x0, x - r); x1 = Math.max(x1, x + r); y0 = Math.min(y0, y - r); y1 = Math.max(y1, y + r); };
+        CV.mini = [];
+        if (CV.mode === 'graph') CV.vis.nodes.forEach(n => { const p = S.pos[n.id]; if (!p) return; add(p.x, p.y, CV.rad.get(n.id) || 10); CV.mini.push([p.x, p.y, CV.comm ? PALETTE[CV.comm.get(n.id) % PALETTE.length] : KIND_COL[n.kind][1]]); });
+        else { CV.pg.bubbles.forEach(b => add(b.cx, b.cy, Math.max(8, b.r) + 14)); CV.pg.P.forEach(x => { const p = S.ppos[x.p.id]; if (p) CV.mini.push([p.x, p.y, CV.pcol.get(x.p.id) || '#999']); }); }
+        CV.bbox = Number.isFinite(x0) ? { x0, x1, y0, y1 } : null;
+    }
+    function fitTarget() {
+        const b = CV.bbox; if (!b) return { k: 1, tx: 0, ty: 0 };
+        const k = Math.min(CV.w / (b.x1 - b.x0 + 70), CV.h / (b.y1 - b.y0 + 100), 2);
+        return { k, tx: CV.w / 2 - k * (b.x0 + b.x1) / 2, ty: CV.h / 2 + 8 - k * (b.y0 + b.y1) / 2 };
+    }
+    function fitView(anim) { const t = fitTarget(); CV.fitK = t.k; if (anim && S.cview) animateTo(t); else S.cview = t; }
+    function animateTo(t, ms) {
+        cancelAnimationFrame(CV.anim);
+        const f = Object.assign({}, S.cview), t0 = performance.now(), dur = ms || 320;
+        const step = now => {
+            const q = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - q, 3);
+            S.cview = { k: f.k + (t.k - f.k) * e, tx: f.tx + (t.tx - f.tx) * e, ty: f.ty + (t.ty - f.ty) * e };
+            paintNow(); if (q < 1) CV.anim = requestAnimationFrame(step);
+        };
+        CV.anim = requestAnimationFrame(step);
+    }
+    function paintNow() { if (CV.canvas && CV.ctx && S.cview && (CV.vis || CV.pg)) paintCanvas(CV.ctx, CV.dpr, false); }
+    function schedulePaint() { if (CV.raf) return; CV.raf = requestAnimationFrame(() => { CV.raf = 0; paintNow(); }); }
+    function zoomAt(px, py, f) {
+        const v = S.cview; if (!v) return; cancelAnimationFrame(CV.anim);
+        const k = Math.min(12, Math.max(0.05, v.k * f)), r = k / v.k;
+        v.tx = px - (px - v.tx) * r; v.ty = py - (py - v.ty) * r; v.k = k; schedulePaint();
+    }
+    // concepts that stay bright: what is hovered or selected, plus its neighbours
+    function activeSet() {
+        if (CV.mode !== 'graph') return null;
+        const centers = CV.hover ? [CV.hover] : S.selEdge ? S.selEdge.split('\u0001') : Array.from(S.sel);
+        if (!centers.length) return null;
+        const act = new Set(centers);
+        centers.forEach(id => (CV.adj.get(id) || []).forEach(o => act.add(o)));
+        return { act, cs: new Set(centers) };
+    }
+    function drawLegend(ctx, title, rows) {
+        if (CV.w < 560) return;
+        const h = 12 + (title ? 14 : 0) + 15 * rows.length;
+        ctx.save(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.fillRect(8, 8, 205, h); ctx.strokeRect(8, 8, 205, h);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; let y = 22;
+        if (title) { ctx.fillStyle = '#666'; ctx.font = '10px sans-serif'; ctx.fillText(title, 16, y); y += 14; }
+        ctx.font = '11px sans-serif';
+        rows.forEach(r => {
+            if (r.line) { ctx.strokeStyle = r.c; ctx.lineWidth = 2; ctx.setLineDash(r.dash || []); ctx.beginPath(); ctx.moveTo(14, y - 4); ctx.lineTo(30, y - 4); ctx.stroke(); ctx.setLineDash([]); }
+            else { ctx.beginPath(); ctx.arc(21, y - 4, 5, 0, TAU); ctx.fillStyle = r.f; ctx.fill(); ctx.strokeStyle = r.c; ctx.lineWidth = 1.2; ctx.stroke(); }
+            ctx.fillStyle = '#333'; ctx.fillText(r.t, 38, y); y += 15;
+        });
+        ctx.restore();
+    }
+    function haloText(ctx, t, x, y, col) { ctx.lineWidth = 4; ctx.strokeStyle = '#fafafa'; ctx.strokeText(t, x, y); ctx.fillStyle = col || '#222'; ctx.fillText(t, x, y); }
+
+    function paintCanvas(ctx, scale, forPic) {
+        ctx.setTransform(scale, 0, 0, scale, 0, 0); ctx.globalAlpha = 1; ctx.setLineDash([]);
+        ctx.fillStyle = '#fafafa'; ctx.fillRect(0, 0, CV.w, CV.h);
+        if (CV.mode === 'graph') paintGraph(ctx); else paintPatients(ctx);
+        if (!forPic) paintMini(ctx); else CV.miniRect = null;
+    }
+    function paintGraph(ctx) {
+        const { u, vis } = CV, pos = S.pos, v = S.cview, k = v.k, W_ = CV.w, H_ = CV.h, A = activeSet();
+        const X = x => x * k + v.tx, Y = y => y * k + v.ty, light = vis.edges.length > 3000;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        for (const e of vis.edges) {                                  // links, weak first so strong ones end up on top
+            const a = pos[e.a], b = pos[e.b]; if (!a || !b) continue;
+            const ax = X(a.x), ay = Y(a.y), bx = X(b.x), by = Y(b.y);
+            if ((ax < 0 && bx < 0) || (ax > W_ && bx > W_) || (ay < 0 && by < 0) || (ay > H_ && by > H_)) continue;
+            let dx = bx - ax, dy = by - ay; const d = Math.sqrt(dx * dx + dy * dy) || 1; dx /= d; dy /= d;
+            const ra = nodeR(CV.rad.get(e.a) || 8, k), rb = nodeR(CV.rad.get(e.b) || 8, k);
+            const sx = ax + dx * ra, sy = ay + dy * ra, ex = bx - dx * rb, ey = by - dy * rb;
+            const sel = S.selEdge === edgeKey(e), bright = !A || A.cs.has(e.a) || A.cs.has(e.b) || sel, sw = (1 + 5 * e._w) * Math.min(1.5, Math.max(0.5, k)) + (sel ? 1 : 0);
+            if (e._cls === 'both' && bright && !light) { ctx.setLineDash([]); ctx.strokeStyle = 'rgba(255,213,79,0.8)'; ctx.lineWidth = sw + 4; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke(); }
+            const col = e._cls === 'known' ? '#9e9e9e' : TYPE_COL[e.type];
+            ctx.strokeStyle = sel ? '#000' : col; ctx.globalAlpha = !bright ? 0.05 : sel ? 1 : e._cls === 'known' ? 0.8 : light ? 0.35 : 0.6; ctx.lineWidth = sw;
+            ctx.setLineDash(e._cls === 'known' ? [5, 4] : []);
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.globalAlpha = 1;
+            if (u.arrows && bright && e.dir !== 'none' && e.n > 0 && !light && k >= 0.5) {      // arrow points at the concept that is usually recorded later
+                const f = e.dir === 'a_to_b', tx = f ? ex : sx, ty = f ? ey : sy, ux = f ? dx : -dx, uy = f ? dy : -dy, L = 9 * Math.min(1, Math.max(0.7, k));
+                ctx.setLineDash([]); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx - ux * L - uy * L * 0.5, ty - uy * L + ux * L * 0.5); ctx.lineTo(tx - ux * L + uy * L * 0.5, ty - uy * L - ux * L * 0.5); ctx.closePath(); ctx.fill();
+            }
+        }
+        ctx.setLineDash([]);
+        const fill = n => (CV.comm ? PALETTE[CV.comm.get(n.id) % PALETTE.length] : KIND_COL[n.kind][0]), stroke = n => (CV.comm ? '#333' : KIND_COL[n.kind][1]);
+        for (const n of vis.nodes) {
+            const p = pos[n.id]; if (!p) continue;
+            const x = X(p.x), y = Y(p.y), r = nodeR(CV.rad.get(n.id) || 8, k);
+            if (x < -r - 6 || x > W_ + r + 6 || y < -r - 6 || y > H_ + r + 6) continue;
+            const isSel = S.sel.has(n.id) || (A && A.cs.has(n.id) && S.selEdge);
+            ctx.globalAlpha = !A || A.act.has(n.id) ? 1 : 0.18;
+            if (n.id === S.focus) { ctx.strokeStyle = '#f9a825'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 5, 0, TAU); ctx.stroke(); }
+            ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = fill(n); ctx.fill();
+            ctx.lineWidth = isSel ? 3.5 : n.id === CV.hover ? 2.5 : 1.5; ctx.strokeStyle = isSel || n.id === CV.hover ? '#000' : stroke(n); ctx.stroke();
+            if (S.pinned.has(n.id)) { ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, TAU); ctx.fill(); }
+        }
+        ctx.globalAlpha = 1;
+        // labels: selected / hovered / focus / neighbours first, then the biggest nodes; a label that would overlap one already placed is skipped
+        ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        const placed = [], forced = id => S.sel.has(id) || id === S.focus || id === CV.hover || (A && A.act.size <= 40 && A.act.has(id));
+        const cand = CV.order.filter(n => forced(n.id)).concat(u.labels ? CV.order.filter(n => !forced(n.id) && (!A || A.act.has(n.id))) : []);
+        let shown = 0;
+        for (const n of cand) {
+            const p = pos[n.id]; if (!p) continue;
+            const x = X(p.x), y = Y(p.y), r = nodeR(CV.rad.get(n.id) || 8, k), f = forced(n.id);
+            if (x < 0 || x > W_ || y < 0 || y > H_) continue;
+            if (!f && k < 0.8 && shown >= 30) continue;
+            const t = trunc(n.display, 24), w = ctx.measureText(t).width + 4, bx = x - w / 2, by = y + r + 2;
+            if (!f && placed.some(q => bx < q[0] + q[2] && bx + w > q[0] && by < q[1] + q[3] && by + 13 > q[1])) continue;
+            placed.push([bx, by, w, 13]); shown++; haloText(ctx, t, x, y + r + 12);
+        }
+        const rows = KINDS.map(kd => ({ f: KIND_COL[kd][0], c: KIND_COL[kd][1], t: KIND_NAME[kd] }));
+        if (CV.comm) rows.splice(0, 4, { f: PALETTE[0], c: '#333', t: 'colour = community' });
+        rows.push({ line: true, c: '#888', t: 'seen in cohort' }, { line: true, c: '#ffd54f', t: 'halo: also in reference graph' }, { line: true, c: '#9e9e9e', dash: [5, 4], t: 'reference only, not seen here' });
+        drawLegend(ctx, '', rows);
+        if (H_ >= 440 && W_ >= 560) {
+            const types = Object.keys(TYPE_COL), y0 = H_ - 8 - 14 * types.length + 4; ctx.save(); ctx.textAlign = 'left'; ctx.font = '10px sans-serif';
+            types.forEach((t, i) => { ctx.strokeStyle = TYPE_COL[t]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, y0 + 14 * i); ctx.lineTo(24, y0 + 14 * i); ctx.stroke(); ctx.fillStyle = '#444'; ctx.fillText(TYPE_NAME[t], 29, y0 + 14 * i + 3); });
+            ctx.restore();
+        }
+    }
+    function paintPatients(ctx) {
+        const { u, pg } = CV, v = S.cview, k = v.k, pos = S.ppos, W_ = CV.w, H_ = CV.h, X = x => x * k + v.tx, Y = y => y * k + v.ty;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = '10px sans-serif';
+        pg.bubbles.forEach(b => {
+            const cl = pg.clusters.find(c => c.c === b.k), col = b.k === -1 ? '#9e9e9e' : u.pcolor === 'cluster' ? PALETTE[b.k % PALETTE.length] : '#9e9e9e';
+            const cx = X(b.cx), cy = Y(b.cy), r = Math.max(8, b.r) * k;
+            if (cx + r < 0 || cx - r > W_ || cy + r < 0 || cy - r > H_) return;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.globalAlpha = 0.07; ctx.fillStyle = col; ctx.fill();
+            ctx.globalAlpha = 0.6; ctx.setLineDash([4, 3]); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+            haloText(ctx, (b.k === -1 ? 'unclustered' : 'cluster ' + (b.k + 1)) + ' (' + b.n + ')', cx, cy + r + 12, '#444');
+            if (k >= 1.1 && cl && cl.top.length) haloText(ctx, trunc(cl.top.slice(0, 3).map(x => nm(x.id)).join(', '), 44), cx, cy + r + 24, '#777');
+        });
+        const r0 = pDot(k);
+        for (const x of pg.P) {
+            const p = pos[x.p.id]; if (!p) continue;
+            const sx = X(p.x), sy = Y(p.y); if (sx < -10 || sx > W_ + 10 || sy < -10 || sy > H_ + 10) continue;
+            const on = !CV.hl || CV.hl.has(x.p.id), isSel = S.selPatient === x.p.id, isHov = CV.hover === x.p.id;
+            ctx.globalAlpha = on ? 0.92 : 0.15; ctx.beginPath(); ctx.arc(sx, sy, isSel || isHov ? r0 + 3 : r0, 0, TAU); ctx.fillStyle = CV.pcol.get(x.p.id) || '#999'; ctx.fill();
+            ctx.lineWidth = isSel ? 2.5 : 1; ctx.strokeStyle = isSel || isHov || (on && CV.hl) ? '#000' : '#fff'; ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        const sexCol = { female: '#d81b60', male: '#1e88e5' }, bandName = ['<18', '18-39', '40-64', '65+'];
+        const rows = u.pcolor === 'sex' ? [{ f: sexCol.female, c: '#999', t: 'female' }, { f: sexCol.male, c: '#999', t: 'male' }]
+            : u.pcolor === 'age' ? bandName.map((b, i) => ({ f: PALETTE[i], c: '#999', t: b + ' y' }))
+            : u.pcolor === 'count' ? [{ f: 'rgb(55,125,215)', c: '#999', t: 'darker = more concepts' }]
+            : [{ f: PALETTE[0], c: '#999', t: 'colour = cluster (grey: no cluster)' }];
+        drawLegend(ctx, `${pg.P.length} patients in ${pg.clusters.length} clusters`, rows);
+    }
+    function paintMini(ctx) {
+        const b = CV.bbox, v = S.cview; CV.miniRect = null;
+        if (!b || !v || CV.mini.length < 2 || v.k <= CV.fitK * 1.12 || CV.w < 420 || CV.h < 300) return;
+        const pad = 20, bw = b.x1 - b.x0 + pad, bh = b.y1 - b.y0 + pad, sc = Math.min(MW / bw, MH / bh), px = CV.w - MW - 12, py = CV.h - MH - 12;
+        const ox = px + (MW - bw * sc) / 2 - (b.x0 - pad / 2) * sc, oy = py + (MH - bh * sc) / 2 - (b.y0 - pad / 2) * sc;
+        CV.miniRect = { x: px, y: py, w: MW, h: MH, sc, ox, oy };
+        ctx.save(); ctx.globalAlpha = 1; ctx.setLineDash([]); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1; ctx.fillRect(px, py, MW, MH); ctx.strokeRect(px, py, MW, MH);
+        ctx.beginPath(); ctx.rect(px, py, MW, MH); ctx.clip();
+        CV.mini.forEach(m => { ctx.fillStyle = m[2]; ctx.fillRect(m[0] * sc + ox - 1, m[1] * sc + oy - 1, 2.4, 2.4); });
+        ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 1.5; ctx.fillStyle = 'rgba(21,101,192,0.08)';
+        const rx = (0 - v.tx) / v.k * sc + ox, ry = (0 - v.ty) / v.k * sc + oy, rw = CV.w / v.k * sc, rh = CV.h / v.k * sc;
+        ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh); ctx.restore();
+    }
+
+    function hitAt(p) {
+        const v = S.cview;
+        if (CV.mode === 'graph') {
+            const nodes = CV.vis.nodes;
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const n = nodes[i], q = S.pos[n.id]; if (!q) continue;
+                const r = nodeR(CV.rad.get(n.id) || 8, v.k) + 3, dx = q.x * v.k + v.tx - p.x, dy = q.y * v.k + v.ty - p.y;
+                if (dx * dx + dy * dy <= r * r) return { t: 'node', n };
+            }
+            const es = CV.vis.edges;
+            for (let i = es.length - 1; i >= 0; i--) {
+                const e = es[i], a = S.pos[e.a], b = S.pos[e.b]; if (!a || !b) continue;
+                const ax = a.x * v.k + v.tx, ay = a.y * v.k + v.ty, bx = b.x * v.k + v.tx, by = b.y * v.k + v.ty;
+                if (p.x < Math.min(ax, bx) - 6 || p.x > Math.max(ax, bx) + 6 || p.y < Math.min(ay, by) - 6 || p.y > Math.max(ay, by) + 6) continue;
+                const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy, t = L2 ? Math.max(0, Math.min(1, ((p.x - ax) * vx + (p.y - ay) * vy) / L2)) : 0, dx = ax + t * vx - p.x, dy = ay + t * vy - p.y;
+                if (dx * dx + dy * dy <= 36) return { t: 'edge', e };
+            }
+            return null;
+        }
+        const P = CV.pg.P, r = pDot(v.k) + 3;
+        for (let i = P.length - 1; i >= 0; i--) {
+            const q = S.ppos[P[i].p.id]; if (!q) continue;
+            const dx = q.x * v.k + v.tx - p.x, dy = q.y * v.k + v.ty - p.y;
+            if (dx * dx + dy * dy <= r * r) return { t: 'patient', x: P[i] };
+        }
+        return null;
+    }
+    function tipText(h) {
+        if (h.t === 'node') { const n = h.n; return `${n.display} (${KIND_NAME[n.kind]})\n${n.patients} patients, ${pct(n.prevalence)} of the cohort` + (n.abnPct != null ? `\n${pct(n.abnPct)} with an abnormal value` : '') + '\nClick to select, shift-click to add, double-click to focus, drag to move'; }
+        if (h.t === 'edge') { const e = h.e; return `${nm(e.a)} + ${nm(e.b)}\n${e.n} patients, lift ${num(e.lift)}` + (e.curated.length ? '\nin reference graph: ' + e.curated.map(x => x.type).join(', ') : ''); }
+        return `${h.x.p.id}\n${h.x.p.gender || '?'}, ${h.x.p.age == null ? '?' : h.x.p.age} y\n${h.x.items.map(nm).join(', ')}`;
+    }
+    function findConcept(text) {
+        const q = String(text || '').trim().toLowerCase(); if (!q || CV.mode !== 'graph') return;
+        const nodes = CV.vis.nodes, n = nodes.find(x => x.display.toLowerCase() === q) || nodes.find(x => x.display.toLowerCase().includes(q));
+        if (!n) { CV.search.style.borderColor = '#c62828'; CV.search.title = 'Not in the graph as drawn. It may be hidden by the filters.'; setTimeout(() => { if (CV.search) CV.search.style.borderColor = '#bbb'; }, 1200); return; }
+        S.sel = new Set([n.id]); S.selEdge = null; S.selPatient = null; render();
+        const p = S.pos[n.id], v = S.cview, k = Math.max(v.k, 1.2);
+        if (p) animateTo({ k, tx: CV.w / 2 - k * p.x, ty: CV.h / 2 - k * p.y });
+    }
+
+    function buildCanvas(box) {
+        if (CV.ro) { CV.ro.disconnect(); CV.ro = null; }
+        box.innerHTML = ''; box.style.position = 'relative'; box.style.background = '#fafafa'; CV.box = box;
+        const c = document.createElement('canvas'); c.tabIndex = 0;
+        const H0 = 'clamp(520px, 74vh, 900px)';
+        c.style.cssText = `display:block; width:100%; height:${H0}; background:#fafafa; border:1px solid #e0e0e0; border-radius:6px; touch-action:none; cursor:grab; outline:none;`;
+        c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Cohort knowledge graph. Drag to pan, scroll to zoom, click a node for details.');
+        box.appendChild(c);
+        const tip = document.createElement('div');
+        tip.style.cssText = 'position:absolute; display:none; pointer-events:none; max-width:320px; background:#fff; border:1px solid #bbb; border-radius:4px; padding:4px 7px; font-size:11px; white-space:pre-wrap; z-index:3; box-shadow:0 2px 6px rgba(0,0,0,.2);';
+        box.appendChild(tip);
+        const list = document.createElement('datalist'); list.id = 'kgcFind'; box.appendChild(list);
+        const bar = document.createElement('div'); bar.style.cssText = 'position:absolute; top:8px; right:8px; display:flex; gap:4px; align-items:center; z-index:3;';
+        const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Find a concept…'; search.setAttribute('list', 'kgcFind'); search.setAttribute('aria-label', 'Find a concept');
+        search.style.cssText = 'width:150px; padding:3px 8px; border:1px solid #bbb; border-radius:4px; font-size:12px; background:#fff;';
+        search.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') findConcept(search.value); });
+        search.addEventListener('change', () => findConcept(search.value));
+        bar.appendChild(search);
+        const btn = (t, ttl, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-secondary'; b.textContent = t; b.title = ttl; b.style.cssText = 'padding:2px 9px; min-width:30px; background:#fff;'; b.addEventListener('click', fn); bar.appendChild(b); return b; };
+        btn('+', 'Zoom in', () => zoomAt(CV.w / 2, CV.h / 2, 1.4)); btn('\u2212', 'Zoom out', () => zoomAt(CV.w / 2, CV.h / 2, 1 / 1.4));
+        btn('Fit', 'Show everything', () => { fitView(true); });
+        if (box.requestFullscreen) btn('\u2922', 'Full screen', () => { if (document.fullscreenElement) document.exitFullscreen(); else box.requestFullscreen().catch(() => {}); });
+        box.appendChild(bar);
+        box.addEventListener('fullscreenchange', () => { c.style.height = document.fullscreenElement === box ? '100vh' : H0; });
+        CV.canvas = c; CV.ctx = c.getContext('2d'); CV.tip = tip; CV.search = search; CV.list = list; CV.hover = null; CV.vis = null; CV.pg = null;
+        const resize = () => {
+            const w = c.clientWidth || BASEW, h = c.clientHeight || BASEH, dpr = Math.min(2, window.devicePixelRatio || 1);
+            if (w === CV.w && h === CV.h && c.width === Math.round(w * dpr)) return;
+            const ow = CV.w, oh = CV.h; CV.w = w; CV.h = h; CV.dpr = dpr; c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+            if (CV.refit && c.clientWidth && (CV.vis || CV.pg)) { CV.refit = false; fitView(false); }
+            else if (S.cview) { S.cview.tx += (w - ow) / 2; S.cview.ty += (h - oh) / 2; }
+            paintNow();
+        };
+        resize(); CV.refit = !c.clientWidth;
+        if (typeof ResizeObserver === 'function') { CV.ro = new ResizeObserver(resize); CV.ro.observe(c); }
+
+        const pt = ev => { const r = c.getBoundingClientRect(); return { x: (ev.clientX - r.left) * CV.w / (r.width || CV.w), y: (ev.clientY - r.top) * CV.h / (r.height || CV.h), sx: ev.clientX - r.left, sy: ev.clientY - r.top }; };
+        const inMini = p => { const m = CV.miniRect; return m && p.x >= m.x && p.x <= m.x + m.w && p.y >= m.y && p.y <= m.y + m.h; };
+        const miniJump = p => { const m = CV.miniRect, v = S.cview; if (!m) return; const wx = (p.x - m.ox) / m.sc, wy = (p.y - m.oy) / m.sc; v.tx = CV.w / 2 - v.k * wx; v.ty = CV.h / 2 - v.k * wy; schedulePaint(); };
+        const ptrs = new Map(); let drag = null, pinch = null;
+        c.addEventListener('pointerdown', ev => {
+            const p = pt(ev); cancelAnimationFrame(CV.anim); c.focus({ preventScroll: true });
+            ptrs.set(ev.pointerId, p);
+            try { c.setPointerCapture(ev.pointerId); } catch (e) { /* not supported */ }
+            if (ptrs.size === 2) { const [a, b] = Array.from(ptrs.values()); pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; drag = null; tip.style.display = 'none'; return; }
+            if (inMini(p)) { drag = { mini: true }; miniJump(p); return; }
+            const h = hitAt(p), v = S.cview;
+            drag = { p, h, moved: false, tx: v.tx, ty: v.ty, shift: ev.shiftKey, node: h && h.t === 'node' ? h.n.id : null };
+            if (!drag.node) c.style.cursor = 'grabbing';
+        });
+        c.addEventListener('pointermove', ev => {
+            const p = pt(ev), v = S.cview; if (!v) return;
+            if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, p);
+            if (pinch && ptrs.size >= 2) { const [a, b] = Array.from(ptrs.values()), d = Math.hypot(a.x - b.x, a.y - b.y) || 1; zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch.d); pinch.d = d; return; }
+            if (drag && drag.mini) { miniJump(p); return; }
+            if (drag) {
+                if (!drag.moved && Math.abs(p.x - drag.p.x) + Math.abs(p.y - drag.p.y) < 4) return;
+                drag.moved = true; tip.style.display = 'none';
+                if (drag.node) { S.pos[drag.node] = { x: (p.x - v.tx) / v.k, y: (p.y - v.ty) / v.k }; S.pinned.add(drag.node); computeBBox(); }
+                else { v.tx = drag.tx + (p.x - drag.p.x); v.ty = drag.ty + (p.y - drag.p.y); }
+                schedulePaint(); return;
+            }
+            if (!CV.vis && !CV.pg) return;
+            const h = inMini(p) ? null : hitAt(p), id = h ? (h.t === 'node' ? h.n.id : h.t === 'patient' ? h.x.p.id : null) : null;
+            c.style.cursor = h ? 'pointer' : inMini(p) ? 'crosshair' : 'grab';
+            if (h) { tip.textContent = tipText(h); tip.style.display = 'block'; tip.style.left = Math.max(4, Math.min(p.sx + 14, c.clientWidth - 330)) + 'px'; tip.style.top = Math.max(4, Math.min(p.sy + 14, c.clientHeight - 90)) + 'px'; } else tip.style.display = 'none';
+            if (id !== CV.hover) { CV.hover = id; schedulePaint(); }
+        });
+        const up = ev => {
+            ptrs.delete(ev.pointerId); if (pinch) { if (ptrs.size < 2) pinch = null; drag = null; return; }
+            const d = drag; drag = null; c.style.cursor = 'grab'; if (!d || d.mini) return;
+            if (d.moved) { if (d.node) render(); return; }
+            const h = d.h;
+            if (h && h.t === 'node') selectNode(h.n.id, d.shift);
+            else if (h && h.t === 'edge') { S.selEdge = edgeKey(h.e); S.sel.clear(); S.selPatient = null; render(); }
+            else if (h && h.t === 'patient') { S.selPatient = h.x.p.id; S.selEdge = null; render(); }
+            else if (S.sel.size || S.selEdge || S.selPatient) { S.sel.clear(); S.selEdge = null; S.selPatient = null; render(); }
+        };
+        c.addEventListener('pointerup', up);
+        c.addEventListener('pointercancel', ev => { ptrs.delete(ev.pointerId); drag = null; pinch = null; });
+        c.addEventListener('pointerleave', () => { tip.style.display = 'none'; if (CV.hover) { CV.hover = null; schedulePaint(); } });
+        c.addEventListener('dblclick', ev => {
+            const p = pt(ev), h = hitAt(p);
+            if (h && h.t === 'node') setFocus(h.n.id); else if (!inMini(p)) zoomAt(p.x, p.y, 1.8);
+        });
+        c.addEventListener('wheel', ev => { ev.preventDefault(); const p = pt(ev); zoomAt(p.x, p.y, Math.min(1.35, Math.max(0.74, Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0016))))); }, { passive: false });
+        c.addEventListener('keydown', ev => {
+            if (ev.key === 'Escape') { if (S.sel.size || S.selEdge || S.selPatient) { S.sel.clear(); S.selEdge = null; S.selPatient = null; render(); } }
+            else if (ev.key === '+' || ev.key === '=') zoomAt(CV.w / 2, CV.h / 2, 1.3);
+            else if (ev.key === '-' || ev.key === '_') zoomAt(CV.w / 2, CV.h / 2, 1 / 1.3);
+            else if (ev.key === '0' || ev.key === 'f' || ev.key === 'F') fitView(true);
+            else if (ev.key.startsWith('Arrow') && S.cview) { ev.preventDefault(); const s = 60, v = S.cview; if (ev.key === 'ArrowLeft') v.tx += s; if (ev.key === 'ArrowRight') v.tx -= s; if (ev.key === 'ArrowUp') v.ty += s; if (ev.key === 'ArrowDown') v.ty -= s; schedulePaint(); }
+        });
+    }
+    function useCanvasBox() { const box = $('kgcCanvas'); if (!CV.canvas || !box.contains(CV.canvas)) buildCanvas(box); return box; }
+    function drawGraph(u, vis) {
+        useCanvasBox();
+        CV.mode = 'graph'; CV.u = u; CV.vis = vis; CV.pg = null; CV.hl = null; CV.search.style.display = '';
+        CV.rad = new Map(vis.nodes.map(n => [n.id, nodeRad(u, vis, n)]));
+        CV.order = vis.nodes.slice().sort((a, b) => b.patients - a.patients || (a.id < b.id ? -1 : 1));
+        CV.comm = u.color === 'community' ? communities(vis.nodes.map(n => n.id), vis.edges.map(e => ({ a: e.a, b: e.b, w: e._w }))) : null;
+        CV.adj = new Map(); vis.edges.forEach(e => { if (!CV.adj.has(e.a)) CV.adj.set(e.a, []); if (!CV.adj.has(e.b)) CV.adj.set(e.b, []); CV.adj.get(e.a).push(e.b); CV.adj.get(e.b).push(e.a); });
+        CV.list.innerHTML = ''; CV.order.forEach(n => { const o = document.createElement('option'); o.value = n.display; CV.list.appendChild(o); });
+        computeBBox();
+        const jump = Math.abs(vis.nodes.length - CV.lastN) > Math.max(5, CV.lastN * 0.2); CV.lastN = vis.nodes.length;
+        if (!S.cview || jump) fitView(false);
+        paintNow();
+    }
+    function selectNode(id, add) {
+        S.selEdge = null; S.selPatient = null;
+        if (add) { if (S.sel.has(id)) S.sel.delete(id); else S.sel.add(id); }
+        else if (S.sel.size === 1 && S.sel.has(id)) S.sel.clear(); else S.sel = new Set([id]);
+        render();
+    }
+
+    // ---------- view 2: patient projection ----------
+    function patientGraph(u, nodes) {
+        const keep = new Set(nodes.map(n => n.id)), N = Math.max(1, S.data.totals.patients);
+        const sig = Array.from(keep).sort().join(',') + '|' + u.sim;
+        if (S.pg && S.pg.sig === sig) return S.pg;
+        const w = new Map(nodes.map(n => [n.id, Math.max(0, Math.log(N / Math.max(1, n.patients)))]));
+        const P = S.data.patients.map(p => { const items = p.items.filter(i => keep.has(i)); return { p, items, set: new Set(items), tw: items.reduce((s, i) => s + w.get(i), 0) }; }).filter(x => x.items.length);
+        const edges = [], cand = P.map(() => []);
+        for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+            let c = 0; for (const it of P[i].items) if (P[j].set.has(it)) c += w.get(it);
+            const un = P[i].tw + P[j].tw - c, s = un > 0 ? c / un : 0;
+            if (s >= u.sim) { cand[i].push([j, s]); cand[j].push([i, s]); }
+        }
+        const seen = new Set();
+        cand.forEach((list, i) => list.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).forEach(([j, s]) => {
+            const k = i < j ? i + '-' + j : j + '-' + i; if (seen.has(k)) return; seen.add(k); edges.push({ a: P[i].p.id, b: P[j].p.id, w: s });
+        }));
+        const comm = communities(P.map(x => x.p.id), edges), csize = new Map(); comm.forEach(c => csize.set(c, (csize.get(c) || 0) + 1));
+        // what is typical for each cluster: share of its patients with a concept, against the share in the whole sample
+        const base = new Map(); P.forEach(x => x.items.forEach(i => base.set(i, (base.get(i) || 0) + 1)));
+        const clusters = [];
+        csize.forEach((size, c) => {
+            if (size < 3) return;
+            const cnt = new Map(); P.forEach(x => { if (comm.get(x.p.id) === c) x.items.forEach(i => cnt.set(i, (cnt.get(i) || 0) + 1)); });
+            const rows = Array.from(cnt.entries()).map(([id, k]) => ({ id, share: k / size, lift: (k / size) / (base.get(id) / P.length) }));
+            let top = rows.filter(r => r.share >= 0.25 && r.lift >= 1.4).sort((a, b) => b.share * b.lift - a.share * a.lift).slice(0, 5);
+            clusters.push({ c, size, top });                  // no distinctive concept = a group defined only by what everybody has (e.g. routine vitals)
+        });
+        clusters.sort((a, b) => a.c - b.c);
+        const pos = layoutClusters(P, comm, edges);
+        return (S.pg = { sig, P, edges, comm, clusters, pos: pos.pos, bubbles: pos.bubbles });
+    }
+    // Patients are grouped by cluster; each cluster is a bubble (patients on a sunflower spiral, similar ones next to each other),
+    // bubbles are packed so they do not overlap and clusters that share many similarity links sit closer. Clusters under 3 patients share one grey bubble.
+    function layoutClusters(P, comm, edges) {
+        const size = new Map(); comm.forEach(c => size.set(c, (size.get(c) || 0) + 1));
+        const key = id => { const c = comm.get(id); return size.get(c) >= 3 ? c : -1; };
+        const groups = new Map(); P.forEach(x => { const k = key(x.p.id); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(x); });
+        const gs = Array.from(groups.entries()).sort((a, b) => (a[0] === -1) - (b[0] === -1) || b[1].length - a[1].length || a[0] - b[0]);
+        const c0 = Math.max(4, Math.min(10, Math.sqrt(0.16 * W * H / (Math.PI * Math.max(1, P.length)))));
+        const bub = gs.map(([k, list]) => ({ k, list, r: c0 * Math.sqrt(list.length) + 12 }));
+        const inter = new Map(); edges.forEach(e => { const ka = key(e.a), kb = key(e.b); if (ka === kb) return; const t = ka < kb ? ka + '|' + kb : kb + '|' + ka; inter.set(t, (inter.get(t) || 0) + e.w); });
+        const maxI = Math.max(1, ...inter.values());
+        const x = bub.map((b, i) => W / 2 + (i ? 1 : 0) * 70 * Math.sqrt(i) * Math.cos(i * 2.399963)), y = bub.map((b, i) => H / 2 + (i ? 1 : 0) * 70 * Math.sqrt(i) * Math.sin(i * 2.399963));
+        for (let it = 0; it < 400; it++) {
+            const dx = new Array(bub.length).fill(0), dy = new Array(bub.length).fill(0);
+            for (let i = 0; i < bub.length; i++) for (let j = i + 1; j < bub.length; j++) {
+                let ox = x[i] - x[j], oy = y[i] - y[j], d = Math.sqrt(ox * ox + oy * oy); if (d < 0.01) { ox = 0.01 * (i + 1); oy = 0.01; d = Math.sqrt(ox * ox + oy * oy); }
+                const minD = bub[i].r + bub[j].r + 10, t = bub[i].k < bub[j].k ? bub[i].k + '|' + bub[j].k : bub[j].k + '|' + bub[i].k, w = (inter.get(t) || 0) / maxI;
+                let f = 0; if (d < minD) f = (minD - d) * 0.5; else if (w > 0) f = -Math.min(d - minD, 120) * 0.04 * w;      // overlap pushes apart, related bubbles pull together
+                dx[i] += ox / d * f; dy[i] += oy / d * f; dx[j] -= ox / d * f; dy[j] -= oy / d * f;
+            }
+            for (let i = 0; i < bub.length; i++) { dx[i] += (W / 2 - x[i]) * 0.012; dy[i] += (H / 2 - y[i]) * 0.012; x[i] += dx[i]; y[i] += dy[i]; }
+        }
+        // fit everything into the canvas (shrink or centre, never stretch beyond 1)
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        bub.forEach((b, i) => { x0 = Math.min(x0, x[i] - b.r); x1 = Math.max(x1, x[i] + b.r); y0 = Math.min(y0, y[i] - b.r); y1 = Math.max(y1, y[i] + b.r); });
+        const sc = Math.min(1, (W - 40) / (x1 - x0), (H - 70) / (y1 - y0)), ox = W / 2 - sc * (x0 + x1) / 2, oy = H / 2 + 14 - sc * (y0 + y1) / 2;
+        const pos = {}, bubbles = [];
+        bub.forEach((b, i) => {
+            const cx = sc * x[i] + ox, cy = sc * y[i] + oy;
+            bubbles.push({ k: b.k, cx, cy, r: sc * b.r - 4, n: b.list.length });
+            b.list.slice().sort((p, q) => (p.items.join() < q.items.join() ? -1 : 1)).forEach((m, j) => { const rr = sc * c0 * Math.sqrt(j + 0.5), a = j * 2.399963; pos[m.p.id] = { x: cx + rr * Math.cos(a), y: cy + rr * Math.sin(a) }; });
+        });
+        return { pos, bubbles };
+    }
+    function drawPatients(u) {
+        const nodes = pickNodes(u);
+        if (!S.data.patients.length) { $('kgcCanvas').innerHTML = '<div class="an-muted">No patients were sampled. Choose a sample size above and build the graph again.</div>'; return; }
+        const pg = patientGraph(u, nodes);
+        if (!pg.P.length) { $('kgcCanvas').innerHTML = '<div class="an-muted">None of the sampled patients has a concept that is switched on.</div>'; return; }
+        S.ppos = pg.pos;
+        useCanvasBox();
+        CV.mode = 'patients'; CV.u = u; CV.pg = pg; CV.vis = null; CV.search.style.display = 'none';
+        const sexCol = { female: '#d81b60', male: '#1e88e5' }, band = a => (a == null ? 0 : a < 18 ? 0 : a < 40 ? 1 : a < 65 ? 2 : 3), maxC = Math.max(1, ...pg.P.map(x => x.items.length));
+        const csize = new Map(); pg.P.forEach(x => { const c = pg.comm.get(x.p.id); csize.set(c, (csize.get(c) || 0) + 1); });
+        CV.pcol = new Map(pg.P.map(x => {
+            let col;
+            if (u.pcolor === 'sex') col = sexCol[x.p.gender] || '#9e9e9e';
+            else if (u.pcolor === 'age') col = PALETTE[band(x.p.age)];
+            else if (u.pcolor === 'count') { const t = x.items.length / maxC; col = `rgb(${Math.round(255 - 200 * t)},${Math.round(255 - 130 * t)},${Math.round(255 - 40 * t)})`; }
+            else { const c = pg.comm.get(x.p.id); col = csize.get(c) < 3 ? '#bdbdbd' : PALETTE[c % PALETTE.length]; }
+            return [x.p.id, col];
+        }));
+        CV.hl = S.sel.size ? new Set(pg.P.filter(x => Array.from(S.sel).every(i => x.set.has(i))).map(x => x.p.id)) : null;
+        computeBBox();
+        if (!S.cview) fitView(false);
+        paintNow();
+    }
+    function pictureCanvas(scale) { const c = document.createElement('canvas'); c.width = Math.round(CV.w * scale); c.height = Math.round(CV.h * scale); paintCanvas(c.getContext('2d'), scale, true); return c; }
+    const canvasShown = () => (S.view === 'graph' || S.view === 'patients') && CV.mode === S.view && CV.canvas && S.cview && (CV.vis || CV.pg) && $('kgcCanvas').contains(CV.canvas);
+
+    // ---------- view 3: matrix ----------
+    function drawMatrix(u, vis) {
+        const nodes = vis.nodes.slice().sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind) || b.patients - a.patients);
+        const eMap = new Map(); vis.edges.forEach(e => { eMap.set(e.a + '|' + e.b, e); eMap.set(e.b + '|' + e.a, e); });
+        const val = (e, row) => (u.mx === 'lift' ? e.lift : u.mx === 'n' ? e.n : u.mx === 'jaccard' ? e.jaccard : (row.id === e.a ? e.pab : e.pba));
+        const shade = (v, cap) => (v == null || v <= 0 ? '' : `background:rgba(21,101,192,${Math.min(1, 0.12 + 0.88 * v / cap).toFixed(2)});`);
+        const cap = u.mx === 'lift' ? 5 : u.mx === 'n' ? Math.max(1, vis.maxN) : 1;
+        let h = '<table class="kgc-mx"><thead><tr><th></th>' + nodes.map(n => `<th class="c" title="${esc(n.display)}" style="color:${KIND_COL[n.kind][1]}">${esc(trunc(n.display, 22))}</th>`).join('') + '</tr></thead><tbody>';
+        nodes.forEach(r => {
+            h += `<tr><th class="r" title="${esc(r.display)}" style="color:${KIND_COL[r.kind][1]}">${esc(trunc(r.display, 26))}</th>`;
+            nodes.forEach(c => {
+                if (r.id === c.id) { h += `<td style="background:#eceff1;" title="${esc(r.display)}: ${r.patients} patients"></td>`; return; }
+                const e = eMap.get(r.id + '|' + c.id);
+                if (!e) { h += '<td></td>'; return; }
+                const v = val(e, r), cur = e.curated.length ? '•' : '';
+                h += `<td data-a="${esc(e.a)}" data-b="${esc(e.b)}" style="${e.n === 0 ? 'background:#fff3e0;' : shade(v, cap)}${S.selEdge === edgeKey(e) ? 'outline:2px solid #000;' : ''}" title="${esc(r.display)} + ${esc(c.display)}: ${e.n} patients, lift ${num(e.lift)}">${cur}</td>`;
+            });
+            h += '</tr>';
+        });
+        h += '</tbody></table><div class="an-muted" style="margin-top:6px;">• = also in the reference graph. Pale orange = reference link never seen in this cohort. Darker blue = larger ' + ({ lift: 'lift (capped at 5)', n: 'patient count', jaccard: 'overlap', pab: 'share of the row concept\'s patients who also have the column concept' })[u.mx] + '.</div>';
+        const box = $('kgcCanvas'); box.innerHTML = h;
+        box.querySelector('table').addEventListener('click', ev => {
+            const td = ev.target.closest('td[data-a]'); if (!td) return;
+            const e = S.data.edges.find(x => x.a === td.getAttribute('data-a') && x.b === td.getAttribute('data-b')); if (!e) return;
+            S.selEdge = edgeKey(e); S.sel.clear(); S.selPatient = null; render();
+        });
+    }
+
+    // ---------- detail panel ----------
+    function orderText(e) {
+        if (!e.n) return 'never together in this cohort';
+        const t = e.aFirst + e.bFirst;
+        if (e.dir === 'a_to_b') return `${nm(e.a)} is usually recorded first (${e.aFirst} of ${t} patients with both dates)`;
+        if (e.dir === 'b_to_a') return `${nm(e.b)} is usually recorded first (${e.bFirst} of ${t} patients with both dates)`;
+        return t < 5 ? 'too few dated pairs to say which comes first' : `no clear order (${e.aFirst} vs ${e.bFirst} patients)`;
+    }
+    function refText(c) { return `${nm(c.from)} ${c.type.replace(/_/g, ' ')} ${nm(c.to)}${c.line ? ' (line ' + c.line + ')' : ''}${c.note ? ': ' + c.note : ''}`; }
+    function codeOk(c) { return /^[A-Za-z0-9._-]+$/.test(String(c)); }
+    function buildSql() {
+        const tbl = { condition: ['fhir_diagnosis', 'code'], medication: ['fhir_medication', 'medication_code'], lab: ['fhir_observation', 'code'], procedure: ['fhir_procedure', 'code'] };
+        const LAB_THR = (S.data && S.data.labThr) || {};
+        const parts = [], skipped = [];
+        Array.from(S.sel).forEach(id => {
+            const n = S.byId.get(id); if (!n) return;
+            if (!codeOk(n.code)) { skipped.push(n.display); return; }
+            const [t, col] = tbl[n.kind]; let cond = `${col} = '${n.code}'`;
+            if (n.kind === 'lab' && S.abnOnly && LAB_THR[n.id]) cond += ` AND value ${LAB_THR[n.id].dir === 'high' ? '>' : '<'} ${LAB_THR[n.id].thr}`;
+            parts.push(`patient_id IN (SELECT patient_id FROM ${t} WHERE ${cond})   -- ${n.display.replace(/[\r\n]/g, ' ')}`);
+        });
+        return { sql: parts.join(`\n  ${S.comb}\n`), skipped, count: parts.length };
+    }
+    function sqlBlock() {
+        if (!S.sel.size) return '';
+        const b = buildSql(), hasLab = Array.from(S.sel).some(i => (S.byId.get(i) || {}).kind === 'lab' && S.data.labThr && S.data.labThr[i]);
+        return `<div style="margin-top:10px; border-top:1px solid #eee; padding-top:8px;"><strong>Cohort from ${S.sel.size === 1 ? 'this concept' : 'these ' + S.sel.size + ' concepts'}</strong>` +
+            (S.sel.size > 1 ? ` <select onchange="KGC.setComb(this.value)"><option ${S.comb === 'AND' ? 'selected' : ''}>AND</option><option ${S.comb === 'OR' ? 'selected' : ''}>OR</option></select>` : '') +
+            (hasLab ? ` <label><input type="checkbox" ${S.abnOnly ? 'checked' : ''} onchange="KGC.setAbn(this.checked)"> labs: abnormal only</label>` : '') +
+            `<textarea readonly rows="${Math.min(8, 2 + b.count * 2)}" style="width:100%; font-family:monospace; font-size:11px; margin-top:4px;">${esc(b.sql)}</textarea>` +
+            (b.skipped.length ? `<div class="an-muted">Skipped (unusual code): ${esc(b.skipped.join(', '))}</div>` : '') +
+            `<button class="btn-secondary" onclick="KGC.copySql()">Copy</button> <button class="btn-primary" onclick="KGC.sendSql()" title="Adds this to the Create Custom Cohort criteria box. Nothing is saved until you press Create Custom Cohort.">Use as cohort criteria</button><div id="kgcSqlMsg" class="an-muted"></div></div>`;
+    }
+    function neighbourTable(id, vis) {
+        const n = S.byId.get(id), rows = vis.edges.filter(e => e.a === id || e.b === id).map(e => {
+            const o = e.a === id ? e.b : e.a, other = S.byId.get(o);
+            return { o, other, e, pOther: n.patients ? e.n / n.patients : 0 };
+        }).sort((x, y) => (y.e.lift || 0) - (x.e.lift || 0) || y.e.n - x.e.n).slice(0, 12);
+        if (!rows.length) return '<div class="an-muted">No links with the current filters.</div>';
+        return '<table class="an-table" style="width:100%"><thead><tr><th>Linked concept</th><th>Patients</th><th>Lift</th><th>% of this</th><th></th></tr></thead><tbody>' + rows.map(r =>
+            `<tr><td><a href="#" onclick="KGC.pick('${esc(r.o)}',event)">${esc(trunc(r.other.display, 26))}</a></td><td>${r.e.n}</td><td>${num(r.e.lift)}</td><td>${r.e.n ? pct(r.pOther) : '-'}</td><td title="${esc(r.e.curated.map(refText).join('\n') || 'not in the reference graph')}">${r.e.curated.length ? '★' : ''}</td></tr>`).join('') + '</tbody></table><div class="an-muted">★ = also in the reference graph (hover for the relation).</div>';
+    }
+    function detail(u, vis) {
+        const d = $('kgcDetail'); let h = '';
+        if (S.selEdge) {
+            const e = S.data.edges.find(x => edgeKey(x) === S.selEdge);
+            if (e) {
+                const A = S.byId.get(e.a), B = S.byId.get(e.b);
+                h = `<h4>${esc(A.display)} + ${esc(B.display)}</h4><span class="kgc-chip">${esc(TYPE_NAME[e.type])}</span>` +
+                    `<table class="an-table" style="width:100%"><tbody><tr><td>Patients with both</td><td>${e.n}</td></tr><tr><td>% of ${esc(trunc(A.display, 20))} patients</td><td>${pct(e.pab)}</td></tr>` +
+                    `<tr><td>% of ${esc(trunc(B.display, 20))} patients</td><td>${pct(e.pba)}</td></tr><tr><td>Lift (1 = chance)</td><td>${num(e.lift)}</td></tr><tr><td>z (approx.)</td><td>${num(e.z, 1)}</td></tr>` +
+                    `<tr><td>Overlap (Jaccard)</td><td>${num(e.jaccard)}</td></tr><tr><td>Median gap ${esc(trunc(A.display, 14))} → ${esc(trunc(B.display, 14))}</td><td>${e.gap == null ? '-' : e.gap + ' d'}</td></tr></tbody></table>` +
+                    `<div>${esc(orderText(e))}.</div>` + (e.curated.length ? `<div style="margin-top:6px;"><strong>Reference graph:</strong><br>${e.curated.map(c => esc(refText(c))).join('<br>')}</div>` : '<div class="an-muted" style="margin-top:6px;">Not in the reference graph: a link found in this data.</div>') +
+                    `<div style="margin-top:8px;"><button class="btn-secondary" onclick="KGC.pick('${esc(e.a)}',event)">Select ${esc(trunc(A.display, 16))}</button> <button class="btn-secondary" onclick="KGC.pick('${esc(e.b)}',event)">Select ${esc(trunc(B.display, 16))}</button> <button class="btn-secondary" onclick="KGC.pickBoth('${esc(e.a)}','${esc(e.b)}')">Select both</button></div>`;
+            }
+        } else if (S.selPatient) {
+            const x = S.data.patients.find(p => p.id === S.selPatient);
+            if (x) h = `<h4>${esc(x.id)}</h4><div>${esc(x.gender || '?')}, ${x.age == null ? '?' : x.age} years</div>` + KINDS.map(k => { const it = x.items.filter(i => (S.byId.get(i) || {}).kind === k); return it.length ? `<div style="margin-top:4px;"><strong>${esc(KIND_NAME[k])}s</strong><br>${it.map(i => `<span class="kgc-chip">${esc(nm(i))}</span>`).join('')}</div>` : ''; }).join('') +
+                '<div class="an-muted" style="margin-top:6px;">Only concepts among the graph\'s top nodes are listed.</div>';
+        } else if (S.sel.size === 1) {
+            const id = Array.from(S.sel)[0], n = S.byId.get(id);
+            h = `<h4>${esc(n.display)}</h4><span class="kgc-chip" style="border-color:${KIND_COL[n.kind][1]}">${esc(KIND_NAME[n.kind])}</span><span class="kgc-chip">${esc(n.code)}</span>` +
+                `<div style="margin:6px 0;">${n.patients} patients (${pct(n.prevalence)} of ${S.data.totals.patients}), ${n.records} records${n.abnPct != null ? `<br>${pct(n.abnPct)} of them have an abnormal value` : ''}</div>` +
+                `<button class="btn-secondary" onclick="KGC.setFocus('${esc(id)}')">Focus on this</button> <button class="btn-secondary" onclick="KGC.hideSel()">Hide</button>` + (S.view === 'graph' ? '' : '') +
+                `<div style="margin-top:8px;"><strong>Strongest links shown</strong></div>` + neighbourTable(id, vis);
+        } else if (S.sel.size > 1) {
+            const ids = Array.from(S.sel), names = ids.map(nm);
+            h = `<h4>${S.sel.size} concepts selected</h4><div>${names.map(x => `<span class="kgc-chip">${esc(x)}</span>`).join('')}</div>`;
+            if (ids.length === 2) { const e = S.data.edges.find(x => (x.a === ids[0] && x.b === ids[1]) || (x.a === ids[1] && x.b === ids[0])); if (e) h += `<div style="margin-top:6px;">${e.n} patients have both (lift ${num(e.lift)}). ${esc(orderText(e))}.</div>`; }
+            h += `<div class="an-muted" style="margin-top:6px;">In the patient projection the sampled patients who have all of these are outlined.</div>`;
+        } else if (S.view === 'patients' && S.pg) {
+            h = `<h4>Clusters of similar patients</h4><div class="an-muted">Sampled patients grouped by what they share. Share = % of the cluster with the concept; × = how much more common than in the whole sample.</div>` +
+                (S.pg.clusters.length ? S.pg.clusters.map(c => `<div style="margin-top:8px;"><span class="kgc-chip" style="background:${PALETTE[c.c % PALETTE.length]}; color:#fff; border:0;">cluster ${c.c + 1}</span> ${c.size} patients<br>${c.top.length ? c.top.map(r => `<span class="kgc-chip">${esc(nm(r.id))} ${pct(r.share)} (×${num(r.lift, 1)})</span>`).join('') : '<span class="an-muted">nothing distinctive: only concepts most patients have</span>'}</div>`).join('') : '<div class="an-muted">No clusters at this similarity threshold. Lower it.</div>');
+        } else {
+            const top = vis.edges.filter(e => e.n > 0).sort((a, b) => (b.lift || 0) - (a.lift || 0) || b.n - a.n).slice(0, 8);
+            h = `<h4>${S.data.totals.patients} patients</h4><div class="an-muted">Click a node, a link or a matrix cell for details. Shift-click adds to the selection; drag nodes to move and pin them; scroll to zoom.</div>` +
+                (top.length && S.view !== 'patients' ? '<div style="margin-top:8px;"><strong>Strongest links shown</strong></div><table class="an-table" style="width:100%"><tbody>' + top.map(e => `<tr><td><a href="#" onclick="KGC.pickEdge('${esc(e.a)}','${esc(e.b)}',event)">${esc(trunc(nm(e.a), 18))} + ${esc(trunc(nm(e.b), 18))}</a></td><td>${e.n}</td><td>×${num(e.lift, 1)}</td></tr>`).join('') + '</tbody></table>' : '');
+        }
+        d.innerHTML = h + (S.view === 'patients' && !S.selPatient && S.sel.size ? '' : '') + (S.selEdge || S.selPatient ? '' : sqlBlock());
+    }
+
+    // ---------- render pipeline ----------
+    function showFieldsets() {
+        document.querySelectorAll('#kgcControls fieldset').forEach(f => { const v = f.getAttribute('data-for'); f.style.display = !v || v.split(' ').includes(S.view) ? '' : 'none'; });
+    }
+    function labels() {
+        const set = (id, t) => { const x = $(id); if (x) x.textContent = t; };
+        set('kgcMinNv', $('kgcMinN').value); set('kgcMinLiftv', (+$('kgcMinLift').value / 10).toFixed(1)); set('kgcPerKindv', $('kgcPerKind').value); set('kgcTopKv', +$('kgcTopK').value >= 16 ? 'all' : $('kgcTopK').value); set('kgcSimv', (+$('kgcSim').value / 100).toFixed(2));
+        set('kgcFocusTxt', S.focus ? 'focused on: ' + nm(S.focus) : 'click a node, then Focus');
+        set('kgcHiddenTxt', S.hidden.size ? S.hidden.size + ' hidden: ' + Array.from(S.hidden).map(nm).join(', ') : '');
+        if (S.hidden.size && $('kgcHiddenTxt')) $('kgcHiddenTxt').innerHTML = esc($('kgcHiddenTxt').textContent) + ' <a href="#" onclick="KGC.showHidden(event)">show all</a>';
+    }
+    function render() { refresh(false, false); }
+    function refresh(relayout, full) {
+        if (!S.data) return;
+        labels(); showFieldsets();
+        const u = ui(), vis = visible(u);
+        if (S.view === 'graph') {
+            const missing = vis.nodes.filter(n => !S.pos[n.id]).length;
+            if (relayout || missing) {
+                const cold = missing > vis.nodes.length * 0.5, fullL = !!full || cold;      // a graph that has no layout yet gets the full one
+                const ids = vis.nodes.map(n => n.id), radii = {};
+                vis.nodes.forEach(n => { radii[n.id] = nodeRad(u, vis, n); });
+                Object.assign(S.pos, layout(ids, vis.edges.map(e => ({ a: e.a, b: e.b, w: e._w })), fullL ? {} : S.pos, S.pinned, fullL ? 300 : 70, fullL, radii, worldFor(vis.nodes.length)));
+                if (fullL) S.cview = null;
+            }
+            drawGraph(u, vis);
+        } else if (S.view === 'patients') drawPatients(u);
+        else drawMatrix(u, vis);
+        detail(u, vis);
+        $('kgcCounts').textContent = S.view === 'patients' && S.pg ? `${S.pg.P.length} patients shown (sample of ${S.data.totals.sampled})` : `${vis.nodes.length} nodes, ${vis.edges.length} links shown (of ${S.data.nodes.length} nodes, ${S.data.edges.length} links in the data)`;
+        S.last = { u, vis };
+    }
+
+    // ---------- public handlers ----------
+    async function build() {
+        const my = ++S.seq, btn = $('kgcBuild'), st = $('kgcStatus');
+        const sc = typeof anScope === 'function' ? anScope() : {}, qs = new URLSearchParams();
+        if (sc.batchGroup) qs.set('batchGroup', sc.batchGroup); if (sc.batchId) qs.set('batchId', sc.batchId);
+        qs.set('pool', $('kgcPool').value); qs.set('maxPatients', $('kgcSample').value);
+        if ($('kgcSex').value) qs.set('gender', $('kgcSex').value);
+        if ($('kgcAgeMin').value !== '') qs.set('ageMin', $('kgcAgeMin').value);
+        if ($('kgcAgeMax').value !== '') qs.set('ageMax', $('kgcAgeMax').value);
+        btn.disabled = true; st.className = 'status-output info'; st.textContent = 'Reading the cohort and counting links...';
+        try {
+            const res = await fetch('/api/kg/cohort?' + qs.toString()), text = await res.text();
+            let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200)); }
+            if (my !== S.seq) return;
+            if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            S.data = d; S.byId = new Map(d.nodes.map(n => [n.id, n]));
+            S.sel = new Set(); S.hidden = new Set(); S.pinned = new Set(); S.pos = {}; S.cview = null; S.ppos = {}; S.focus = null; S.selEdge = null; S.selPatient = null; S.pg = null; S.vb = { x: 0, y: 0, w: W, h: H };
+            $('kgcBody').style.display = '';
+            const N = d.totals.patients, mxN = Math.max(20, Math.min(5000, Math.round(N / 5)));      // "min patients per link" scales with the cohort
+            $('kgcMinN').max = mxN; $('kgcMinN').value = Math.max(2, Math.min(mxN, Math.round(N * 0.01)));
+            const pop = typeof anPopulationLabel === 'function' ? anPopulationLabel() : '';
+            st.className = 'status-output success';
+            st.textContent = `${N} patients` + (d.lens.gender || d.lens.ageMin != null || d.lens.ageMax != null ? ' (sex / age filter on)' : '') + `, cohort: ${d.scope.cohort ? d.scope.cohort.name : 'none active (everyone in the population)'}` + (pop ? `, population: ${pop}` : '') +
+                `. ${d.nodes.length} concepts, ${d.edges.filter(e => e.n > 0).length} observed links.` + (N < 30 ? ' Small cohort: percentages and lift are unstable.' : '');
+            refresh(true, true);
+        } catch (err) {
+            if (my !== S.seq) return;
+            st.className = 'status-output error'; st.textContent = 'Error: ' + err.message;
+        } finally { if (my === S.seq) btn.disabled = false; }
+    }
+    function setView(v) { S.view = v; S.selEdge = null; S.selPatient = null; S.cview = null; refresh(false, false); }
+    function changed(ev) {
+        if (!S.data) return;
+        const id = ev && ev.target && ev.target.id;
+        if (id === 'kgcSize' || id === 'kgcColor' || id === 'kgcWidth' || id === 'kgcLabels' || id === 'kgcArrows' || id === 'kgcPColor' || id === 'kgcMxMetric') { render(); return; }
+        if (id === 'kgcSim') S.pg = null;
+        refresh(true, false);
+    }
+    function resetView() { S.pinned = new Set(); S.hidden = new Set(); S.sel = new Set(); S.focus = null; S.selEdge = null; S.selPatient = null; S.pos = {}; S.cview = null; S.ppos = {}; S.vb = { x: 0, y: 0, w: W, h: H }; refresh(true, true); }
+    function setFocus(id) { S.focus = id; S.sel = new Set(); S.pos = Object.assign({}, S.pos); refresh(true, false); }
+    function hideSel() { S.sel.forEach(i => S.hidden.add(i)); S.sel = new Set(); if (S.focus && S.hidden.has(S.focus)) S.focus = null; refresh(true, false); }
+    function showHidden(ev) { if (ev) ev.preventDefault(); S.hidden = new Set(); refresh(true, false); }
+    function pick(id, ev) { if (ev) ev.preventDefault(); S.selEdge = null; S.selPatient = null; S.sel = new Set([id]); refresh(S.view === 'graph' && !S.pos[id], false); }
+    function pickBoth(a, b) { S.selEdge = null; S.sel = new Set([a, b]); refresh(false, false); }
+    function pickEdge(a, b, ev) { if (ev) ev.preventDefault(); S.selEdge = a + '\u0001' + b; S.sel = new Set(); refresh(false, false); }
+    function setComb(v) { S.comb = v === 'OR' ? 'OR' : 'AND'; render(); }
+    function setAbn(v) { S.abnOnly = !!v; render(); }
+    function msg(t) { const m = $('kgcSqlMsg'); if (m) m.textContent = t; }
+    function copySql() {
+        const t = buildSql().sql; if (!t) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => msg('Copied.'), () => msg('Copy failed: select the text and copy it.')); else msg('Select the text and copy it.');
+    }
+    function sendSql() {
+        const b = buildSql(), box = $('cohortCriteria');
+        if (!b.sql) return;
+        if (!box) { msg('The cohort criteria box was not found on this page.'); return; }
+        const add = '(' + b.sql + '\n)', cur = box.value.trim();
+        box.value = cur ? `(${cur})\nAND ${add}` : add;
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+        msg('Added to the cohort criteria box in Cohort Management above. Give the cohort a name and press Create Custom Cohort to save it.');
+    }
+    function download(name, text, type) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+    function exportJson() {
+        if (!S.last) return; const { u, vis } = S.last;
+        download('cohort_knowledge_graph.json', JSON.stringify({ scope: S.data.scope, lens: S.data.lens, totals: S.data.totals, filters: { kinds: [...u.kinds], types: [...u.types], evidence: [...u.ev], minPatients: u.minN, minLift: u.minLift, nodesPerKind: u.perKind },
+            nodes: vis.nodes, edges: vis.edges.map(e => { const c = Object.assign({}, e); delete c._w; delete c._cls; return c; }) }, null, 2), 'application/json');
+    }
+    function exportCsv() {
+        if (!S.last) return; const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+        const rows = [['concept_a', 'kind_a', 'concept_b', 'kind_b', 'link_type', 'patients', 'lift', 'z', 'jaccard', 'p_b_given_a', 'p_a_given_b', 'first_in_time', 'median_gap_days_a_to_b', 'in_reference_graph']];
+        S.last.vis.edges.forEach(e => rows.push([nm(e.a), S.byId.get(e.a).kind, nm(e.b), S.byId.get(e.b).kind, e.type, e.n, e.lift, e.z, e.jaccard, e.pab, e.pba, e.dir === 'a_to_b' ? nm(e.a) : e.dir === 'b_to_a' ? nm(e.b) : '', e.gap, e.curated.map(c => c.type).join(';')]));
+        download('cohort_knowledge_graph_links.csv', rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv');
+    }
+    function exportPicture() {
+        if (!canvasShown()) { alert('Switch to the concept graph or the patient projection to download a picture.'); return; }
+        pictureCanvas(2).toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'cohort_knowledge_graph.png'; document.body.appendChild(a); a.click(); a.remove(); }, 'image/png');
+    }
+    // ---------- Output section: a snapshot of the current view, kept like every other run ----------
+    function addToOutput() {
+        if (!S.last || typeof anStartRun !== 'function') return;
+        const { u, vis } = S.last, d0 = S.data;
+        const nodesTop = vis.nodes.slice().sort((a, b) => b.patients - a.patients).slice(0, 60).map(n => ({ display: n.display, kind: n.kind, patients: n.patients, prevalence: n.prevalence, abnPct: n.abnPct }));
+        const links = vis.edges.filter(e => e.n > 0 || e._cls === 'known').sort((a, b) => (b.lift || 0) - (a.lift || 0) || b.n - a.n).slice(0, 40).map(e => ({
+            a: nm(e.a), b: nm(e.b), type: e.type, n: e.n, lift: e.lift, jaccard: e.jaccard, z: e.z, order: e.n ? orderText(e) : '', ref: e.curated.map(refText).join('; ') }));
+        const d = { view: S.view, totals: d0.totals, lens: d0.lens, nodes: nodesTop, links, shown: { nodes: vis.nodes.length, links: vis.edges.length } };
+        if (canvasShown()) {                                   // the picture exactly as it is on screen (concept graph or patient projection), as a PNG
+            try {
+                const sc = Math.min(1, 1400 / CV.w);
+                let url = pictureCanvas(sc).toDataURL('image/png');
+                if (url.length > 2500000) url = pictureCanvas(sc / 2).toDataURL('image/png');
+                if (url.length <= 2500000) d.png = url;
+            } catch (e) { /* no picture */ }
+        }
+        if (S.view === 'patients' && S.pg) {
+            d.clusters = S.pg.clusters.map(c => ({ name: 'cluster ' + (c.c + 1), size: c.size, top: c.top.map(r => `${nm(r.id)} ${pct(r.share)} (×${num(r.lift, 1)})`) }));
+        }
+        const lensTxt = [d0.lens.gender, d0.lens.ageMin != null || d0.lens.ageMax != null ? `age ${d0.lens.ageMin == null ? '' : d0.lens.ageMin}-${d0.lens.ageMax == null ? '' : d0.lens.ageMax}` : ''].filter(Boolean).join(', ');
+        const run = anStartRun('Cohort knowledge graph · ' + ({ graph: 'concept graph', patients: 'patient projection', matrix: 'matrix' })[S.view], {
+            cohort: d0.scope.cohort ? d0.scope.cohort.name : null, population: typeof anPopulationLabel === 'function' ? anPopulationLabel() : '', patients: d0.totals.patients,
+            params: { nodes_per_kind: u.perKind, links_per_node: u.topK >= 16 ? 'all' : u.topK, min_patients: u.minN, min_lift: u.minLift, node_kinds: [...u.kinds].join(','), link_types: [...u.types].join(','), evidence: [...u.ev].join(','), sex_age_filter: lensTxt || undefined, focus: S.focus ? nm(S.focus) : undefined } });
+        run.addItem('ckg', d);
+        const st = $('kgcOutMsg'); if (st) st.textContent = 'Added to the Output section below.';
+    }
+    function renderOutput(d) {
+        const num0 = v => (typeof v === 'number' && Number.isFinite(v) ? v : 0), root = document.createElement('div');
+        const tx = (tag, text, style) => { const e = document.createElement(tag); e.textContent = text == null ? '' : String(text); if (style) e.style.cssText = style; return e; };
+        const t = d.totals || {};
+        root.appendChild(tx('div', `${num0(t.patients)} patients in this graph. Showing ${num0((d.shown || {}).nodes)} concepts and ${num0((d.shown || {}).links)} links. Links are co-occurrence in patients, not clinical claims.`, 'margin-bottom:6px;'));
+        const safeSvg = txt => {
+            const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+            const r = doc.documentElement;
+            if (!r || r.nodeName.toLowerCase() !== 'svg' || doc.getElementsByTagName('parsererror').length) return null;
+            doc.querySelectorAll('script,foreignObject,iframe,object,embed,animate,set,animateTransform').forEach(n => n.remove());
+            doc.querySelectorAll('*').forEach(n => Array.from(n.attributes).forEach(a => {
+                const nmz = a.name.toLowerCase();
+                if (nmz.startsWith('on') || ((nmz === 'href' || nmz.endsWith(':href')) && !/^#/.test(a.value.trim()))) n.removeAttribute(a.name);
+            }));
+            const svg = document.importNode(r, true);
+            svg.removeAttribute('height'); svg.setAttribute('width', '100%');
+            svg.style.maxWidth = W + 'px'; svg.style.background = '#fafafa'; svg.style.border = '1px solid #e0e0e0'; svg.style.borderRadius = '6px';
+            return svg;
+        };
+        const savedSvg = typeof d.svg === 'string' ? safeSvg(d.svg) : null;
+        if (savedSvg) {
+            const box = document.createElement('div'); box.className = 'an-chart'; box.style.overflowX = 'auto';
+            box.appendChild(savedSvg);
+            box.appendChild(tx('div', 'Colour: red condition, blue drug, green lab / vital, purple procedure. Dashed grey: reference link not seen in this cohort.', 'font-size:12px; color:#666;'));
+            root.appendChild(box);
+        }
+        const okPng = typeof d.png === 'string' && d.png.length < 3000000 && /^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(d.png);
+        if (okPng) {
+            const box = document.createElement('div'); box.className = 'an-chart'; box.style.overflowX = 'auto';
+            const img = document.createElement('img'); img.src = d.png; img.alt = 'Cohort knowledge graph (large view)';
+            img.style.cssText = 'display:block; width:100%; max-width:' + BASEW + 'px; background:#fafafa; border:1px solid #e0e0e0; border-radius:6px;';
+            box.appendChild(img);
+            box.appendChild(tx('div', 'Large view. Colour: red condition, blue drug, green lab / vital, purple procedure. Dashed grey: reference link not seen in this cohort.', 'font-size:12px; color:#666;'));
+            root.appendChild(box);
+        }
+        const pic = savedSvg || okPng ? null : d.picture;
+        if (pic && Array.isArray(pic.nodes) && Array.isArray(pic.edges)) {
+            const box = document.createElement('div'); box.className = 'an-chart'; box.style.overflowX = 'auto';
+            const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': 'Cohort knowledge graph' });
+            svg.style.maxWidth = W + 'px'; svg.style.background = '#fafafa'; svg.style.border = '1px solid #e0e0e0'; svg.style.borderRadius = '6px';
+            pic.edges.slice(0, 1500).forEach(e => { const l = el('line', { x1: num0(e.x1), y1: num0(e.y1), x2: num0(e.x2), y2: num0(e.y2), stroke: e.known ? '#9e9e9e' : (TYPE_COL[e.type] || '#757575'), 'stroke-width': 1 + 5 * Math.min(1, num0(e.w)), 'stroke-opacity': 0.6 }, svg); if (e.known) l.setAttribute('stroke-dasharray', '5 4'); if (e.both) l.setAttribute('stroke-width', 2 + 5 * Math.min(1, num0(e.w))); });
+            pic.nodes.slice(0, 300).forEach(n => {
+                const col = KIND_COL[n.kind] || ['#eee', '#555'];
+                el('circle', { cx: num0(n.x), cy: num0(n.y), r: Math.min(30, Math.max(3, num0(n.r))), fill: col[0], stroke: col[1], 'stroke-width': 1.5 }, svg);
+                const lab = trunc(n.label, 24);
+                el('text', { x: num0(n.x), y: num0(n.y) + num0(n.r) + 12, 'text-anchor': 'middle', 'font-size': 11, fill: 'none', stroke: '#fafafa', 'stroke-width': 4 }, svg).textContent = lab;
+                el('text', { x: num0(n.x), y: num0(n.y) + num0(n.r) + 12, 'text-anchor': 'middle', 'font-size': 11, fill: '#222' }, svg).textContent = lab;
+            });
+            box.appendChild(svg); box.appendChild(tx('div', 'Colour: red condition, blue drug, green lab / vital, purple procedure. Dashed grey: reference link not seen in this cohort.', 'font-size:12px; color:#666;'));
+            root.appendChild(box);
+        }
+        const table = (head, rows) => {
+            const w = document.createElement('div'); w.className = 'an-tablewrap'; w.style.overflowX = 'auto';
+            const tb = document.createElement('table'); tb.className = 'an-table';
+            const tr = tb.createTHead().insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.appendChild(th); });
+            const body = tb.createTBody(); rows.forEach(r => { const row = body.insertRow(); r.forEach(c => { row.insertCell().textContent = c == null ? '' : String(c); }); });
+            w.appendChild(tb); return w;
+        };
+        if (Array.isArray(d.clusters) && d.clusters.length) { root.appendChild(tx('strong', 'Clusters of similar patients')); root.appendChild(table(['Cluster', 'Patients', 'Typical concepts'], d.clusters.map(c => [c.name, c.size, (c.top || []).join('; ') || 'nothing distinctive']))); }
+        if (Array.isArray(d.links) && d.links.length) { root.appendChild(tx('strong', 'Strongest links')); root.appendChild(table(['Concept A', 'Concept B', 'Type', 'Patients', 'Lift', 'z', 'Order in time', 'Reference graph'], d.links.map(e => [e.a, e.b, TYPE_NAME[e.type] || e.type, e.n, e.lift == null ? '' : e.lift, e.z == null ? '' : e.z, e.order, e.ref]))); }
+        if (Array.isArray(d.nodes) && d.nodes.length) { root.appendChild(tx('strong', 'Concepts')); root.appendChild(table(['Concept', 'Kind', 'Patients', 'Prevalence', '% abnormal'], d.nodes.map(n => [n.display, KIND_NAME[n.kind] || n.kind, n.patients, pct(n.prevalence), n.abnPct == null ? '' : pct(n.abnPct)]))); }
+        return root;
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = $('cohortBatchSelector');
+        if (sel) sel.addEventListener('change', () => { const st = $('kgcStatus'); if (st && S.data) { st.className = 'status-output info'; st.textContent = 'The population changed. Press "Build graph from cohort" to refresh the graph.'; } });
+    });
+    return { build, setView, changed, resetView, setFocus, hideSel, showHidden, pick, pickBoth, pickEdge, setComb, setAbn, copySql, sendSql, exportJson, exportCsv, exportPicture, addToOutput, renderOutput,
+        _S: S, _visible: visible, _ui: ui, _layout: layout, _communities: communities, _buildSql: buildSql };
+})();
+</script>
 </body>
 </html>
