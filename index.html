@@ -1412,7 +1412,11 @@ label{color:var(--ink-2)}
 .an-params label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
 .an-params{gap:14px 16px}
 /* Tool panels inside the catalog share one quiet look instead of one colour each */
-#anLlmBox,#anAskBox,#anTemplateBox,#anCompareBox,#anModeInfo,#activeCohortBar,#batchDetailView{background:var(--tint)!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;padding:12px 14px!important;margin:12px 0!important;font-size:13px;color:var(--ink-2)}
+/* The Python/Jupyter rating column of the capabilities table is hidden with the Notebook feature. */
+.analytics-capabilities-table th:nth-child(3), .analytics-capabilities-table td:nth-child(3) { display: none; }
+/* Notebook feature is hidden (tab, panel, "Use in Python" shortcut). Remove this rule and the hidden guide lines to bring it back. */
+.tab[data-tab="tab5"], #tab5, #sqPython { display: none !important; }
+#anLlmBox,#anAskBox,#anTemplateBox,#anCompareBox,#anCustomBox,#anModeInfo,#activeCohortBar,#batchDetailView{background:var(--tint)!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;padding:12px 14px!important;margin:12px 0!important;font-size:13px;color:var(--ink-2)}
 #anRun>div{border-left:0!important;padding-left:0!important}
 #activeCohortBar{background:var(--accent-l)!important;border-color:#c5e1d6!important;color:var(--ink)}
 #anRun>div[style*="margin-top:30px"]{margin-top:16px!important}
@@ -1529,6 +1533,7 @@ label{color:var(--ink-2)}
         <button class="tab" data-tab="tab6">Analytics</button>
         <button class="tab" data-tab="tab7">Dashboard</button>
         <button class="tab" data-tab="tab5">Notebook</button>
+        <button class="tab" data-tab="tab9" id="auditTab" style="display:none">Audit log</button>
         <span class="tab-sep" aria-hidden="true"></span>
         <button class="tab is-guide" data-tab="tab2">Architecture</button>
         <button class="tab is-guide" data-tab="tab3">Capabilities</button>
@@ -1563,13 +1568,13 @@ label{color:var(--ink-2)}
                 <p>This is the complete architecture for your healthcare data analytics system.</p>
                 
                 <h3>Goal</h3>
-                <p>Get FHIR healthcare data (JSON, NDJSON, CSV, etc.) → process it into a standardized database → run Python healthcare analytics on it.</p>
+                <p>Get FHIR healthcare data (JSON, NDJSON, CSV, etc.) → process it into a standardized database → run analytics on it: the built-in catalog, or free-hand analytics described in plain English (an AI writes the query, you review it, it runs as fixed read-only SQL).</p>
                 
                 <h3>System Architecture</h3>
                 <figure class="arch-figure">
 <svg viewBox="0 0 960 716" role="img" aria-labelledby="arch-t arch-d" xmlns="http://www.w3.org/2000/svg">
 <title id="arch-t">System architecture</title>
-<desc id="arch-d">Users import FHIR files, which are processed into a PostgreSQL database. In-app Node.js analytics and Python or Jupyter analysis both read from the database, and in-app results appear in the dashboard.</desc>
+<desc id="arch-d">Users import FHIR files, which are processed into a PostgreSQL database. The built-in catalog analytics and the AI-assisted custom analytics (plain-English question, reviewed read-only query) both read from the database, and in-app results appear in the dashboard.</desc>
 <defs>
   <marker id="arch-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
     <path class="arch-arrowhead" d="M1 1 L9 5 L1 9 z"/>
@@ -1609,8 +1614,8 @@ label{color:var(--ink-2)}
 <path class="arch-flow" d="M240 544 V593" marker-end="url(#arch-arrowhead)"/>
 <g class="arch-ana">
   <rect class="arch-card" x="40" y="600" width="400" height="84" rx="14"/>
-  <text class="arch-title" x="64" y="631">Python and Jupyter analysis</text>
-  <text class="arch-sub" x="64" y="654">pandas, scikit-learn, lifelines for custom models</text>
+  <text class="arch-title" x="64" y="631">Custom analytics in plain English</text>
+  <text class="arch-sub" x="64" y="654">AI writes the query, you review it, it runs as fixed SQL</text>
 </g>
 <g class="arch-ui">
   <rect class="arch-card" x="520" y="60" width="400" height="84" rx="14"/>
@@ -1661,7 +1666,7 @@ label{color:var(--ink-2)}
 <li><strong>Layer 3 - Analytics:</strong> 
     <ul>
         <li><strong>In-App Analytics (Node.js):</strong> Quick, preset analytics running directly in the web application. Provides immediate insights with predefined queries for prevalence, demographics, vital signs trends, and basic cohort analysis. Ideal for rapid prototyping and quick stakeholder reviews.</li>
-        <li><strong>Python/Jupyter Analytics:</strong> Advanced, flexible analytics using the full Python ecosystem (pandas, scikit-learn, lifelines, spaCy, etc.). Enables custom modeling, survival analysis, NLP on clinical text, network analysis, and any research-grade investigation. Data is queried from PostgreSQL and processed locally.</li>
+        <li><strong>Custom analytics in plain English (LLM-built query):</strong> For free-hand questions the catalog does not cover, describe the analysis in English; an LLM writes one read-only SQL query for the selected mode (V1, V3 or V4), you review and can edit it, and then it runs as fixed SQL. The LLM only writes the query: running it is deterministic (same query and data, same result, no LLM call), and the SQL is shown with every result.</li>
     </ul>
 </li>
                 </ul>
@@ -1788,7 +1793,7 @@ df = pd.read_sql_query("""
                     <li><strong>Phase 2 (1–2 weeks):</strong> 
                         <ul>
                             <li><strong>In-App Analytics:</strong> Build preset analytics queries in Node.js (prevalence, demographics, vital signs)</li>
-                            <li><strong>Python/Jupyter Analytics:</strong> Create sample Jupyter notebooks demonstrating advanced analytics capabilities</li>
+                            <li><strong>Custom analytics:</strong> Ask a free-hand question in plain English; an LLM drafts the query, you review it, and it runs as fixed read-only SQL</li>
                         </ul>
                     </li>
                     <li><strong>Phase 3 (ongoing):</strong> Data validation rules, HIPAA-compliant security (encryption, access controls), incremental re-ingestion, data quality dashboard</li>
@@ -1879,10 +1884,10 @@ df = pd.read_sql_query("""
                                 <td>Low-Medium</td>
                             </tr>
                             <tr>
-                                <td><strong>Python/Jupyter Analytics</strong></td>
-                                <td>Python (pandas, scikit-learn, lifelines, spaCy, etc.) + PostgreSQL</td>
-                                <td>Advanced research, custom modeling, survival analysis, NLP, network analysis</td>
-                                <td>Medium-High</td>
+                                <td><strong>Custom analytics (plain English)</strong></td>
+                                <td>LLM-written, human-reviewed read-only SQL on the scoped data, run by the application</td>
+                                <td>Free-hand questions outside the catalog, restricted to the selected mode (V1, V3 or V4)</td>
+                                <td>Low-Medium</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1890,7 +1895,7 @@ df = pd.read_sql_query("""
                 
                 <!-- Exhaustive Analytics Capabilities Table -->
                 <h3>Exhaustive Analytics Capabilities Table</h3>
-                <p>This table shows which analytics capabilities each approach (In-App Analytics vs Python/Jupyter) and each analytics method (V1, V3, V4) can support. V1 uses narrative text only, V3 uses codes only (no dates), and V4 uses codes plus dates. V2 (LLM-assisted coding) is a preprocessing idea that is not included in this release, so it is not rated here.</p>
+                <p>This table shows which analytics capabilities the in-app analytics and each analytics method (V1, V3, V4) can support. V1 uses narrative text only, V3 uses codes only (no dates), and V4 uses codes plus dates. V2 (LLM-assisted coding) is a preprocessing idea that is not included in this release, so it is not rated here.</p>
                 <table class="analytics-capabilities-table">
                     <thead>
                         <tr>
@@ -2019,7 +2024,7 @@ df = pd.read_sql_query("""
                 </table>
                 <ul class="an-muted" style="font-size:12.5px;">
                     <li><strong>In-App</strong> ratings describe what the built-in catalog actually runs (for example Kaplan-Meier curves, rule-based risk points, ordered condition pairs, equity ratios). It has no regression, machine-learning or Cox models, and only keyword/synonym/simple-negation text matching rather than real NLP.</li>
-                    <li><strong>Python/Jupyter</strong> ratings are what the Python ecosystem can do on the same database; this app generates a starter notebook (Extended Analytics tab: orientation cells plus a few recipes), not finished analyses.</li>
+                    <li hidden><strong>Python/Jupyter</strong> ratings are what the Python ecosystem can do on the same database; this app generates a starter notebook (Extended Analytics tab: orientation cells plus a few recipes), not finished analyses.</li>
                     <li><strong>V3</strong> uses no dates, so it cannot do sequencing, trends, longitudinal or time-to-event work; those need V4. <strong>V1</strong> and <strong>V4</strong> do not replace NLP libraries: V4 ignores narrative text.</li>
                     <li><strong>Cost / Financial</strong> is not supported by anyone: the schema holds no charge, claim or payment fields.</li>
                 </ul>
@@ -2203,6 +2208,7 @@ conn.close()
                     </details>
                     <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
                         <button class="btn-secondary" id="ehrTestBtn" onclick="ehrTest()">Test connection</button>
+                        <div class="data-notice dn-compact" role="note"><b>Only import consented, de-identified, ethically approved data.</b> Fetching from a live EHR must be covered by your ethics approval and de-identification process; the box on the Import data tab must be ticked first.</div>
                         <button class="btn-primary" id="ehrFetchBtn" onclick="ehrFetch()">Fetch &amp; Import as Batch</button>
                         <button class="btn-secondary" id="ehrCancelBtn" onclick="ehrCancel()" disabled>Cancel</button>
                     </div>
@@ -2218,7 +2224,7 @@ conn.close()
     const get = () => { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } };
     const set = v => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) {} };
     window.vrImportLock = () => set('');
-    // Status 403, not 401: the page-wide handler further down sends every 401 to /login, which this app does not have.
+    // Status 403 for "cancelled / wrong password": it must not look like a sign-in problem.
     // No password (cancel) or a wrong one reloads the app instead.
     const denied = msg => { setTimeout(() => location.reload(), 0); return new Response(JSON.stringify({ success: false, error: msg }), { status: 403, headers: { 'Content-Type': 'application/json' } }); };
     window.fetch = async function (url, opts) {
@@ -2286,6 +2292,7 @@ conn.close()
                 }
                 async function ehrFetch() {
                     const st = ehrEl('ehrStatus');
+                    if (!window.dataAttested || !window.dataAttested()) { st.className = 'status-output error'; st.textContent = 'Confirm on the Import data tab that the data is consented, de-identified and ethically approved, then try again.'; return; }
                     try {
                         st.className = 'status-output info'; st.textContent = 'Starting...';
                         const r = await anPost('/api/ehr/fetch', { connection: ehrConn(), batchId: ehrEl('ehrBatch').value.trim(), maxPatients: Number(ehrEl('ehrMax').value) || 25,
@@ -2961,6 +2968,26 @@ conn.close()
                             <button class="btn-secondary" onclick="runCatalogAll()">Run all analytics</button>
                             <button class="btn-secondary" onclick="runPopulationHealth()">Population Health quick-run</button>
                         </div>
+                        <details id="anCustomBox" style="margin-top:12px; padding:10px 12px; border-radius:6px; font-size:13px;">
+                            <summary style="cursor:pointer; user-select:none;"><strong>Custom analytic in plain English</strong> <span class="an-muted">(AI writes a read-only query for the mode selected above; you review it, then run. Needs the AI settings above.)</span></summary>
+                            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:flex-start;">
+                                <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
+                                <button id="anCustomGenBtn" class="btn-secondary" onclick="customGenerate()">Generate query</button>
+                            </div>
+                            <div class="an-muted" style="margin-top:6px;">Follows the mode chosen above: <strong>V1</strong> matches text only (no codes, no dates), <strong>V3</strong> uses codes but no dates, <strong>V4</strong> uses codes and dates. A query that breaks the rules of its mode is refused. Only your question is sent to the model, never patient data.</div>
+                            <div id="anCustomOut" style="display:none; margin-top:10px;">
+                                <div><strong id="anCustomTitle"></strong> <span id="anCustomModeTag" class="an-tag"></span> <span class="an-ai-tag">AI-generated, please review</span></div>
+                                <div id="anCustomExpl" class="an-muted" style="margin:4px 0 6px;"></div>
+                                <textarea id="anCustomSql" rows="9" spellcheck="false" style="width:100%; box-sizing:border-box; padding:8px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,Consolas,monospace;"></textarea>
+                                <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                                    <button class="btn-primary" onclick="customRun()">Run this query</button>
+                                    <label for="anCustomView">Show as</label>
+                                    <select id="anCustomView" onchange="customApplyView()" style="padding:6px; border-radius:4px; font-size:13px;"><option value="both">Table and chart</option><option value="table">Table only</option><option value="chart">Chart only</option></select>
+                                    <span class="an-muted">You can edit the query; it is checked again before it runs. With several active cohorts it runs on each.</span>
+                                </div>
+                            </div>
+                            <div id="anCustomStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
+                        </details>
                         <div id="anStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
                     </div>
                 </details>
@@ -3133,7 +3160,7 @@ conn.close()
 <tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it. <em>Analytics readiness</em> goes one step further: it runs every analytic in each method once and tells you which ones this data can support, and why not for the rest.</td></tr>
 <tr><td><strong>Turning a clinical question into a study takes skill and time.</strong> You need to know the code sets, write cohort SQL, pick an analysis and decide what to look at next.</td><td><strong>A faster path from question to result.</strong> Type the question in plain English or ask for suggested studies, and the form is filled in for you. A query builder writes the cohort SQL from clinical concepts, including descendants in the SNOMED CT hierarchy.</td></tr>
 <tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic, nothing runs until you click, and you decide each step.</td></tr></tbody></table>
-<p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, either the SQL or a notebook, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
+<p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, the SQL, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
 
 <section id="ab-what"><h3>What it does</h3>
 <p class="about-callout">You bring FHIR patient data, from your own files, the open HAPI FHIR test server or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
@@ -3148,7 +3175,7 @@ conn.close()
 <li><strong>Run an analytic.</strong> Pick one from the catalog, or run the dashboard to cover everything for the cohort.</li>
 <li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
 <li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions.</li>
-<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph, or export a Jupyter notebook for survival analysis, modelling or anything the interface does not offer.</li></ol>
+<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph.</li></ol>
 <p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
 
 <section id="ab-who"><h3>Who it benefits</h3>
@@ -3179,7 +3206,7 @@ conn.close()
 <tr><td>Cohort discovery platforms (i2b2, SHRINE and commercial federated networks)</td><td>Cohort counts across institutions, governance and production deployments</td><td>Single database, single user, with no federation or access governance. It adds the text-versus-codes-versus-time comparison, SQL output and an assistant that suggests next steps.</td></tr>
 <tr><td>Synthetic patient generators (Synthea and similar)</td><td>Broad, disease-module-based synthetic populations in FHIR</td><td>The generator is built into the analysis loop, with controlled data defects and correlated outcomes so analytic methods can be tested. It is narrower in scope.</td></tr>
 <tr><td>Clinical NLP (cTAKES, MedCAT and similar)</td><td>Real concept extraction and negation from free text</td><td>The text method is deliberately simple matching with synonyms and basic negation. It is a baseline to compare against codes, not an NLP engine.</td></tr>
-<tr><td>General BI and notebooks (Metabase, Superset, Jupyter)</td><td>Flexible dashboards and unlimited analysis</td><td>Clinical content comes ready-made: terminologies, a hierarchy-aware query builder and analytics with clinical definitions. It exports notebooks for anything beyond that.</td></tr></tbody></table>
+<tr><td>General BI and notebooks (Metabase, Superset, Jupyter)</td><td>Flexible dashboards and unlimited analysis</td><td>Clinical content comes ready-made: terminologies, a hierarchy-aware query builder and analytics with clinical definitions. For anything beyond that, the custom analytic turns a plain-English question into a reviewed, read-only query that runs as fixed SQL.</td></tr></tbody></table>
 <p><strong>In short:</strong> its niche is the early, exploratory stage between "I have FHIR data" and "I have a validated study". It is useful for learning, prototyping, checking data quality and generating well-founded leads, and not for production research networks or regulated use.</p></section>
 
 <section id="ab-notfor"><h3>When not to use it</h3>
@@ -3210,15 +3237,26 @@ conn.close()
                             <option value="v1">V1 - text matching</option>
                         </select>
                     </label>
-                    <button class="btn-primary" id="dbRunBtn" onclick="dashRun()">▶ Run Analytics</button>
+                    <label>Playbook
+                        <select id="dbPlaybook" onchange="dashPlaybookChange()"></select>
+                    </label>
+                    <button class="btn-primary" id="dbRunBtn" onclick="dashRun()" title="Runs every analytic at once (3 in parallel)">▶ Run analytics (all)</button>
+                    <button class="btn-primary" id="dbStepBtn" onclick="dashStepStart()" title="Runs one clinical domain at a time; press Next to continue. Lighter on a small server.">⏭ Run analytics step by step</button>
                     <button class="btn-secondary" id="dbCancelBtn" onclick="dashCancel()" style="display:none;">Cancel</button>
                 </div>
+                <div class="an-muted" id="dbPlaybookDesc" style="margin-top:6px;"></div>
+                <details id="dbCustomBox" style="display:none;margin-top:6px;"><summary>Choose analytics for the custom playbook</summary><div id="dbCustomList" style="columns:2;font-size:13px;margin-top:6px;"></div></details>
                 <div class="db-progress" id="dbProgress" style="display:none;">
                     <div class="db-progress-bar"><div id="dbProgressFill"></div></div>
                     <div class="an-muted" id="dbProgressText"></div>
                 </div>
             </div>
 
+            <div id="dbStepBar" class="db-stale" style="display:none;background:var(--surface-2,#eef6f1);border-color:var(--line,#cfe0d6);color:inherit;">
+                <span id="dbStepText"></span>
+                <button class="btn-primary" id="dbNextBtn" onclick="dashStepNext()" style="margin-left:12px;">Next ▶</button>
+                <button class="btn-secondary" id="dbStepStopBtn" onclick="dashStepStop()">Stop</button>
+            </div>
             <div id="dbStale" class="db-stale" style="display:none;"></div>
             <div id="dbToolbar" class="db-toolbar" style="display:none;"></div>
             <div id="dbKpis" class="db-kpis"></div>
@@ -3229,6 +3267,26 @@ conn.close()
 
         <div class="tab-panel" id="tab4">
         <div class="page-head"><h2>Import data</h2></div>
+        <style>
+        .data-notice{border:1px solid #e0b252;border-left-width:5px;background:#fff8e6;color:#4a3500;border-radius:8px;padding:12px 14px;margin:0 0 16px;font-size:14px;line-height:1.5}
+        .data-notice strong.dn-title{display:block;font-size:15px;margin-bottom:4px}
+        .data-notice ul{margin:6px 0 8px 18px;padding:0}
+        .data-notice label{display:flex;gap:8px;align-items:flex-start;font-weight:600;cursor:pointer;margin-top:6px}
+        .data-notice input{margin-top:3px}
+        .data-notice.dn-compact{margin:10px 0;padding:8px 12px;font-size:13px}
+        @media (prefers-color-scheme: dark){.data-notice{background:#3a2f12;border-color:#a37b22;color:#f3e3b8}}
+        </style>
+        <div class="data-notice" role="note" id="dataNotice">
+            <strong class="dn-title">Import only consented, de-identified, ethically approved data</strong>
+            Only upload data that meets all three conditions:
+            <ul>
+                <li><b>Consented</b>: patients (or the data custodian, under a valid waiver) have agreed to this research use.</li>
+                <li><b>De-identified</b>: no names, contact details, record or national ID numbers, exact addresses, or other direct identifiers.</li>
+                <li><b>Ethically approved</b>: an ethics committee / IRB (or equivalent) has approved this project and its data source.</li>
+            </ul>
+            Do not upload identifiable patient records. Synthetic data is always fine. This app is for read-only analysis: SQL entered here is checked and run through a read-only database connection.
+            <label><input type="checkbox" id="dataAttest"> I confirm the data I am importing meets these conditions.</label>
+        </div>
         <p>Upload FHIR files (JSON Bundle, NDJSON, or CSV) to extract structured data with standardized codes. The preprocessing extracts patient demographics, conditions, observations, and medications with their standardized codes (SNOMED CT, LOINC, RxNorm, ICD-10) for immediate use in analytics. Download the normalized summary for database import or further processing.</p>
         
         <!-- File Selection Input -->
@@ -3237,7 +3295,7 @@ conn.close()
             <span style="color:#666; font-size:14px;">(Hold Ctrl/Cmd to select multiple files, or select a whole folder)</span>
         </div>
         <div style="margin-bottom:10px;">
-            <button id="processBtn" class="btn-primary">Extract and normalize</button>
+            <button id="processBtn" class="btn-primary" disabled title="Tick the confirmation in the notice above first">Extract and normalize</button>
         </div>
         
         <!-- File Selection Info -->
@@ -3313,6 +3371,28 @@ conn.close()
             </div>
         </div>
         </div><!-- /#tab4 -->
+        <!-- Tab 9: Audit log (admin only) -->
+        <div class="tab-panel" id="tab9">
+            <div class="page-head"><h2>Audit log</h2></div>
+            <p>Who signed in, imported, deleted or changed data, which patient-level records were opened, and what was sent to an external AI model. Entries cannot be edited or deleted, and each one is chained to the one before it. Request bodies, passwords and keys are never stored.</p>
+            <div class="an-card" id="audFilters" style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end">
+                <label class="an-muted">From<br><input type="datetime-local" id="audFrom"></label>
+                <label class="an-muted">To<br><input type="datetime-local" id="audTo"></label>
+                <label class="an-muted">Person<br><input type="text" id="audActor" placeholder="email contains" size="18"></label>
+                <label class="an-muted">Action<br><select id="audAction"><option value="">All actions</option></select></label>
+                <label class="an-muted">Outcome<br><select id="audOutcome"><option value="">Any</option><option value="success">Success</option><option value="denied">Denied</option><option value="failure">Failure</option></select></label>
+                <label class="an-muted">Search<br><input type="text" id="audQ" placeholder="path, IP, detail" size="18"></label>
+                <button type="button" id="audApply">Apply</button>
+                <button type="button" id="audReset">Reset</button>
+                <button type="button" id="audExport">Export CSV</button>
+                <button type="button" id="audVerify">Verify integrity</button>
+            </div>
+            <div id="audStatus" class="an-muted" style="margin:4px 0 8px"></div>
+            <div style="overflow-x:auto">
+                <table class="an-table" id="audTable"><thead><tr><th>Time</th><th>Person</th><th>Action</th><th>Outcome</th><th>Request</th><th>IP</th><th>Details</th></tr></thead><tbody></tbody></table>
+            </div>
+            <button type="button" id="audMore" style="display:none">Load more</button>
+        </div>
     </div><!-- /.tab-content -->
     </div><!-- /.tab-container -->
     <footer class="app-foot">
@@ -3329,7 +3409,11 @@ conn.close()
         const res = await nativeFetch(input, init);
         const isApi = /^\/api\//.test(url) || /^https?:\/\/[^/]+\/api\//.test(url);
         const type = (res.headers.get('content-type') || '').toLowerCase();
-        if (isApi && res.status === 401 && !/\/api\/auth\/login/.test(url)) { location.href = '/login'; return res; }
+        if (isApi && res.status === 401 && !/\/api\/auth\/login/.test(url)) {
+            // only a missing / expired sign-in goes to the login page (the import password gate also answers 401)
+            const body = await res.clone().json().catch(() => null);
+            if (body && body.code === 'AUTH_REQUIRED') { location.href = '/login'; return res; }
+        }
         if (isApi && type.includes('text/html')) {
             const msg = 'The Vibe Rounds API did not answer (' + url.split('?')[0] + ' returned a web page, HTTP ' + res.status + '). '
                 + 'Start the server with "npm start" and open this page from it (for example http://localhost:3001), not from a file or another web host.';
@@ -3342,7 +3426,8 @@ conn.close()
 <script>
 // Restore last active tab on load
 document.addEventListener('DOMContentLoaded', () => {
-    const savedTab = localStorage.getItem('activeTab');
+    let savedTab = localStorage.getItem('activeTab');
+    if (savedTab === 'tab5') { try { localStorage.removeItem('activeTab'); } catch (e) {} savedTab = null; }   // the Notebook tab is hidden
     if (savedTab) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(p => {
@@ -3581,7 +3666,14 @@ let currentDownloadBtn = null;
 let currentOutputDiv = null;
 
 // Preprocessing functionality
+// Data-use notice: the import button stays disabled until the person confirms the data is consented, de-identified and ethically approved.
+(function () {
+    const box = document.getElementById('dataAttest'), btn = document.getElementById('processBtn');
+    window.dataAttested = () => !!(box && box.checked);
+    if (box && btn) box.addEventListener('change', () => { btn.disabled = !box.checked; btn.title = box.checked ? '' : 'Tick the confirmation in the notice above first'; });
+})();
 document.getElementById('processBtn').addEventListener('click', async () => {
+    if (!window.dataAttested()) { alert('Please confirm that the data is consented, de-identified and ethically approved (tick the box in the notice at the top of this tab).'); return; }
     const fileInput = document.getElementById('fileInput');
     const preprocessResultsContainer = document.getElementById('preprocessResultsContainer');
     const preprocessOutput = document.getElementById('preprocessOutput');
@@ -5646,6 +5738,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="sq-row">
                             <button type="button" id="sqApply" class="btn-primary">Apply to cohort criteria</button>
                             <button type="button" id="sqPython" class="btn-secondary" title="Open Extended Analytics with this query ready for a Jupyter notebook">🐍 Use in Python</button>
+                            <span class="an-muted" style="font-size:12px;">For free-hand analysis, describe it in Analytics &gt; Run analytics &gt; Custom analytic (an LLM writes the query; it runs as fixed SQL).</span>
                             <button type="button" id="sqCloseBtn" class="btn-secondary">Close</button>
                         </div>
                     </div>
@@ -6128,10 +6221,12 @@ function renderCohortsList(cohorts) {
     const container = document.getElementById('cohortsList');
     
     const bar = document.getElementById('activeCohortBar'), cnt = document.getElementById('cohortsCount');
-    const paintBar = c => {
+    const paintBar = list => {
         if (!bar) return;
-        bar.style.background = c ? '#e8f5e9' : '#fff8e1'; bar.style.borderColor = c ? '#c8e6c9' : '#ffe082';
+        const c = list && list.length === 1 ? list[0] : null, many = list && list.length > 1;
+        bar.style.background = list && list.length ? '#e8f5e9' : '#fff8e1'; bar.style.borderColor = list && list.length ? '#c8e6c9' : '#ffe082';
         bar.innerHTML = c ? '✅ <strong>Active cohort:</strong> ' + escapeHtml(c.name) + ' <span style="color:#555;">&mdash; ' + (c.criteria_sql ? escapeHtml(c.criteria_sql) : 'All patients') + '</span>'
+                          : many ? '✅ <strong>' + list.length + ' active cohorts (multi-cohort):</strong> ' + list.map(x => escapeHtml(x.name)).join(', ') + ' <span style="color:#555;">&mdash; every analytic runs on each of them separately and the output shows one result per cohort.</span>'
                           : 'No active cohort &mdash; analytics cover all patients in the selected population.';
     };
     if (!cohorts || cohorts.length === 0) {
@@ -6141,16 +6236,13 @@ function renderCohortsList(cohorts) {
     }
     
     cohortState.cohorts = cohorts;
-    // Only one cohort can be active: if the server still reports several, show the most recently updated one as the active one.
-    const act = cohorts.filter(c => c.is_active).sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
-    const activeId = act.length ? act[0].id : null;
-    cohorts = cohorts.map(c => Object.assign({}, c, { is_active: c.id === activeId }));
-    cohortState.cohorts = cohorts;
-    paintBar(act.length ? act[0] : null);
+    // Several cohorts can be active at once; every analytic then runs on each of them (multi-cohort).
+    const activeCohorts = cohorts.filter(c => c.is_active).sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.id - b.id);
+    paintBar(activeCohorts);
     if (cnt) cnt.textContent = '(' + cohorts.length + ')';
-    const activeCohorts = cohorts.filter(c => c.is_active);
     const badge = document.getElementById('anActiveCohort');
-    if (badge) badge.textContent = activeCohorts.length ? `Active cohort applied to every run: ${activeCohorts[0].name}` : 'No active cohort - runs cover all patients in the selected population.';
+    if (badge) badge.textContent = activeCohorts.length > 1 ? `Multi-cohort: every run is repeated on each of ${activeCohorts.length} active cohorts (${activeCohorts.map(c => c.name).join(', ')})`
+        : activeCohorts.length ? `Active cohort applied to every run: ${activeCohorts[0].name}` : 'No active cohort - runs cover all patients in the selected population.';
     
     // Active first, then newest first
     const sorted = cohorts.slice().sort((a, b) => (b.is_active - a.is_active) || (new Date(b.created_at) - new Date(a.created_at)));
@@ -6166,7 +6258,7 @@ function renderCohortsList(cohorts) {
                 <div style="flex:1; min-width:220px;">
                     <div style="font-weight:bold; color:#333; margin-bottom:4px;">
                         ${escapeHtml(cohort.name)}
-                        ${active ? '<span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Active - in use</span>' : '<span style="background:#9e9e9e; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Inactive</span>'}
+                        ${active ? `<span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Active - in use${activeCohorts.length > 1 ? ' (multi-cohort)' : ''}</span>` : '<span style="background:#9e9e9e; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Inactive</span>'}
                     </div>
                     ${cohort.description ? `<p style="margin:4px 0; color:#666; font-size:13px;">${escapeHtml(cohort.description)}</p>` : ''}
                     <p style="margin:4px 0; font-size:12px; color:#555;"><strong>Criteria:</strong> ${cohort.criteria_sql ? escapeHtml(cohort.criteria_sql) : '<em>All patients</em>'}</p>
@@ -6252,6 +6344,18 @@ function anScope() {
     if (v.startsWith('group:')) scope.batchGroup = v.slice(6); else if (v) scope.batchId = v;
     return scope;
 }
+
+// Several active cohorts = multi-cohort runs: the same analytic is run once per active cohort, the output has one run block per cohort.
+function anActiveCohorts() { return ((typeof cohortState !== 'undefined' && cohortState.cohorts) || []).filter(c => c.is_active); }
+function anMultiCohort() { return anActiveCohorts().length > 1; }
+// -> [{ cohort: {id, name} | undefined, response }]; response is the usual single-run body (success may be false for one cohort only)
+async function anPostMulti(url, body) {
+    if (!anMultiCohort()) return [{ cohort: undefined, response: await anPost(url, body) }];
+    const r = await anPost(url, Object.assign({ multiCohort: true }, body));
+    if (!r.multiCohort) throw new Error(r.error || r.details || 'Multi-cohort run failed');
+    return r.runs;
+}
+const anMultiLabel = (label, c) => c ? `${label} · cohort: ${c.name}` : label;
 
 function renderParamForm(elId, params, mode) {
     const el = document.getElementById(elId);
@@ -7225,17 +7329,24 @@ async function runCatalogAnalytic(modes) {
         await ensureCatalog();
         const a = currentAnalytic();
         status.className = 'status-output info';
-        status.textContent = `Running "${a.title}" (${modes.map(m => m.toUpperCase()).join(', ')})...`;
-        const run = anStartRun(`${a.title} (${modes.map(m => m.toUpperCase()).join(', ')})`);
+        const nMulti = anMultiCohort() ? anActiveCohorts().length : 0;
+        status.textContent = `Running "${a.title}" (${modes.map(m => m.toUpperCase()).join(', ')})${nMulti ? ` on each of ${nMulti} active cohorts` : ''}...`;
+        const runs = new Map();                                   // one run block per cohort (a single block when only one cohort / none is active)
+        let failed = 0;
         for (const mode of modes) {
             const args = readParams('anParams', a.params, mode);
-            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, anScope()));
-            r.mode = r.mode || mode;
-            r.args = args; // the form values used (context for the plain-language explanation, Step 4.10)
-            run.add(r);
+            for (const p of await anPostMulti('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, anScope()))) {
+                const r = p.response;
+                r.mode = r.mode || mode;
+                r.args = args; // the form values used (context for the plain-language explanation, Step 4.10)
+                if (!r.success) failed++;
+                const key = p.cohort ? p.cohort.id : 'all';
+                if (!runs.has(key)) runs.set(key, anStartRun(anMultiLabel(`${a.title} (${modes.map(m => m.toUpperCase()).join(', ')})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}));
+                runs.get(key).add(r);
+            }
         }
-        status.className = 'status-output success';
-        status.textContent = `Done: ${a.title}`;
+        status.className = 'status-output ' + (failed ? 'error' : 'success');
+        status.textContent = `Done: ${a.title}${nMulti ? ` on ${runs.size} cohorts` : ''}${failed ? ` (${failed} failed)` : ''}`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -7332,21 +7443,74 @@ async function compareScopes() {
     }
 }
 
+// ---- Custom analytic in plain English: question -> AI query (checked against the selected mode) -> review -> run -> table and / or chart ----
+const CUSTOM = { mode: null, title: '', question: '', wraps: [] };
+function customStatus(msg, isError) { const el = document.getElementById('anCustomStatus'); if (el) { el.textContent = msg || ''; el.style.color = isError ? '#c62828' : ''; } }
+function customView(wrap, v) {
+    wrap.classList.toggle('an-hide-tables', v === 'chart'); wrap.classList.toggle('an-hide-charts', v === 'table'); ancSyncBtns(wrap);
+}
+function customApplyView() {
+    const v = document.getElementById('anCustomView').value;
+    CUSTOM.wraps = CUSTOM.wraps.filter(w => document.body.contains(w));
+    CUSTOM.wraps.forEach(w => customView(w, v));
+}
+async function customGenerate() {
+    const btn = document.getElementById('anCustomGenBtn'), mode = demoMode(), q = document.getElementById('anCustomQ').value.trim();
+    if (q.length < 5) { customStatus('Write your question in a few words.', true); return; }
+    try {
+        btn.disabled = true; customStatus(`Asking the model for a ${mode.toUpperCase()} query (up to a minute)...`);
+        const r = await anPost('/api/analytics/custom/generate', { question: q, mode });
+        if (!r.success) throw new Error(r.error || 'Could not generate the query');
+        Object.assign(CUSTOM, { mode: r.mode, title: r.title, question: q });
+        document.getElementById('anCustomTitle').textContent = r.title;
+        document.getElementById('anCustomModeTag').textContent = r.mode.toUpperCase();
+        document.getElementById('anCustomExpl').textContent = r.explanation || '';
+        document.getElementById('anCustomSql').value = r.sql;
+        document.getElementById('anCustomOut').style.display = 'block';
+        customStatus('Review the query, then run it.');
+    } catch (e) { customStatus('Error: ' + e.message, true); }
+    finally { btn.disabled = false; }
+}
+async function customRun() {
+    const sql = document.getElementById('anCustomSql').value.trim();
+    if (!CUSTOM.mode || !sql) { customStatus('Generate a query first.', true); return; }
+    if (demoMode() !== CUSTOM.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this ${CUSTOM.mode.toUpperCase()} query was written: press "Generate query" again so the query follows the selected mode.`, true); return; }
+    try {
+        const nMulti = anMultiCohort() ? anActiveCohorts().length : 0;
+        customStatus(`Running${nMulti ? ` on each of ${nMulti} active cohorts` : ''}...`);
+        const view = document.getElementById('anCustomView').value, label = `Custom: ${CUSTOM.title} (${CUSTOM.mode.toUpperCase()})`;
+        let failed = 0, n = 0;
+        for (const p of await anPostMulti('/api/analytics/custom/run', Object.assign({ sql, mode: CUSTOM.mode, title: CUSTOM.title, question: CUSTOM.question }, anScope()))) {
+            const r = p.response; r.mode = r.mode || CUSTOM.mode; r.args = { question: CUSTOM.question };
+            if (!r.success) failed++;
+            const run = anStartRun(anMultiLabel(label, p.cohort), Object.assign({ modes: [CUSTOM.mode] }, p.cohort ? { cohort: p.cohort.name } : {}));
+            run.add(r); n++;
+            if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
+            customView(run.wrap, view); CUSTOM.wraps.push(run.wrap);
+        }
+        customStatus(failed ? `Done with ${failed} failure${failed === 1 ? '' : 's'} (see the Output).` : `Done${n > 1 ? `: ${n} cohorts` : ''}. Result added to the Output; change "Show as" to switch between table and chart.`, !!failed);
+    } catch (e) { customStatus('Error: ' + e.message, true); }
+}
+
 async function runCatalogAll() {
     const status = document.getElementById('anStatus'), out = document.getElementById('anResults');
     const mode = demoMode();
     try {
         status.className = 'status-output info';
         status.textContent = `Running every analytic in ${mode.toUpperCase()} (default parameters)...`;
-        const res = await anPost('/api/analytics/catalog/run-all', Object.assign({ mode }, anScope()));
-        const allRun = anStartRun(`All analytics (${mode.toUpperCase()})`, { modes: [mode] });
-        allRun.addItem('all', { mode, results: res.results });
-        res.results.forEach(r => allRun.results.push(Object.assign({ mode }, r)));
-        const sc0 = (res.results.find(r => r.scope) || {}).scope; if (sc0) { allRun.cohort = sc0.cohort ? sc0.cohort.name : null; allRun.patients = Number(sc0.patients) || null; allRun.scoped = true; anRunMeta(allRun); }
-        anSyncLast();
-        const failed = res.results.filter(r => !r.success).length;
+        let total = 0, failed = 0, blocks = 0;
+        for (const p of await anPostMulti('/api/analytics/catalog/run-all', Object.assign({ mode }, anScope()))) {
+            const res = p.response;
+            if (!res.success || !Array.isArray(res.results)) { failed++; blocks++; anStartRun(anMultiLabel(`All analytics (${mode.toUpperCase()})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}).addItem('all', { mode, results: [{ success: false, id: 'run-all', title: 'All analytics', mode, error: res.error || 'Run failed' }] }); continue; }
+            const allRun = anStartRun(anMultiLabel(`All analytics (${mode.toUpperCase()})`, p.cohort), Object.assign({ modes: [mode] }, p.cohort ? { cohort: p.cohort.name } : {}));
+            allRun.addItem('all', { mode, results: res.results });
+            res.results.forEach(r => allRun.results.push(Object.assign({ mode }, r)));
+            const sc0 = (res.results.find(r => r.scope) || {}).scope; if (sc0) { allRun.cohort = sc0.cohort ? sc0.cohort.name : null; allRun.patients = Number(sc0.patients) || null; allRun.scoped = true; anRunMeta(allRun); }
+            anSyncLast();
+            total += res.results.length; failed += res.results.filter(r => !r.success).length; blocks++;
+        }
         status.className = 'status-output ' + (failed ? 'error' : 'success');
-        status.textContent = `Ran ${res.results.length} analytics in ${mode.toUpperCase()}${failed ? `, ${failed} failed` : ''}.`;
+        status.textContent = `Ran ${total} analytics in ${mode.toUpperCase()}${blocks > 1 ? ` on ${blocks} cohorts` : ''}${failed ? `, ${failed} failed` : ''}.`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -7600,18 +7764,22 @@ async function runPopulationHealth() {
         await ensureCatalog();
         status.className = 'status-output info';
         status.textContent = `Running Population Health in ${mode.toUpperCase()}${picked === 'v1' ? ' (V1 has no text version of these, using V3)' : ''}...`;
-        const run = anStartRun(`Population Health (${mode.toUpperCase()})`);
-        let failed = 0, skipped = [];
+        const runs = new Map();                                   // one run block per cohort when several cohorts are active
+        let failed = 0, skipped = [], done = 0;
         for (const id of POP_HEALTH_IDS) {
             const a = CAT.list.find(x => x.id === id);
             if (!a || (a.modes && !a.modes.includes(mode))) { skipped.push(id); continue; }
-            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id, mode, args: {} }, anScope()));
-            r.mode = r.mode || mode;
-            if (!r.success) failed++;
-            run.add(r);
+            for (const p of await anPostMulti('/api/analytics/catalog/run', Object.assign({ id, mode, args: {} }, anScope()))) {
+                const r = p.response;
+                r.mode = r.mode || mode;
+                if (!r.success) failed++;
+                const key = p.cohort ? p.cohort.id : 'all';
+                if (!runs.has(key)) runs.set(key, anStartRun(anMultiLabel(`Population Health (${mode.toUpperCase()})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}));
+                runs.get(key).add(r); done++;
+            }
         }
         status.className = 'status-output ' + (failed ? 'error' : 'success');
-        status.textContent = `Population Health: ${run.results.length} analytics in ${mode.toUpperCase()}${failed ? `, ${failed} failed` : ''}${skipped.length ? `; skipped (not available): ${skipped.join(', ')}` : ''}.`;
+        status.textContent = `Population Health: ${done} analytics in ${mode.toUpperCase()}${runs.size > 1 ? ` across ${runs.size} cohorts` : ''}${failed ? `, ${failed} failed` : ''}${skipped.length ? `; skipped (not available): ${skipped.join(', ')}` : ''}.`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -7738,7 +7906,7 @@ function dashCheckStale() {
     if (!DASH.run || DASH.running) { box.style.display = 'none'; return; }
     if (DASH.run.scopeKey !== dashScopeKey()) {
         box.style.display = 'block';
-        box.textContent = 'The active cohort or population has changed since this dashboard was run. Press Run Analytics to refresh it.';
+        box.textContent = 'The active cohort or population has changed since this dashboard was run. Press Run analytics to refresh it.';
     } else box.style.display = 'none';
 }
 
@@ -7756,17 +7924,21 @@ function dashCancel() { DASH.cancel = true; dashEl('dbCancelBtn').disabled = tru
 
 async function dashRun() {
     if (DASH.running) return;
+    DASH_STEP.active = false; dashStepBar();
     DASH.running = true; DASH.cancel = false;
     const runBtn = dashEl('dbRunBtn'), cancelBtn = dashEl('dbCancelBtn');
     runBtn.disabled = true; cancelBtn.disabled = false; cancelBtn.style.display = '';
-    dashEl('dbStale').style.display = 'none';
+    dashEl('dbStale').style.display = 'none'; dashEl('dbStepBtn').disabled = true;
     const choice = dashEl('dbMode').value, t0 = Date.now();
     try {
         await dashRefreshHeader();
         dashProgress(0, 1, 'Loading analytics catalog...');
         await ensureCatalog();
         const jobs = [], notAvail = [];
-        CAT.list.forEach((a, i) => { const m = dashPickMode(a, choice); if (m) jobs.push({ a, i, mode: m }); else notAvail.push(a); });
+        const pbIds = dashPlaybookIds();
+        if (pbIds && !pbIds.length) { dashEl('dbBody').innerHTML = '<p class="an-muted db-empty">This playbook has no analytics selected. Tick some in the custom list.</p>'; return; }
+        CAT.list.forEach((a, i) => { if (pbIds && !pbIds.includes(a.id)) return; const m = dashPickMode(a, choice); if (m) jobs.push({ a, i, mode: m }); else notAvail.push(a); });
+        if (pbIds) jobs.sort((p, q) => pbIds.indexOf(p.a.id) - pbIds.indexOf(q.a.id));
         const results = new Array(jobs.length);
         const scope = anScope(), scopeKey = dashScopeKey();
         let next = 0, done = 0, fatal = null;
@@ -7787,17 +7959,149 @@ async function dashRun() {
         await Promise.all(Array.from({ length: Math.min(DASH_CONCURRENCY, jobs.length) }, worker));
         if (fatal) { dashEl('dbBody').innerHTML = `<div class="status-output error">${escapeHtml(fatal)}</div>`; dashEl('dbKpis').innerHTML = ''; dashEl('dbToolbar').style.display = 'none'; return; }
         const finished = results.filter(Boolean);
-        DASH.run = { results: finished, notAvail, choice, scopeKey, cohort: DASH.cohort, population: dashPopulationLabel(), ms: Date.now() - t0, cancelled: DASH.cancel, total: jobs.length, finishedAt: new Date() };
+        DASH.run = { results: finished, notAvail, choice, scopeKey, playbook: dashPlaybook().title, cohort: DASH.cohort, population: dashPopulationLabel(), ms: Date.now() - t0, cancelled: DASH.cancel, total: jobs.length, finishedAt: new Date() };
         dashRender();
     } catch (err) {
         dashEl('dbBody').innerHTML = `<div class="status-output error">Error: ${escapeHtml(err.message)}</div>`;
     } finally {
-        DASH.running = false; runBtn.disabled = false; cancelBtn.style.display = 'none';
+        DASH.running = false; runBtn.disabled = false; dashEl('dbStepBtn').disabled = false; cancelBtn.style.display = 'none';
         dashEl('dbProgress').style.display = 'none';
         dashCheckStale();
     }
 }
 
+
+// ---- Playbooks: named analytics sets that can be run all at once or one analytic per click ----
+const DASH_PLAYBOOKS = [
+    { key: 'all', title: 'Full dashboard (every analytic)', desc: 'The whole catalog, grouped by clinical domain.', ids: null },
+    { key: 'quick', title: 'Quick health check (light)', desc: 'Small, fast analytics to confirm the data loaded sensibly: data quality, demographics and prevalence.', ids: ['data_quality', 'demographics', 'condition_prevalence', 'procedure_volume'] },
+    { key: 'exec', title: 'Executive scorecard', desc: 'The analytics behind the headline tiles: utilization, readmission, high utilizers, guideline adherence and risk. Best with V4.', ids: ['encounter_utilization', 'high_utilizers', 'guideline_adherence', 'readmission_drivers', 'risk_stratification'] },
+    { key: 'flow', title: 'Hospital flow & utilization', desc: 'Volume, returns, length of stay and seasonality.', ids: ['encounter_utilization', 'readmission_drivers', 'inpatient_trajectory', 'high_utilizers', 'seasonal_pattern', 'procedure_volume'] },
+    { key: 'chronic', title: 'Chronic disease quality', desc: 'Control targets, guideline adherence, screening, vaccination and adherence.', ids: ['guideline_adherence', 'chronic_control', 'disease_module', 'preventive_screening', 'vaccination_coverage', 'medication_adherence'] },
+    { key: 'safety', title: 'Medication safety', desc: 'Polypharmacy, allergies, adherence and co-prescribing.', ids: ['polypharmacy', 'allergy_profile', 'medication_adherence', 'coprescription_candidates', 'medication_utilization'] },
+    { key: 'risk', title: 'Risk & case mix', desc: 'Who is sick, how sick, and which conditions cluster.', ids: ['risk_stratification', 'multimorbidity', 'condition_prevalence', 'comorbidity', 'demographics'] },
+    { key: 'lab', title: 'Laboratory & diagnostics', desc: 'Results, ranges, ordering and co-ordering.', ids: ['lab_vital_summary', 'lab_ranges', 'test_ordering', 'lab_cooccurrence'] },
+    { key: 'pathways', title: 'Care pathways & outcomes', desc: 'Sequences of care, timing and survival. Needs V4 dates.', ids: ['pathway_frequencies', 'checkpoint_timing', 'medication_sequence', 'treatment_patterns', 'kaplan_meier'] },
+    { key: 'equity', title: 'Population & equity', desc: 'Who is served and whether use differs between groups.', ids: ['demographics', 'equity_check', 'region_payer'] },
+    { key: 'custom', title: 'Custom (pick analytics)', desc: 'Tick the analytics you want; your choice is remembered in this browser.', ids: [] }
+];
+let DASH_CUSTOM = new Set();
+try { DASH_CUSTOM = new Set(JSON.parse(localStorage.getItem('vr_dash_custom') || '[]')); } catch (e) { /* ignore */ }
+function dashPlaybook() {
+    const k = dashEl('dbPlaybook') ? dashEl('dbPlaybook').value : 'all';
+    return DASH_PLAYBOOKS.find(p => p.key === k) || DASH_PLAYBOOKS[0];
+}
+// ids of the active playbook in run order, or null for the full catalog
+function dashPlaybookIds() {
+    const pb = dashPlaybook();
+    if (pb.key === 'custom') return CAT.list.map(a => a.id).filter(id => DASH_CUSTOM.has(id));
+    return pb.ids;
+}
+function dashPlaybookInit() {
+    const sel = dashEl('dbPlaybook'); if (!sel || sel.options.length) return;
+    sel.innerHTML = DASH_PLAYBOOKS.map(p => `<option value="${p.key}">${escapeHtml(p.title)}</option>`).join('');
+    dashPlaybookChange();
+}
+async function dashPlaybookChange() {
+    const pb = dashPlaybook();
+    dashEl('dbPlaybookDesc').textContent = pb.desc + (pb.ids ? ` (${pb.ids.length} analytics)` : '');
+    const box = dashEl('dbCustomBox');
+    box.style.display = pb.key === 'custom' ? '' : 'none';
+    if (pb.key !== 'custom') return;
+    try { await ensureCatalog(); } catch (e) { return; }
+    dashEl('dbCustomList').innerHTML = CAT.list.map(a => `<label style="display:block;"><input type="checkbox" value="${escapeHtml(a.id)}" ${DASH_CUSTOM.has(a.id) ? 'checked' : ''} onchange="dashCustomToggle(this)"> ${escapeHtml(a.title)}</label>`).join('');
+}
+function dashCustomToggle(cb) {
+    if (cb.checked) DASH_CUSTOM.add(cb.value); else DASH_CUSTOM.delete(cb.value);
+    try { localStorage.setItem('vr_dash_custom', JSON.stringify([...DASH_CUSTOM])); } catch (e) { /* ignore */ }
+}
+document.addEventListener('DOMContentLoaded', dashPlaybookInit);
+if (document.readyState !== 'loading') dashPlaybookInit();
+
+// ---- Step-by-step mode: one clinical domain per click, one analytic at a time (light on a small server) ----
+const DASH_STEP = { active: false, groups: [], idx: 0, results: [], notAvail: [], choice: 'best', scopeKey: '', t0: 0, ms: 0 };
+function dashStepBar() {
+    const bar = dashEl('dbStepBar'), st = DASH_STEP;
+    if (!st.active) { bar.style.display = 'none'; return; }
+    bar.style.display = 'block';
+    const nextBtn = dashEl('dbNextBtn');
+    if (st.idx >= st.groups.length) {
+        dashEl('dbStepText').innerHTML = `<strong>Done.</strong> All ${st.groups.length} steps completed.`;
+        nextBtn.style.display = 'none'; dashEl('dbStepStopBtn').textContent = 'Close';
+    } else {
+        const g = st.groups[st.idx];
+        dashEl('dbStepText').innerHTML = `<strong>${escapeHtml(st.playbook || '')}: step ${st.idx} of ${st.groups.length} done.</strong> Next: ${escapeHtml(g.d.title)} (${g.jobs.length} analytic${g.jobs.length === 1 ? '' : 's'})`;
+        nextBtn.style.display = ''; nextBtn.disabled = DASH.running; nextBtn.textContent = `Next ▶ (${st.idx + 1}/${st.groups.length})`;
+        dashEl('dbStepStopBtn').textContent = 'Stop';
+    }
+}
+async function dashStepStart() {
+    if (DASH.running) return;
+    const st = DASH_STEP;
+    DASH.running = true; DASH.cancel = false;
+    dashEl('dbRunBtn').disabled = true; dashEl('dbStepBtn').disabled = true;
+    try {
+        await dashRefreshHeader();
+        dashProgress(0, 1, 'Loading analytics catalog...');
+        await ensureCatalog();
+        const choice = dashEl('dbMode').value, jobs = [], notAvail = [];
+        const pbIds = dashPlaybookIds();
+        if (pbIds && !pbIds.length) { dashEl('dbBody').innerHTML = '<p class="an-muted db-empty">This playbook has no analytics selected. Tick some in the custom list.</p>'; return; }
+        CAT.list.forEach(a => { if (pbIds && !pbIds.includes(a.id)) return; const m = dashPickMode(a, choice); if (m) jobs.push({ a, mode: m }); else notAvail.push(a); });
+        const groups = pbIds ? jobs.sort((p, q) => pbIds.indexOf(p.a.id) - pbIds.indexOf(q.a.id)).map(j => ({ d: { title: j.a.title }, jobs: [j] }))
+            : [...DASH_DOMAINS, DASH_OTHER].map(d => ({ d, jobs: jobs.filter(j => dashDomainOf(j.a.id) === d).sort((p, q) => d.ids.indexOf(p.a.id) - d.ids.indexOf(q.a.id)) })).filter(g => g.jobs.length);
+        Object.assign(st, { playbook: dashPlaybook().title });
+        Object.assign(st, { active: true, groups, idx: 0, results: [], notAvail, choice, scopeKey: dashScopeKey(), t0: Date.now(), ms: 0 });
+        DASH.run = null;
+        dashEl('dbStale').style.display = 'none'; dashEl('dbToolbar').style.display = 'none';
+        dashEl('dbKpis').innerHTML = ''; dashEl('dbScore').innerHTML = '';
+        dashEl('dbBody').innerHTML = '<p class="an-muted db-empty">Step by step: results appear here as each step finishes.</p>';
+        DASH.running = false;
+        await dashStepNext();
+    } catch (err) {
+        dashEl('dbBody').innerHTML = `<div class="status-output error">Error: ${escapeHtml(err.message)}</div>`;
+    } finally {
+        DASH.running = false; dashEl('dbRunBtn').disabled = false; dashEl('dbStepBtn').disabled = false;
+        dashEl('dbProgress').style.display = 'none'; dashStepBar();
+    }
+}
+async function dashStepNext() {
+    const st = DASH_STEP;
+    if (!st.active || DASH.running || st.idx >= st.groups.length) return;
+    if (st.scopeKey !== dashScopeKey()) { dashEl('dbStepText').innerHTML = 'The cohort or population changed. Press <strong>Run analytics step by step</strong> to start again.'; dashEl('dbNextBtn').style.display = 'none'; return; }
+    DASH.running = true; DASH.cancel = false;
+    const nextBtn = dashEl('dbNextBtn'), cancelBtn = dashEl('dbCancelBtn'), g = st.groups[st.idx], t0 = Date.now();
+    nextBtn.disabled = true; cancelBtn.disabled = false; cancelBtn.style.display = '';
+    dashEl('dbRunBtn').disabled = true; dashEl('dbStepBtn').disabled = true;
+    try {
+        const scope = anScope(); let done = 0, fatal = null, stepResults = [];
+        dashProgress(0, g.jobs.length, `${g.d.title}: starting...`);
+        for (const job of g.jobs) {                       // sequential on purpose: one query at a time
+            if (DASH.cancel || fatal) break;
+            let r;
+            try { r = await anPost('/api/analytics/catalog/run', Object.assign({ id: job.a.id, mode: job.mode, args: {} }, scope)); }
+            catch (e) { r = { success: false, error: e.message }; }
+            r.id = r.id || job.a.id; r.title = r.title || job.a.title; r.mode = r.mode || job.mode; r.category = job.a.category;
+            if (!r.success && /No imported FHIR data/i.test(r.error || r.details || '')) fatal = r.error;
+            stepResults.push(r); done++;
+            dashProgress(done, g.jobs.length, `${g.d.title}: ${done} of ${g.jobs.length} (${job.a.title})`);
+        }
+        if (fatal) { dashEl('dbBody').innerHTML = `<div class="status-output error">${escapeHtml(fatal)}</div>`; st.active = false; return; }
+        st.results.push(...stepResults);
+        st.ms += Date.now() - t0;
+        if (!DASH.cancel) st.idx++;                       // a cancelled step is kept as partial and can be re-run with Next
+        if (DASH.cancel) st.results = st.results.filter(r => !stepResults.includes(r)).concat(stepResults.filter(r => r.success));
+        DASH.run = { results: st.results, notAvail: st.notAvail, playbook: st.playbook, choice: st.choice, scopeKey: st.scopeKey, cohort: DASH.cohort, population: dashPopulationLabel(), ms: st.ms, cancelled: false, total: st.results.length, finishedAt: new Date() };
+        dashRender();
+    } catch (err) {
+        dashEl('dbBody').innerHTML = `<div class="status-output error">Error: ${escapeHtml(err.message)}</div>`;
+    } finally {
+        DASH.running = false; cancelBtn.style.display = 'none';
+        dashEl('dbRunBtn').disabled = false; dashEl('dbStepBtn').disabled = false;
+        dashEl('dbProgress').style.display = 'none'; dashStepBar();
+    }
+}
+function dashStepStop() { DASH_STEP.active = false; dashStepBar(); }
 
 // ---- clinical domains: how the dashboard is organized for a clinical intelligence officer ----
 const DASH_DOMAINS = [
@@ -7920,7 +8224,7 @@ function dashRender() {
         kpi(escapeHtml(run.population), 'Population / batch') +
         kpi(`${ok.length}`, `Analytics with results${run.cancelled ? ' (cancelled run)' : ''}`) +
         kpi(`${empty.length + failed.length + run.notAvail.length}`, 'No data, failed or not available') +
-        kpi(`${(run.ms / 1000).toFixed(1)} s`, `Run time · ${run.choice === 'best' ? 'best available' : run.choice.toUpperCase()}`);
+        kpi(`${(run.ms / 1000).toFixed(1)} s`, `Run time · ${run.choice === 'best' ? 'best available' : run.choice.toUpperCase()}${run.playbook && !/^Full/.test(run.playbook) ? ' · ' + run.playbook : ''}`);
     dashEl('dbScore').innerHTML = dashScoreHtml(run);
     // group by clinical domain, in the fixed review order; inside a domain keep the order listed above
     const domains = [...DASH_DOMAINS, DASH_OTHER].map(d => ({ d, items: ok.filter(x => dashDomainOf(x.r.id) === d).sort((p, q) => d.ids.indexOf(p.r.id) - d.ids.indexOf(q.r.id)) })).filter(x => x.items.length);
@@ -8153,6 +8457,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const b=document.getElementById('signOutBtn');b.style.display='';
     b.onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.href='/login';};
   }catch(e){}
+})();
+</script>
+<script>
+/* ===== Audit log tab: GET /api/audit, /api/audit/facets, /api/audit/export.csv, /api/audit/verify (admin only) ===== */
+(function () {
+  const $ = id => document.getElementById(id), tabBtn = $('auditTab');
+  if (!tabBtn) return;
+  const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let next = null, loadedFacets = false;
+  const iso = v => v ? new Date(v).toISOString() : '';
+  function qs(extra) {
+    const p = new URLSearchParams();
+    const set = (k, v) => { if (v) p.set(k, v); };
+    set('from', iso($('audFrom').value)); set('to', iso($('audTo').value)); set('actor', $('audActor').value.trim());
+    set('action', $('audAction').value); set('outcome', $('audOutcome').value); set('q', $('audQ').value.trim());
+    Object.keys(extra || {}).forEach(k => set(k, extra[k]));
+    return p.toString();
+  }
+  function detailText(d) {
+    if (!d) return '';
+    const parts = [];
+    Object.keys(d).forEach(k => { if (k === 'ms') return; const v = d[k]; parts.push(k + ': ' + (v !== null && typeof v === 'object' ? JSON.stringify(v) : v)); });
+    return parts.join(' · ');
+  }
+  function row(r) {
+    const when = new Date(r.ts), det = detailText(r.details);
+    const col = r.outcome === 'success' ? '#1a7a54' : r.outcome === 'denied' ? '#b26a00' : '#b3261e';
+    return '<tr><td style="white-space:nowrap;text-align:left" title="' + esc(r.ts) + '">' + esc(when.toLocaleString()) + '</td>'
+      + '<td style="text-align:left">' + esc(r.actor_email || '(not signed in)') + (r.actor_role ? ' <span class="an-muted">' + esc(r.actor_role) + '</span>' : '') + '</td>'
+      + '<td style="text-align:left"><code>' + esc(r.action) + '</code></td>'
+      + '<td style="text-align:left;color:' + col + ';font-weight:600">' + esc(r.outcome) + (r.status ? ' <span class="an-muted">' + r.status + '</span>' : '') + '</td>'
+      + '<td style="text-align:left;white-space:nowrap">' + esc(r.method || '') + ' ' + esc(r.path || '') + '</td>'
+      + '<td style="text-align:left">' + esc(r.ip || '') + '</td>'
+      + '<td style="text-align:left;max-width:420px;overflow-wrap:anywhere" title="' + esc(det) + '">' + esc(det.length > 160 ? det.slice(0, 160) + '…' : det) + '</td></tr>';
+  }
+  async function load(more) {
+    const tb = $('audTable').tBodies[0], st = $('audStatus');
+    if (!more) { tb.innerHTML = ''; next = null; }
+    st.textContent = 'Loading…';
+    try {
+      const r = await fetch('/api/audit?' + qs({ limit: 100, before: more ? next : '' })), d = await r.json();
+      if (!d.success) { st.textContent = d.error || ('HTTP ' + r.status); return; }
+      tb.insertAdjacentHTML('beforeend', d.rows.map(row).join(''));
+      next = d.nextBefore; $('audMore').style.display = next ? '' : 'none';
+      const n = tb.rows.length;
+      st.textContent = n ? n + ' entr' + (n === 1 ? 'y' : 'ies') + ' shown, newest first' + (next ? ' (more available)' : '') + (d.level === 'verbose' ? ' · verbose level' : '') : 'No entries match.';
+    } catch (e) { st.textContent = 'Could not load the audit log: ' + e.message; }
+  }
+  async function loadFacets() {
+    try {
+      const d = await (await fetch('/api/audit/facets')).json(); if (!d.success) return;
+      const sel = $('audAction'), keep = sel.value;
+      sel.innerHTML = '<option value="">All actions</option>' + d.actions.map(a => '<option value="' + esc(a.action) + '">' + esc(a.action) + ' (' + a.n + ')</option>').join('');
+      sel.value = keep; loadedFacets = true;
+    } catch (e) {}
+  }
+  function refresh() { loadFacets(); load(false); }
+  $('audApply').onclick = () => load(false);
+  $('audReset').onclick = () => { ['audFrom', 'audTo', 'audActor', 'audAction', 'audOutcome', 'audQ'].forEach(i => { $(i).value = ''; }); load(false); };
+  $('audMore').onclick = () => load(true);
+  $('audExport').onclick = () => { location.href = '/api/audit/export.csv?' + qs(); };
+  $('audVerify').onclick = async () => {
+    const st = $('audStatus'); st.textContent = 'Checking the hash chain…';
+    try {
+      const d = await (await fetch('/api/audit/verify')).json();
+      if (!d.success) { st.textContent = d.error || 'Verification failed.'; return; }
+      st.innerHTML = d.ok
+        ? '<strong style="color:#1a7a54">Chain intact.</strong> ' + d.checked + ' entries checked. Newest entry #' + esc(d.head ? d.head.id : '-') + ', hash <code>' + esc(d.head ? d.head.hash.slice(0, 16) : '') + '…</code> (note it elsewhere to also detect removal of the newest entries).'
+        : '<strong style="color:#b3261e">Chain broken at entry #' + esc(d.firstBad.id) + ':</strong> ' + esc(d.firstBad.reason) + '. ' + d.checked + ' earlier entries are intact.';
+    } catch (e) { st.textContent = 'Verification failed: ' + e.message; }
+  };
+  tabBtn.addEventListener('click', refresh);
+  (async function () {
+    try {
+      const d = await (await fetch('/api/auth/me')).json();
+      const perms = (d && d.user && d.user.permissions) || [];
+      if (perms.includes('*') || perms.includes('audit:read')) {
+        tabBtn.style.display = '';
+        if (tabBtn.classList.contains('active')) refresh();
+      } else if (tabBtn.classList.contains('active')) {
+        const first = document.querySelector('.tab:not(#auditTab)'); if (first) first.click();    // a saved "Audit log" tab for someone who may not read it
+      }
+    } catch (e) {}
+  })();
 })();
 </script>
 <script>

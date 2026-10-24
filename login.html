@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f5a3f">
+<title>Sign in · Vibe Rounds</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a7a54'/%3E%3Cpath d='M4 17h6l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root { --bg:#f4f7f5; --card:#fff; --text:#1c2a24; --muted:#5d6f66; --line:#d5dfd9; --accent:#1a7a54; --accent-d:#0f5a3f; --err:#b3261e; --errbg:#fdecea; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#101815; --card:#18231e; --text:#e6efe9; --muted:#9db0a6; --line:#2c3d35; --err:#ff8a80; --errbg:#3a1f1c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background:var(--bg); color:var(--text); font-family:"IBM Plex Sans",Arial,sans-serif; }
+  main { width:100%; max-width:380px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px 26px 26px; box-shadow:0 6px 24px rgba(0,0,0,.07); }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .mark { width:34px; height:34px; border-radius:9px; background:var(--accent); display:flex; align-items:center; justify-content:center; }
+  .mark svg { width:22px; height:22px; }
+  h1 { margin:0; font-size:21px; }
+  p.sub { margin:2px 0 20px; color:var(--muted); font-size:14px; }
+  label { display:block; font-size:13px; font-weight:500; margin:14px 0 5px; }
+  input { width:100%; padding:10px 12px; font:inherit; font-size:15px; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent; }
+  button { width:100%; margin-top:20px; padding:11px; font:inherit; font-size:15px; font-weight:600; color:#fff; background:var(--accent); border:0; border-radius:8px; cursor:pointer; }
+  button:hover:not(:disabled) { background:var(--accent-d); }
+  button:disabled { opacity:.65; cursor:default; }
+  #err { display:none; margin-top:14px; padding:9px 12px; font-size:13.5px; color:var(--err); background:var(--errbg); border-radius:8px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 17h6l3-7 5 13 3-6h8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <h1>Vibe Rounds</h1>
+  </div>
+  <p class="sub">Sign in to continue</p>
+  <form id="f" autocomplete="on">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+    <label for="pw">Password</label>
+    <input id="pw" name="password" type="password" autocomplete="current-password" required>
+    <div id="err" role="alert"></div>
+    <button id="go" type="submit">Sign in</button>
+  </form>
+</main>
+<script>
+(function () {
+  const f = document.getElementById('f'), err = document.getElementById('err'), go = document.getElementById('go');
+  // already signed in? go straight to the app
+  fetch('/api/auth/me').then(r => { if (r.ok) location.replace('/'); }).catch(() => {});
+  f.addEventListener('submit', async e => {
+    e.preventDefault(); err.style.display = 'none'; go.disabled = true; go.textContent = 'Signing in…';
+    try {
+      const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: f.email.value, password: f.password.value }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.success) { location.replace('/'); return; }
+      err.textContent = d.error || 'Sign-in failed (HTTP ' + r.status + ').'; err.style.display = 'block'; f.password.select();
+    } catch (x) { err.textContent = 'Could not reach the server.'; err.style.display = 'block'; }
+    go.disabled = false; go.textContent = 'Sign in';
+  });
+})();
+</script>
+</body>
+</html>

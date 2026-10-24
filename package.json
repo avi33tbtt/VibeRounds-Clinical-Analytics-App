@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node evidence.js --selftest && node terminology.js --selftest && node snomed-query.js --selftest && node notebook.js --selftest && node kg-cohort.js --selftest && node fhir-connect.js --selftest && node readiness.js --selftest && node patient-explorer.js --selftest",
+    "test": "node security.js --selftest && node knowledge.js --selftest && node analytics.js --selftest && node evidence.js --selftest",
     "smoke": "node evidence.js --smoke"
   },
   "engines": {
@@ -15,8 +15,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "dotenv": "^18.0.6",
-    "express": "^5.2.1",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
     "pg": "^8.23.1",
     "pg-copy-streams": "^7.0.0"
   }

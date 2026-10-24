@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
+const sqlGuard = require('./security').sqlGuard;
 const app = express();
 const port = parseInt(process.env.PORT || '3001', 10); // Render sets PORT
 console.log('Server.js loaded');
@@ -48,6 +49,14 @@ app.use((req, res, next) => {
 const crypto = require('crypto');
 const IMPORT_TOKEN = crypto.randomBytes(32).toString('hex');
 app.locals.importToken = IMPORT_TOKEN;
+
+// Sign-in (users, sessions, role table). Registered here so its gate runs before the import password gate and the body
+// parser below: an anonymous request is refused before any body is read. The pool is created further down, hence the getter.
+// Audit log. Its request recorder must be registered BEFORE the auth gate (so refused requests are recorded too); its viewer
+// routes are registered right after the gate (so only users with the audit:read permission reach them).
+const audit = require('./security').audit(app, () => pool);
+const auth = require('./security').auth(app, () => pool, { importToken: IMPORT_TOKEN, audit });
+audit.routes();
 const IMPORT_GATED = new Set(['/api/import-fhir', '/api/init-schema', '/api/ehr/fetch', '/api/snomed/hierarchy/load']);
 const sha = v => crypto.createHash('sha256').update(String(v)).digest();
 const sameSecret = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
@@ -102,6 +111,35 @@ const pool = new Pool(dbUrl ? {
 console.log(dbUrl
   ? `Database config: DATABASE_URL (${(() => { try { const u = new URL(dbUrl); return u.hostname + ':' + (u.port || 5432) + u.pathname; } catch (e) { return 'unparseable URL'; } })()}), ssl=${useSsl}`
   : `Database config: ${process.env.DB_USER || 'user'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5433'}/${process.env.DB_NAME || 'testdb'}`);
+
+
+// ---- Read-only connection ----------------------------------------------------------------------------------------
+// Everything that runs user-written SQL (cohort criteria) or analytics goes through readPool, which connects as a
+// SELECT-only role (see db-readonly.sql). `pool` (read/write) is kept only for imports, schema set-up, cohort / settings
+// bookkeeping, sign-in and the audit log. Set DATABASE_READONLY_URL (or DB_RO_USER + DB_RO_PASSWORD) and REQUIRE_READONLY=true.
+const roUrl = process.env.DATABASE_READONLY_URL;
+const roSsl = process.env.DB_SSL === 'true' || (process.env.DB_SSL !== 'false' && !!roUrl && /\.render\.com/.test(roUrl));
+const readPool = roUrl ? new Pool({ connectionString: roUrl, ssl: roSsl ? { rejectUnauthorized: false } : false, statement_timeout: 120000 })
+  : process.env.DB_RO_USER ? new Pool({ user: process.env.DB_RO_USER, password: process.env.DB_RO_PASSWORD || '', host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'testdb', port: parseInt(process.env.DB_PORT || '5433', 10), ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false, statement_timeout: 120000 })
+  : pool;
+const hasReadOnlyPool = readPool !== pool;
+if (hasReadOnlyPool) readPool.on('error', e => console.error('Read-only pool error:', e.message));
+// Called at start-up. Reports (or, with REQUIRE_READONLY=true, refuses to start) when the "read-only" connection could still write.
+async function verifyReadOnly() {
+  const must = String(process.env.REQUIRE_READONLY || '').toLowerCase() === 'true';
+  let problem = null;
+  if (!hasReadOnlyPool) problem = 'No read-only database connection is configured (DATABASE_READONLY_URL). Cohort SQL and analytics run with the read/write connection; only the SQL text guard protects the data.';
+  else {
+    const r = await readPool.query(`SELECT current_user AS u, (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS su,
+      (SELECT count(*)::int FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+         AND (has_table_privilege(c.oid, 'INSERT') OR has_table_privilege(c.oid, 'UPDATE') OR has_table_privilege(c.oid, 'DELETE') OR has_table_privilege(c.oid, 'TRUNCATE'))) AS writable`);
+    const x = r.rows[0];
+    if (x.su || x.writable > 0) problem = `The read-only connection (user "${x.u}") is NOT read-only: ${x.su ? 'it is a superuser' : x.writable + ' table(s) are writable by it'}. Use the role from db-readonly.sql.`;
+    else console.log(`Read-only connection verified: user "${x.u}" has no write access to any table.`);
+  }
+  if (problem) { console.error('READ-ONLY CHECK FAILED: ' + problem); if (must) { console.error('REQUIRE_READONLY=true, refusing to start.'); process.exit(1); } }
+}
 
 // Endpoint to fetch the "hello world" message from the DB
 app.get('/api/hello', async (req, res) => {
@@ -773,13 +811,14 @@ app.get('/api/cohorts/:id', async (req, res) => {
 app.post('/api/cohorts', express.json(), async (req, res) => {
   try {
     const { name, description, criteria_sql } = req.body;
+    const crit = sqlGuard.checkCriteria(criteria_sql);
+    if (!crit.ok) return res.status(400).json({ success: false, error: crit.error });
     if (!name) {
       return res.status(400).json({ error: 'Cohort name is required' });
     }
-    // Only one cohort can be active: the new cohort becomes the active one and every other cohort is switched off (one statement).
+    // Several cohorts can be active at once (analytics run on each of them): the new cohort is added as active, the others are left as they are.
     const result = await pool.query(
-      `WITH off AS (UPDATE cohorts SET is_active = FALSE WHERE is_active)
-       INSERT INTO cohorts (name, description, criteria_sql, is_active) VALUES ($1, $2, $3, TRUE) RETURNING *`,
+      `INSERT INTO cohorts (name, description, criteria_sql, is_active) VALUES ($1, $2, $3, TRUE) RETURNING *`,
       [name, description || null, criteria_sql || null]
     );
     res.json({ success: true, cohort: result.rows[0] });
@@ -794,6 +833,8 @@ app.put('/api/cohorts/:id', express.json(), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, criteria_sql } = req.body;
+    const crit = sqlGuard.checkCriteria(criteria_sql);
+    if (!crit.ok) return res.status(400).json({ success: false, error: crit.error });
     const result = await pool.query(
       'UPDATE cohorts SET name = $1, description = $2, criteria_sql = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
       [name || null, description || null, criteria_sql || null, id]
@@ -823,12 +864,10 @@ app.delete('/api/cohorts/:id', async (req, res) => {
   }
 });
 
-// Activate a cohort (only one cohort can be active at a time)
+// Activate a cohort (several cohorts can be active at the same time; analytics run on each of them)
 app.post('/api/cohorts/:id/activate', async (req, res) => {
   try {
     const { id } = req.params;
-    // Deactivate all other cohorts first so only one is active at a time
-    await pool.query('UPDATE cohorts SET is_active = FALSE, updated_at = NOW()');
     const result = await pool.query(
       'UPDATE cohorts SET is_active = TRUE, updated_at = NOW() WHERE id = $1 RETURNING *',
       [id]
@@ -1133,8 +1172,9 @@ async function getActiveCohortPatientSource() {
     throw err;
   }
   const cohort = cohortResult.rows[0];
+  sqlGuard.assertCriteria(cohort.criteria_sql);   // refuse stored criteria that are not a plain read-only expression
 
-  const suffixResult = await pool.query(`
+  const suffixResult = await readPool.query(`
     SELECT SUBSTRING(table_name FROM 'fhir_patient_(.+)') AS suffix
     FROM information_schema.tables
     WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name LIKE 'fhir_patient_%'
@@ -1147,12 +1187,12 @@ async function getActiveCohortPatientSource() {
 
   if (suffixes.length > 0) {
     parts = suffixes.map(s => {
-      const where = criteria ? ` WHERE ${criteria.replace(tableRefRegex, `fhir_$1_${s}`)}` : '';
+      const where = criteria ? ` WHERE (${criteria.replace(tableRefRegex, `fhir_$1_${s}`)})` : '';
       return `SELECT patient_id, gender, birth_date, json_content FROM fhir_patient_${s}${where}`;
     });
   } else {
     // Legacy un-suffixed table
-    const where = criteria ? ` WHERE ${criteria}` : '';
+    const where = criteria ? ` WHERE (${criteria})` : '';
     parts = [`SELECT patient_id, gender, birth_date, json_content FROM fhir_patient${where}`];
   }
   return { cohort, suffixes, source: `(${parts.join(' UNION ALL ')}) AS patients` };
@@ -1167,13 +1207,13 @@ function demoError(res, label, err) {
 app.get('/api/demographics/population-details', async (req, res) => {
   try {
     const { cohort, source, suffixes } = await getActiveCohortPatientSource();
-    const full = await pool.query('SELECT id, name, description, criteria_sql, is_active, created_at, updated_at FROM cohorts WHERE id = $1', [cohort.id]);
-    const total = await pool.query(`SELECT COUNT(*) AS count FROM ${source}`);
-    const gender = await pool.query(`SELECT COALESCE(gender,'Unknown') AS value, COUNT(*) AS count FROM ${source} GROUP BY 1 ORDER BY 2 DESC`);
-    const age = await pool.query(`SELECT COUNT(birth_date) AS with_dob, MIN(birth_date) AS oldest_dob, MAX(birth_date) AS youngest_dob,
+    const full = await readPool.query('SELECT id, name, description, criteria_sql, is_active, created_at, updated_at FROM cohorts WHERE id = $1', [cohort.id]);
+    const total = await readPool.query(`SELECT COUNT(*) AS count FROM ${source}`);
+    const gender = await readPool.query(`SELECT COALESCE(gender,'Unknown') AS value, COUNT(*) AS count FROM ${source} GROUP BY 1 ORDER BY 2 DESC`);
+    const age = await readPool.query(`SELECT COUNT(birth_date) AS with_dob, MIN(birth_date) AS oldest_dob, MAX(birth_date) AS youngest_dob,
       ROUND(AVG(EXTRACT(YEAR FROM age(birth_date)))::numeric, 1) AS avg_age,
       percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(YEAR FROM age(birth_date))) AS median_age FROM ${source}`);
-    const race = await pool.query(`SELECT COUNT(*) AS count FROM ${source} WHERE jsonb_path_exists(json_content, '$.extension[*] ? (@.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race")')`);
+    const race = await readPool.query(`SELECT COUNT(*) AS count FROM ${source} WHERE jsonb_path_exists(json_content, '$.extension[*] ? (@.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race")')`);
 
     const sfx = suffixes.length ? suffixes.map(x => `_${x}`) : [''];
     const inCohort = `patient_id IN (SELECT patient_id FROM ${source})`;
@@ -1182,14 +1222,14 @@ app.get('/api/demographics/population-details', async (req, res) => {
     for (const [label, t] of Object.entries(types)) {
       try {
         const parts = sfx.map(x => `SELECT patient_id FROM fhir_${t}${x} WHERE ${inCohort}`).join(' UNION ALL ');
-        const r = await pool.query(`SELECT COUNT(*) AS records, COUNT(DISTINCT patient_id) AS patients FROM (${parts}) AS u`);
+        const r = await readPool.query(`SELECT COUNT(*) AS records, COUNT(DISTINCT patient_id) AS patients FROM (${parts}) AS u`);
         counts[label] = { records: parseInt(r.rows[0].records, 10), patients: parseInt(r.rows[0].patients, 10) };
       } catch (e) { counts[label] = null; }
     }
     const top = async (t) => {
       try {
         const parts = sfx.map(x => `SELECT code FROM fhir_${t}${x} WHERE ${inCohort}`).join(' UNION ALL ');
-        const r = await pool.query(`SELECT code, COUNT(*) AS count FROM (${parts}) AS u GROUP BY code ORDER BY count DESC LIMIT 10`);
+        const r = await readPool.query(`SELECT code, COUNT(*) AS count FROM (${parts}) AS u GROUP BY code ORDER BY count DESC LIMIT 10`);
         return r.rows.map(x => ({ code: x.code, count: parseInt(x.count, 10) }));
       } catch (e) { return []; }
     };
@@ -1213,19 +1253,19 @@ app.get('/api/demographics/population-details', async (req, res) => {
 });
 
 // Clinical analytics catalog (V1 text / V3 codes / V4 codes+time) and synthetic FHIR generator
-require('./analytics')(app, pool, { sanitizeBatchId });
+require('./analytics')(app, pool, { sanitizeBatchId, readPool });
 
 // OpenRouter settings (key stays on the server)
 require('./evidence').registerAi(app, pool);
 
 // SNOMED CT query builder (dictionary from the data, is-a hierarchy, SQL generator)
-require('./snomed-query')(app, pool, { sanitizeBatchId });
+require('./knowledge').snomedQuery(app, pool, { sanitizeBatchId });
 
 // Jupyter notebook generator for the Extended Analytics tab
-require('./notebook')(app, pool, { sanitizeBatchId });
+if (String(process.env.ENABLE_NOTEBOOK || '').toLowerCase() === 'true') require('./evidence').notebook(app, pool, { sanitizeBatchId });   // Notebook feature is hidden: its tab is hidden in index.html and its routes are off unless ENABLE_NOTEBOOK=true
 
 // Fetch patients from Epic / Oracle Health / any FHIR server into a batch (Analytics tab)
-require('./fhir-connect')(app, pool, { port, importToken: IMPORT_TOKEN });
+require('./knowledge').fhirConnect(app, pool, { port, importToken: IMPORT_TOKEN });
 
 // Serve static files from the current directory (for the web interface) - after API routes
 const path = require('path');
@@ -1235,13 +1275,13 @@ app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'i
 async function initializeDatabaseSchema() {
   try {
     await pool.query(STARTUP_SQL);
-    // Older versions created every cohort as active. Keep only the most recently updated active cohort.
-    await pool.query(`UPDATE cohorts SET is_active = FALSE WHERE is_active
-      AND id <> (SELECT id FROM cohorts WHERE is_active ORDER BY updated_at DESC, id DESC LIMIT 1)`);
     console.log('Database schema initialized successfully');
   } catch (err) {
     console.error('Error initializing database schema:', err);
   }
+  try { await audit.ready(); } catch (err) { console.error('Audit log setup failed (events are NOT being recorded until this is fixed):', err.message); }
+  try { await verifyReadOnly(); } catch (err) { console.error('Read-only check could not run:', err.message); if (String(process.env.REQUIRE_READONLY || '').toLowerCase() === 'true') process.exit(1); }
+  try { await auth.ready(); } catch (err) { console.error('Auth setup failed (nobody can sign in until this is fixed):', err.message); }
 }
 
 // Start the HTTP server (no request timeout so long imports are not cut off)
@@ -1252,6 +1292,9 @@ function startServer(cb) {
   srv.keepAliveTimeout = 65000;
   return srv;
 }
+// On shutdown (Render sends SIGTERM) write the queued audit events first, but never wait more than 5 seconds.
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { setTimeout(() => process.exit(0), 5000).unref(); audit.flush().finally(() => process.exit(0)); });
+
 initializeDatabaseSchema().then(() => {
   startServer(() => {
     console.log(`Server running at http://localhost:${port}`);

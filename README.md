@@ -5,21 +5,16 @@ One README for the whole project (it replaces README_FEATURES.md, README_ANALYTI
 ## Files
 | File | Role |
 |---|---|
-| `server.js` | Express app, FHIR import, schema, cohorts; registers `analytics.js` and `evidence.js` (`registerAi`) |
-| `index.html` | The whole UI. Tabs: Database, Import data, Analytics (cohorts, catalog, generator, HAPI fetch, readiness, patient data explorer, PICO/PECO tools, AI settings, cohort knowledge graph), Dashboard, Notebook (Python / Jupyter templates and notebook download), and the guide tabs Architecture, Capabilities and About |
-| `analytics.js` | The analytics engine, the 14 base analytics and the catalog/run routes (`register(app, pool)`); also calls `evidence.js` (`registerStudies`) |
-| `analytics-ext.js` | Every analytic added after the first 14 (Phases 1, 3, 4: PICO/PECO and later) |
-| `evidence.js` | Phase 4 tools in one file: OpenRouter settings and test, plain-English question parser, suggested PICO/PECO studies (`POST /api/pico/suggest`) and result explainer, saved PICO/PECO templates, A vs B comparison. Self-test: `node evidence.js --selftest`; smoke test: `node evidence.js --smoke` |
+| `server.js` | Express app, FHIR import, schema, cohorts; registers `analytics.js`, `evidence.js` (`registerAi`), `knowledge.js`, `security.js` |
+| `security.js` | Sign-in, audit log and the read-only SQL guard in one file (sections `sqlGuard`, `auth`, `audit`; replaces `sql-guard.js`, `auth.js`, `audit.js`) |
+| `analytics.js` | The analytics engine and everything it registers (sections `customAnalytic`, `readiness`, `analyticsExt`, then the engine; replaces `analytics-ext.js`, `custom-analytic.js`, `readiness.js`). `register(app, pool)` is the file's export |
+| `knowledge.js` | Terminology and data-source sections (`terminology`, `snomedQuery`, `kgCohort`, `fhirConnect`; replaces `terminology.js`, `snomed-query.js`, `kg-cohort.js`, `fhir-connect.js`) |
+| `evidence.js` | Phase 4 tools in one file: OpenRouter settings and test, plain-English question parser, suggested PICO/PECO studies (`POST /api/pico/suggest`) and result explainer, saved PICO/PECO templates, A vs B comparison. Self-test: `node evidence.js --selftest`; smoke test: `node evidence.js --smoke`; also holds the Patient data explorer (`patientExplorer`) and the Notebook generator (`notebook`, routes off unless `ENABLE_NOTEBOOK=true`) |
 | `synthetic.js` | Deterministic FHIR R4 generator (`generateBundle`) |
-| `terminology.js` | Demo SNOMED CT / LOINC / RxNorm / CVX codes, synonyms, treatment map, risky pairs, quality measures, screening programs, relations and the knowledge-graph helper (`graph`) |
-| `snomed-query.js` | Backend of **Build SNOMED CT Query**: dictionary from the imported data, is-a hierarchy loading, concept search, rule expansion and SQL generation (`/api/snomed/*`). Self-test: `node snomed-query.js --selftest` |
-| `notebook.js` | Backend of the **Extended Analytics** tab: builds a Jupyter notebook (`.ipynb`) for the chosen population / batch, cohort, SNOMED query and recipes (`/api/notebook/*`). Self-test: `node notebook.js --selftest` |
-| `fhir-connect.js` | Backend of **Fetch from HAPI FHIR server**: reads patients and their clinical resources from the open HAPI test server and imports them as a batch through `/api/import-fhir` (`/api/ehr/*`). Self-test: `node fhir-connect.js --selftest` |
-| `readiness.js` | Backend of **Analytics readiness**: profiles the scope's data, runs every analytic in V1 / V3 / V4 once with default settings, classifies the outcome and explains blockers (`/api/readiness/*`). Self-test: `node readiness.js --selftest` |
-| `kg-cohort.js` | Backend of the **Cohort knowledge graph**: builds nodes (conditions, drugs, labs, procedures) and patient co-occurrence links from the active population / cohort (`GET /api/kg/cohort`). Self-test: `node kg-cohort.js --selftest` |
-| `patient-explorer.js` | Backend of the **Patient data explorer**: lists the patients of the current population / cohort and opens one patient with everything imported for them (`GET /api/explorer/patients` and the single-patient route). Self-test: `node patient-explorer.js --selftest` |
+| `index.html` | The whole UI. Tabs: Database, Import data, Analytics (cohorts, catalog, generator, HAPI fetch, readiness, patient data explorer, PICO/PECO tools, AI settings, cohort knowledge graph), Dashboard, and the guide tabs Architecture, Capabilities and About |
+| `login.html` | Sign-in page. Public on purpose: the gate in `security.js` redirects every other page to it, so the app itself is never sent to someone who is not signed in. Do not merge it into `index.html` |
 
-Shortcuts: `npm test` runs the self-tests of `evidence.js`, `terminology.js`, `snomed-query.js`, `notebook.js`, `kg-cohort.js`, `fhir-connect.js`, `readiness.js` and `patient-explorer.js`; `npm run smoke` runs the smoke test (server must be running, data imported).
+Shortcuts: `npm test` runs the self-tests of every section in `security.js`, `knowledge.js`, `analytics.js` and `evidence.js` (each file also runs alone: `node security.js --selftest`); `npm run smoke` runs the smoke test (server must be running, data imported).
 
 ## Part 1: Preprocessing tab
 
@@ -33,7 +28,7 @@ The **Preprocessing** tab turns FHIR files into structured data you can inspect,
 4. **Download Results / Download Summary JSON**: exports the counts, the resource-type breakdown and the sample tables.
 5. **Import to Database**: asks for a batch name, then sends the original bundles to `POST /api/import-fhir` in chunks of 5,000 entries. Each batch gets its own set of `fhir_*_<batch>` tables, so batches sharing a base name can be analysed together as a group.
 
-The same import can be scripted from Python; the **Extended Analytics** tab holds ready-made cells and a downloadable notebook for it.
+
 
 ## Part 2: Database, cohorts and the Analytics tab
 
@@ -46,8 +41,10 @@ The same import can be scripted from Python; the **Extended Analytics** tab hold
 ### Cohorts
 - **Create Custom Cohort**: name (required), description (optional) and criteria SQL (optional `WHERE` clause, for example `gender = 'female' AND birth_date > '1980-01-01'`). **Build SNOMED CT Query** writes the clause for you (see below).
 - **Cohort list**: name, description, Active/Inactive badge, criteria SQL, and Activate / Deactivate / Delete buttons. **Refresh List** reloads it, **Download Cohorts** exports it.
-- **Only one cohort is active at a time**: activating a cohort deactivates the others.
-- **Analytics always use the active cohort.** There is no cohort picker and no "run on all data" switch. With no active cohort, a run covers every patient in the selected population. To analyse everyone, deactivate the cohort.
+- **Several cohorts can be active at once.** Activating or creating a cohort leaves the other active cohorts as they are. Deactivate a cohort to take it out.
+- **Analytics use the active cohorts (multi-cohort).** With one active cohort a run behaves as before. With two or more, *Run*, *Run all* and *Population Health* repeat the same analytic (same mode and parameters) on each active cohort and the Output shows one run block per cohort (named "... · cohort: X"); a failure in one cohort does not stop the others. With no active cohort, a run covers every patient in the selected population. Up to 8 cohorts can be active for a multi-cohort run. Dashboard, readiness, A-vs-B compare, patient explorer and the knowledge graph still use one cohort (the most recently updated active one, or the cohort id they are given).
+- **Custom analytic in plain English** (Run analytics, below the buttons): type a question, press *Generate query*; the AI writes one read-only `SELECT` over the scoped views (`p, dx, ob, rx, pr, en, al, im, ref`) for the mode selected above, you review / edit it and press *Run this query*; the result goes to the Output like any analytic (table and chart, *Show as* switches between them, "Query used" shows the SQL). The mode is enforced: **V1** text matching only (no code columns, code-like numbers or dates), **V3** codes but no event dates, **V4** codes and dates; a refused query is repaired once automatically, otherwise you are told which rule it broke. It follows multi-cohort runs (one result per active cohort). Only the question is sent to the model (audit action `ai.request`), never patient data. Queries run in a `READ ONLY` transaction with a 60 s timeout and a 1000-row cap; keep `REQUIRE_READONLY=true` with the SELECT-only role (`db-readonly.sql`) so the database, not only the checker, enforces read-only.
+- **API:** `POST /api/analytics/catalog/run` and `/run-all` accept `multiCohort: true` (optionally `cohortIds: [1,2]`; default = all active cohorts) and answer `{ success, multiCohort: true, cohorts, runs: [{ cohort: {id, name}, response }] }`, where `response` is the normal single-run body or `{ success: false, error }` for that cohort.
 
 ### Build SNOMED CT Query
 Opens from **Create Custom Cohort** (Analytics tab). Three steps in one window:
@@ -58,7 +55,7 @@ Opens from **Create Custom Cohort** (Analytics tab). Three steps in one window:
 
 **Hierarchy.** Your FHIR data holds codes but no is-a links, so descendants and ancestors need a source (the *Hierarchy* panel in step 1): the bundled **demo hierarchy** (simplified links for the demo codes only), a SNOMED CT **RF2 relationships** snapshot (active `116680003` is-a rows are kept), an RF2 **descriptions** snapshot for concept names (fully specified names, semantic tag removed), or a **CSV** `child_code,parent_code[,child_name,parent_name]`. Large releases: put the file on the server and use the path box. After loading, prepare the dictionary again: parent concepts that are not coded in the data (for example *Diabetes mellitus*) then appear in search with the patients rolled up from their children. Without links only exact match returns anything, and the preview says so. The links work for any code system, so a CSV can also group RxNorm or LOINC codes.
 
-Routes (`snomed-query.js`): `GET /api/snomed/status`, `POST /api/snomed/dictionary/build`, `GET /api/snomed/search`, `POST /api/snomed/expand`, `POST /api/snomed/query/build`, `POST /api/snomed/hierarchy/load`, `DELETE /api/snomed/hierarchy`. Tables created on first use: `snomed_isa`, `snomed_concept`, `snomed_dictionary`, `snomed_dictionary_meta`, `snomed_hier_meta` (code links and aggregate counts only, no patient data). The hierarchy path option reads a file on the server, so, like cohort `criteria_sql`, do not expose the app without authentication.
+Routes (`knowledge.js` (snomedQuery)): `GET /api/snomed/status`, `POST /api/snomed/dictionary/build`, `GET /api/snomed/search`, `POST /api/snomed/expand`, `POST /api/snomed/query/build`, `POST /api/snomed/hierarchy/load`, `DELETE /api/snomed/hierarchy`. Tables created on first use: `snomed_isa`, `snomed_concept`, `snomed_dictionary`, `snomed_dictionary_meta`, `snomed_hier_meta` (code links and aggregate counts only, no patient data). The hierarchy path option reads a file on the server, so, like cohort `criteria_sql`, do not expose the app without authentication.
 
 ### Technical implementation
 
@@ -72,7 +69,7 @@ Routes (`snomed-query.js`): `GET /api/snomed/status`, `POST /api/snomed/dictiona
 - `POST /api/cohorts/:id/activate`, `POST /api/cohorts/:id/deactivate`
 - `GET /api/demographics/population-details` - patient count, gender, age, race coverage, record counts and top codes for the active cohort (used by the Python templates)
 
-The clinical analytics, knowledge-graph, concepts, synthetic-data and AI routes are in `analytics.js`, `analytics-ext.js` and `evidence.js` (see Part 3). The old `POST /api/analytics/run` and the `/api/demographics/*-distribution` routes were removed; use `/api/analytics/catalog/run` and `/api/analytics/demographics` instead.
+The clinical analytics, knowledge-graph, concepts, synthetic-data and AI routes are in `analytics.js`, `analytics.js` (analyticsExt) and `evidence.js` (see Part 3). The old `POST /api/analytics/run` and the `/api/demographics/*-distribution` routes were removed; use `/api/analytics/catalog/run` and `/api/analytics/demographics` instead.
 
 ### Database schema
 `SCHEMA_SQL` in `server.js` creates:
@@ -136,18 +133,18 @@ At startup the server also creates and seeds the small `messages` table used by 
 Every run covers the population picked in **Population / Batch** (single batch, batch group, or all batches), restricted to the **active cohort**; with no active cohort the whole population is used. There is no switch to bypass an active cohort, so deactivate it to analyse everyone. Cohort criteria are applied to every batch the same way as in `GET /api/demographics/population-details`. V4 "as-of" date defaults to the latest date in the data (override with `args.asOf`).
 
 ### API
-- `GET  /api/analytics/catalog[?batchId=&batchGroup=&cohortId=]` - list with parameters; takes the scope, and the Condition dropdown of *Condition prevalence* and *Demographic distributions* is built from the diagnosis codes in that data (dictionary names where `terminology.js` knows the code), so batches with other code systems work without changes; the cache is cleared after every import, delete and cohort change
+- `GET  /api/analytics/catalog[?batchId=&batchGroup=&cohortId=]` - list with parameters; takes the scope, and the Condition dropdown of *Condition prevalence* and *Demographic distributions* is built from the diagnosis codes in that data (dictionary names where `knowledge.js` (terminology) knows the code), so batches with other code systems work without changes; the cache is cleared after every import, delete and cohort change
 - `POST /api/analytics/catalog/run` - `{ id, mode: 'v1'|'v3'|'v4', args, batchId?, batchGroup?, cohortId? }` (the active cohort is always applied; `cohortId` selects a specific cohort instead)
 - `POST /api/analytics/catalog/run-all` - `{ mode, ... }` runs every analytic with defaults
 - *Learned terms* (`learned_terms`, V3): for diagnosis codes the dictionary does not know, shows the display strings, narrative phrases and suggested V1 search terms learned from the data, plus an `agreement` check (V1 text matching with those terms versus patients carrying the code); circular by design, so keep the hand-written synonyms for any published V1-versus-V3 comparison
 - `GET  /api/analytics/demographics?dim=gender|age|race|ethnicity&mode=v1|v3|v4`
-- `GET  /api/kg/cohort[?batchId=|batchGroup=][&cohortId=][&pool=25][&maxPatients=250][&gender=][&ageMin=][&ageMax=]` - knowledge graph **built from the data** of the scope (population + active cohort + optional sex / age lens): nodes with patients, prevalence and % abnormal (labs); links with patients, lift, z, Jaccard, P(b|a), P(a|b), which concept usually comes first and the median gap; a `curated` tag where `terminology.js` knows the same link; reference links never seen in the cohort come back with `n = 0`; plus a deterministic patient sample for the projection view
-- `GET  /api/kg/neighbors?key=diabetes[&type=...][&direction=out|in|both][&depth=1-6]` - links between conditions, drugs, labs and procedures (static demo relations from `terminology.js`, no patient data)
+- `GET  /api/kg/cohort[?batchId=|batchGroup=][&cohortId=][&pool=25][&maxPatients=250][&gender=][&ageMin=][&ageMax=]` - knowledge graph **built from the data** of the scope (population + active cohort + optional sex / age lens): nodes with patients, prevalence and % abnormal (labs); links with patients, lift, z, Jaccard, P(b|a), P(a|b), which concept usually comes first and the median gap; a `curated` tag where `knowledge.js` (terminology) knows the same link; reference links never seen in the cohort come back with `n = 0`; plus a deterministic patient sample for the projection view
+- `GET  /api/kg/neighbors?key=diabetes[&type=...][&direction=out|in|both][&depth=1-6]` - links between conditions, drugs, labs and procedures (static demo relations from `knowledge.js` (terminology), no patient data)
 - `GET  /api/concepts?type=dx|ob|rx|pr[&limit=][&batchId=][&batchGroup=][&cohortId=]` - concept inventory built from the imported data: code, code system, most common display, patients, records, first and last seen
 - `POST /api/synthetic/generate` - `{ count (1-5000), years (1-20), seed, endDate? }` returns `{ bundle, summary }`; same seed + endDate gives the same bundle
 
 ### Reviewer decisions (overrides)
-The **Review suggestions** card in the Analytics tab lists what the data suggests (chronic conditions from *Chronic condition candidates*, first-line drugs from *Treatment links*, frequent pairs from *Co-prescription candidates*). **Accept** or **Reject** saves a reviewer decision in the `concept_overrides` table (decisions only, never patient data; the reviewer name is free text because the app has no login). The **Saved decisions** table below it lets you **Edit** (label, note, chronic flag, lab limits) or **Delete** a decision. Priority everywhere is: reviewer decision, then the value derived from the data, then the dictionary in `terminology.js`, which is never changed. Decisions act on the chronic lists (Risk stratification, Multimorbidity burden, Readmission drivers), the first-line map (Treatment patterns, Medication sequence), the risky pairs (Polypharmacy, Co-prescription candidates) and lab abnormal limits (Lab ranges from the data, Risk stratification with data ranges), and are used from the next run without a restart. Routes: `GET/POST /api/overrides[?kind=]` and `DELETE /api/overrides/:id` (in `evidence.js`).
+The **Review suggestions** card in the Analytics tab lists what the data suggests (chronic conditions from *Chronic condition candidates*, first-line drugs from *Treatment links*, frequent pairs from *Co-prescription candidates*). **Accept** or **Reject** saves a reviewer decision in the `concept_overrides` table (decisions only, never patient data; the reviewer name is free text because the app has no login). The **Saved decisions** table below it lets you **Edit** (label, note, chronic flag, lab limits) or **Delete** a decision. Priority everywhere is: reviewer decision, then the value derived from the data, then the dictionary in `knowledge.js` (terminology), which is never changed. Decisions act on the chronic lists (Risk stratification, Multimorbidity burden, Readmission drivers), the first-line map (Treatment patterns, Medication sequence), the risky pairs (Polypharmacy, Co-prescription candidates) and lab abnormal limits (Lab ranges from the data, Risk stratification with data ranges), and are used from the next run without a restart. Routes: `GET/POST /api/overrides[?kind=]` and `DELETE /api/overrides/:id` (in `evidence.js`).
 
 ### Cohort knowledge graph (Analytics tab)
 **Build graph from cohort** reads the patients of the selected *Population / Batch* and the *active cohort* (optionally narrowed by sex and age) and draws what is actually in them: the most frequent conditions, drugs, labs / vitals and procedures as nodes, and a link whenever the same patients have both. Link types are neutral co-occurrence names (condition + condition, condition + drug, ...); lift, z and Jaccard say how far beyond chance, and the order / median gap say which concept is usually recorded first. They are associations in the data, not clinical claims.
@@ -160,10 +157,10 @@ The **Review suggestions** card in the Analytics tab lists what the data suggest
 - Patients are never shown as names; the projection uses the patient ids already visible in the Preprocessing explorer. Small cohorts (under 30 patients) get a warning because lift is unstable.
 
 ### Inpatient trajectory (generator option and analytic)
-Tick **Inpatient detail (for trajectory analytics)** in the generator (API option `inpatient`, default off; same seed without it gives the same bundle as before). Hospital stays then carry admit source, a coded principal diagnosis, timestamped in-stay orders, ICU-transfer and rapid-response child encounters and a discharge disposition (`summary.inpatient` counts them). The **Inpatient trajectory** analytic (V4 only, in `analytics-ext.js`) follows each stay through nine stages: Comorbidities, Diagnosis, Presentation, Initial plan, Medications, Procedures, Escalation, Advanced/recurrent, Disposition. Sections: `scope`, `nodes` (episodes per value), `ribbons` (episodes moving from one value to the next, top 40 pairs per step), `stage_check`, and `trace` (set `node_stage`, `node`, `direction` to follow one value forward or backward). Batches generated without the option run without error but show mostly `(none)`. In the Analytics tab, **Show trajectory view** draws the nodes and ribbons as a plain SVG: hover for counts, click a node or band to trace it (the form fields are filled and the analytic re-runs), **Clear trace** to reset. Counts only, no patient ids.
+Tick **Inpatient detail (for trajectory analytics)** in the generator (API option `inpatient`, default off; same seed without it gives the same bundle as before). Hospital stays then carry admit source, a coded principal diagnosis, timestamped in-stay orders, ICU-transfer and rapid-response child encounters and a discharge disposition (`summary.inpatient` counts them). The **Inpatient trajectory** analytic (V4 only, in `analytics.js` (analyticsExt)) follows each stay through nine stages: Comorbidities, Diagnosis, Presentation, Initial plan, Medications, Procedures, Escalation, Advanced/recurrent, Disposition. Sections: `scope`, `nodes` (episodes per value), `ribbons` (episodes moving from one value to the next, top 40 pairs per step), `stage_check`, and `trace` (set `node_stage`, `node`, `direction` to follow one value forward or backward). Batches generated without the option run without error but show mostly `(none)`. In the Analytics tab, **Show trajectory view** draws the nodes and ribbons as a plain SVG: hover for counts, click a node or band to trace it (the form fields are filled and the analytic re-runs), **Clear trace** to reset. Counts only, no patient ids.
 
 ### Disease module (diabetes, hypertension)
-The **Disease module** analytic (V4 only, in `analytics-ext.js`) takes one disease at a time (`disease`: type 2 diabetes or hypertension). *Controlled* = the latest control result in the 12 months before the as-of date is below the goal (HbA1c 7, systolic BP 140); no result in those 12 months = *untested* (a care gap, left out of the rates). The cohort counts equal the matching row of *Guideline adherence*. Sections: `cohort`; `overview` (age, sex, chronic conditions, drugs, ED visits and admissions per 100); one section per **pass** (age band, sex, comorbidity burden, regimen, testing frequency, guideline concordance, payer, income, social needs, adherence tier, CKD stage from eGFR; choose one with `pass`, default all) giving uncontrolled rate, lift over the cohort rate and `low_n` (under 30 tested); `regimen_adjusted` (regimens compared after standardizing by age band x burden); `projection` (pick `age_band` and `burden`: per regimen the matched patients with a Wilson 95% interval, \"too few matched\" under 30 tested); `candidates` (counts by age band of tested Metformin-only patients at or above `threshold`, default 8; no patient ids); `drivers` (single-factor, overlapping, not adjusted). Regimen, adherence, `regimen_adjusted`, `projection` and `candidates` are diabetes-only and left out for hypertension. **Caveats:** the generator links HbA1c to adherence and treatment, so adherence and regimen results restate its assumptions; regimen comparisons are confounded by indication; projection and candidates are associations among matched patients, **not** treatment recommendations. Counts only, no patient ids. A full run rebuilds every pass, so it takes seconds on 400 patients and much longer on thousands.
+The **Disease module** analytic (V4 only, in `analytics.js` (analyticsExt)) takes one disease at a time (`disease`: type 2 diabetes or hypertension). *Controlled* = the latest control result in the 12 months before the as-of date is below the goal (HbA1c 7, systolic BP 140); no result in those 12 months = *untested* (a care gap, left out of the rates). The cohort counts equal the matching row of *Guideline adherence*. Sections: `cohort`; `overview` (age, sex, chronic conditions, drugs, ED visits and admissions per 100); one section per **pass** (age band, sex, comorbidity burden, regimen, testing frequency, guideline concordance, payer, income, social needs, adherence tier, CKD stage from eGFR; choose one with `pass`, default all) giving uncontrolled rate, lift over the cohort rate and `low_n` (under 30 tested); `regimen_adjusted` (regimens compared after standardizing by age band x burden); `projection` (pick `age_band` and `burden`: per regimen the matched patients with a Wilson 95% interval, \"too few matched\" under 30 tested); `candidates` (counts by age band of tested Metformin-only patients at or above `threshold`, default 8; no patient ids); `drivers` (single-factor, overlapping, not adjusted). Regimen, adherence, `regimen_adjusted`, `projection` and `candidates` are diabetes-only and left out for hypertension. **Caveats:** the generator links HbA1c to adherence and treatment, so adherence and regimen results restate its assumptions; regimen comparisons are confounded by indication; projection and candidates are associations among matched patients, **not** treatment recommendations. Counts only, no patient ids. A full run rebuilds every pass, so it takes seconds on 400 patients and much longer on thousands.
 
 ### Navigation and layout
 The tabs follow the workflow: **Connect**, **Import data**, **Analytics**, **Dashboard**, **Notebook**; the two reference pages (**Architecture**, **Capabilities**) sit after a divider at the end. A badge in the header shows whether the database is reachable (click it to re-check). The Analytics page has a section bar (Cohorts, Data generator, Run analytics, Knowledge graph, Output) that scrolls to each part and follows your position.
@@ -172,7 +169,7 @@ The tabs follow the workflow: **Connect**, **Import data**, **Analytics**, **Das
 Every result in the **Output** section is drawn as a chart above its table, on by default (plain SVG, no library, client side only in `index.html`). The chart type follows the shape of the section: a year / month column gives a line chart (one line per group, up to 6), a label column with numbers gives horizontal bars (first 15 rows; the table keeps all of them), and an A vs B comparison gives grouped bars. When a section has several numeric columns a dropdown above the chart switches the measure. Kaplan-Meier and the inpatient trajectory view are drawn by default too. Sections with nothing sensible to plot (a single row, free text, ids) show only the table. Each run has **Hide charts** / **Hide tables** buttons, and the Output toolbar has **Hide all charts** / **Hide all tables**; the two kinds are independent, and a run keeps its own setting when the other global button is used.
 
 ### Testing
-- **`npm test`**: no database needed. Runs the self-tests of `evidence.js` (OpenRouter settings, question parser and explainer, templates, overrides, A vs B comparison), `terminology.js` (knowledge graph), `snomed-query.js` and `notebook.js` (scope resolution, hostile text stays inside its Python string, every code cell parses as Python).
+- **`npm test`**: no database needed. Runs the self-tests of `evidence.js` (OpenRouter settings, question parser and explainer, templates, overrides, A vs B comparison), `knowledge.js` (terminology) (knowledge graph), `knowledge.js` (snomedQuery) and `evidence.js` (notebook) (scope resolution, hostile text stays inside its Python string, every code cell parses as Python).
 - **`npm run smoke`** (server running, a batch imported; `BASE=http://host:port` to change the address): runs every analytic in every mode it offers, sending each parameter's catalog default (so analytics that need a drug or condition choice run too), then eight value checks that hold on any batch: tier shares add up to 100 (*High utilizers*, *Risk stratification*), the largest group in *Equity check* has ratio 1, the *Disease module* cohort arithmetic and pass totals, the *Disease module* cohort equals the diabetes row of *Guideline adherence*, every *Inpatient trajectory* stage covers all episodes, and the *Kaplan-Meier* curve never rises. A check whose data is missing (for example no inpatient detail) prints `skip`, not a failure. Exit code 1 on any failure.
 - **Same seed, same output:** the generator and every analytic are deterministic; generating the same seed and end date twice and running an analytic on each gives identical results (checked for the *Disease module*). Compare only batches generated with the same options (`messy`, `inpatient`).
 - A full smoke run takes several minutes on 400 patients because the *Disease module* and *Inpatient trajectory* rebuild their intermediate tables per section.
@@ -184,11 +181,13 @@ Clinically correlated, not random: age/sex-dependent chronic disease with comorb
 All 14 analytics x 3 modes ran without SQL errors on a 400-patient / ~40k-resource batch imported through `/api/import-fhir`; cohort scoping, batch-group scoping, parameter variants, `asOf` override, error responses and injection-style inputs were exercised; the UI was exercised in jsdom with no script errors.
 
 ### Caveats
-- Codes in `terminology.js` are representative demo codes; validate against a terminology server before real use.
+- Codes in `knowledge.js` (terminology) are representative demo codes; validate against a terminology server before real use.
 - Cohort `criteria_sql` is executed as raw SQL (existing design); do not expose this app without authentication.
 - Import runs one INSERT per resource (about 25 s per 1,000 synthetic patients).
 
-## Part 4: Extended Analytics (Python / Jupyter)
+## Part 4: Extended Analytics (Python / Jupyter) - hidden
+
+**This feature is hidden in the app.** For free-hand analysis use **Run analytics > Custom analytic in plain English**: an LLM writes one read-only query for the selected mode, you review it, and it runs as fixed SQL (deterministic once written, with the SQL shown in the Output). The notes below apply only if you re-enable the notebook feature (`ENABLE_NOTEBOOK=true` and remove the hiding CSS rule).
 
 The **Extended Analytics** tab generates a notebook for the data you are looking at, so anything the UI does not offer can be done in code.
 
@@ -205,7 +204,7 @@ The **Extended Analytics** tab generates a notebook for the data you are looking
 - **SNOMED builder query**: `SNOMED_FULL_QUERY` loads the builder's full query as a DataFrame; the builder's cohort criteria can be used as `CRITERIA_SQL`.
 - **Recipes** (each independent, parameters on its first lines): encounter volume / ED rate / length of stay, lab trend, comorbidity network, Kaplan-Meier with log-rank by sex, 30-day readmission model. The model recipe is a teaching example, not a validated risk score, and stops with a message when there are too few discharges.
 
-### Routes (`notebook.js`)
+### Routes (`evidence.js` (notebook))
 `GET /api/notebook/recipes`; `POST /api/notebook/preview` and `POST /api/notebook/download` with `{ batchId | batchGroup, cohortMode: 'active'|'none'|'id'|'snomed'|'custom', cohortId, criteriaSql, snomedQuery, recipes[] }`. User text (criteria, queries, batch names) is written into the notebook only as JSON-escaped Python string literals.
 
 ### Caveats
@@ -222,3 +221,57 @@ Open **Fetch from HAPI FHIR server**, choose how many patients (default 25, up t
 ## Import password
 
 Anything that adds data to the database (`POST /api/import-fhir`, `/api/init-schema`, `/api/ehr/fetch`, `/api/snomed/hierarchy/load`) is locked. Set `IMPORT_PASSWORD` in `.env` (on Render: an environment variable) and restart. Without it every import is refused with HTTP 503. The browser asks for the password once per tab and sends it in the `X-Import-Password` header; 10 wrong attempts from one address lock it for 5 minutes. Reading and analytics are not affected.
+
+## Sign-in and roles
+
+The whole app is behind a login. Anonymous visitors are sent to `/login`, and every `/api/*` call without a session is answered with HTTP 401 before its body is read.
+
+**First admin.** Add to `.env` (on Render: environment variables) and restart:
+
+```
+ADMIN_EMAIL=you@example.org
+ADMIN_PASSWORD=at-least-12-characters
+```
+
+The account is created on start if that email has none. Without any user, nobody can sign in (a warning is logged). **Locked out?** Set `ADMIN_RESET_PASSWORD=true` together with the two variables above, restart once, then remove it: the password is reset and all sessions of that admin are ended.
+
+**How it works.** Passwords are stored as scrypt hashes in the `users` table. A sign-in creates a row in `sessions` (only the SHA-256 of the token is stored) and an `HttpOnly`, `SameSite=Lax` cookie (`Secure` over HTTPS; on Render it is detected). Sessions last 12 hours (`SESSION_HOURS`). 8 wrong passwords from one address for one email block that pair for 15 minutes. State-changing requests whose `Origin` is another site are refused. The FHIR connector's loopback import still works (it uses its per-process token for `/api/import-fhir` only). The import password (above) stays as a second lock on imports.
+
+Routes: `GET /login`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/change-password`.
+
+**Roles.** Today there is one role, `admin`, with every permission. Roles live in the `ROLES` table at the top of `security.js` (auth); `users.role` holds the name, and a user whose role is not in the table has no access. To add a role later: add an entry to `ROLES` with its permissions, and (optionally) list the routes it may not use in `ROUTE_PERMISSIONS`, for example `['POST', /^\/api\/import-fhir$/, 'data:import']`. Routes not listed need only `app:access`. User management (creating more users from the UI) is not built yet.
+
+`AUTH_DISABLED=true` turns the gate off for local development only; it is ignored when `NODE_ENV=production`.
+
+## Audit log
+
+Admin-only **Audit log** tab (and `GET /api/audit`) showing who did what, when, from which IP, and whether it worked.
+
+**Recorded** (standard level): sign-in events (success, failure with reason, blocked, sign-out, password change, first-admin creation / reset); every data-changing request (FHIR import, schema init, EHR fetch, batch / batch-group delete, cohort create / update / delete / activate, overrides, templates, LLM settings, synthetic data, terminology load, notebook download); reads of **patient-level data** (patient explorer list and record, with the patient id from the query string, and the cohort graph's patient sample); every request that sends text or statistics to an **external AI model** (`/api/ai/*`, `/api/pico/*`); refused requests (HTTP 403, and anonymous attempts on the routes above); the audit log's own export and verify; server starts. Analytics runs, readiness checks and previews are not logged one by one. Set `AUDIT_LEVEL=verbose` to record every other `/api/` request too.
+
+**Never stored:** request bodies, passwords, API keys, tokens, cookies. Only a short whitelist of fields (batch id, batch group, cohort id, name, counts, number of resources in an import) and, for patient-data reads, the query string.
+
+**Tamper evidence.** The `audit_log` table is append-only: a database trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`. Each row also stores the SHA-256 of the previous row's hash plus its own fields, so **Verify integrity** (`GET /api/audit/verify`) finds an edited or removed row and names the first bad entry. A database superuser can disable the trigger and rewrite the whole chain, so this makes tampering visible, not impossible. Verify returns the newest entry's hash: write it down somewhere outside the database (or ship the CSV export to separate storage) if you also need to detect deletion of the newest entries. There is no retention purge; the table only grows (about one row per write action).
+
+**Reliability.** Events are queued and written in order after the response is sent, so a slow database does not slow requests. If the database is down an event is lost and an error is logged; the queue holds 2,000 events. On SIGTERM / SIGINT the queue is flushed first (5 seconds at most).
+
+**Viewing.** Filters: date range, person, action (prefix, e.g. `phi.`), outcome, free-text search. Newest first, 100 per page. **Export CSV** applies the same filters (up to 100,000 rows; cells starting with `=`, `+`, `-` or `@` are prefixed so spreadsheets do not run them as formulas). Routes: `GET /api/audit`, `/api/audit/facets`, `/api/audit/export.csv`, `/api/audit/verify`. They need the permission `audit:read` (admin has every permission; for a future role, grant it explicitly in `ROLES`).
+
+
+## Data-use and read-only safeguards
+
+**Data-use notice.** Only import data that is consented, de-identified and ethically approved (IRB / ethics committee or equivalent). The Import data tab shows this notice and keeps "Extract and normalize" disabled until the confirmation box is ticked; the EHR "Fetch & Import" button checks the same box.
+
+**Read-only SQL.** Cohort criteria are raw SQL, so they are protected twice:
+
+1. `security.js` (sqlGuard) accepts only a single read-only WHERE expression (no `;`, comments, DDL / writes, file or sleep functions, or the `users` / `sessions` / `audit_log` / `app_settings` tables). It runs when a cohort is saved and again every time stored criteria are used.
+2. Cohort SQL, analytics, the knowledge graph, readiness and the patient explorer run on a separate **SELECT-only database connection**. Create the role with `db-readonly.sql`, then set:
+
+```
+DATABASE_READONLY_URL=postgres://vibe_readonly:<password>@<host>:5432/<db>
+REQUIRE_READONLY=true      # refuse to start if that connection could write
+```
+
+Without `DATABASE_READONLY_URL` the app falls back to the read/write connection and logs `READ-ONLY CHECK FAILED` at start-up. Imports, schema set-up, cohort bookkeeping, sign-in and the audit log still use the normal `DATABASE_URL`.
+
+**Notebook (hidden).** The Notebook tab, its panel and the "Use in Python" shortcut of the SNOMED builder are hidden, and `/api/notebook/*` is not registered unless `ENABLE_NOTEBOOK=true` is set. The code is still in `index.html` and `evidence.js` (notebook); to bring the feature back, set that variable and delete the one CSS rule marked "Notebook feature is hidden" in `index.html`.
