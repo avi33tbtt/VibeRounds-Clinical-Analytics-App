@@ -260,7 +260,7 @@ function makeFlusher(job, importUrl) {
   let buf = [], chain = Promise.resolve();
   const send = part => { chain = chain.then(async () => {
     job.phase = 'importing';
-    const r = await fetch(importUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: job.batchId, bundle: { resourceType: 'Bundle', type: 'collection', entry: part } }) });
+    const r = await fetch(importUrl, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, job.importHeaders || {}), body: JSON.stringify({ batchId: job.batchId, bundle: { resourceType: 'Bundle', type: 'collection', entry: part } }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.success) throw httpErr(502, `Import failed: ${j.details || j.error || r.status}`);
     job.batchSuffix = j.batchSuffix; job.imported += part.length; job.phase = 'fetching';
@@ -401,7 +401,7 @@ async function runJob(job, opts) {
 }
 
 // ---- Express wiring -----------------------------------------------------------------------------------------
-function register(app, pool, { port }) {
+function register(app, pool, { port, importToken }) {
   const json = require('express').json({ limit: '1mb' });
   const fail = (res, err) => res.status(err.status >= 400 && err.status < 600 ? err.status : 500).json({ success: false, error: err.message });
 
@@ -429,6 +429,7 @@ function register(app, pool, { port }) {
       const client = makeClient(b.connection), source = normalizeSource(b.source), queries = buildQueries(b.queryProfile, b.queryOverrides);
       if ([...JOBS.values()].some(j => j.status === 'running')) throw httpErr(409, 'Another fetch is still running');
       const job = newJob(batchId, { server: client.host, sourceType: source.type });
+      if (importToken) Object.defineProperty(job, 'importHeaders', { value: { 'X-Import-Token': importToken }, enumerable: false });   // loopback import passes the server's lock
       runJob(job, { client, resources, maxPatients, source, queries, importUrl: `http://127.0.0.1:${port}/api/import-fhir` });
       res.json({ success: true, jobId: job.id });
     } catch (err) { fail(res, err); }

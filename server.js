@@ -37,8 +37,35 @@ const safeJson = (o) => JSON.stringify(o).replace(/\\u0000/g, '');
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, X-Import-Password');
   next();
+});
+
+// Password lock for anything that imports data into the database. The password is IMPORT_PASSWORD (.env / Render env var).
+// Fail closed: with no IMPORT_PASSWORD set, imports are refused. It runs BEFORE the body parser, so an unauthenticated
+// request never has its (up to 10 GB) body read. The client sends it in the X-Import-Password header. The FHIR connector
+// imports through this same server over loopback, so it presents a per-process random token instead of the password.
+const crypto = require('crypto');
+const IMPORT_TOKEN = crypto.randomBytes(32).toString('hex');
+app.locals.importToken = IMPORT_TOKEN;
+const IMPORT_GATED = new Set(['/api/import-fhir', '/api/init-schema', '/api/ehr/fetch', '/api/snomed/hierarchy/load']);
+const sha = v => crypto.createHash('sha256').update(String(v)).digest();
+const sameSecret = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
+const importFails = new Map();   // ip -> { n, until }: 10 wrong passwords locks that address for 5 minutes
+app.use((req, res, next) => {
+  if (req.method !== 'POST' || !IMPORT_GATED.has(req.path)) return next();
+  const expected = process.env.IMPORT_PASSWORD;
+  if (!expected) return res.status(503).json({ success: false, error: 'Imports are locked: set IMPORT_PASSWORD on the server and restart.' });
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || '?';
+  const tok = req.get('x-import-token');
+  if (tok && sameSecret(tok, IMPORT_TOKEN)) return next();
+  const f = importFails.get(ip);
+  if (f && f.until > Date.now()) return res.status(429).json({ success: false, error: 'Too many wrong passwords. Try again in a few minutes.' });
+  const given = req.get('x-import-password');
+  if (given && sameSecret(given, expected)) { importFails.delete(ip); return next(); }
+  const n = ((f && f.until <= Date.now() ? 0 : f && f.n) || 0) + 1;
+  importFails.set(ip, { n, until: n >= 10 ? Date.now() + 5 * 60 * 1000 : 0 });
+  return res.status(401).json({ success: false, code: 'IMPORT_PASSWORD_REQUIRED', error: given ? 'Wrong import password.' : 'Import password required.' });
 });
 
 // Parse JSON bodies
@@ -1198,7 +1225,7 @@ require('./snomed-query')(app, pool, { sanitizeBatchId });
 require('./notebook')(app, pool, { sanitizeBatchId });
 
 // Fetch patients from Epic / Oracle Health / any FHIR server into a batch (Analytics tab)
-require('./fhir-connect')(app, pool, { port });
+require('./fhir-connect')(app, pool, { port, importToken: IMPORT_TOKEN });
 
 // Serve static files from the current directory (for the web interface) - after API routes
 const path = require('path');

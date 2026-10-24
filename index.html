@@ -2209,6 +2209,29 @@ conn.close()
                     <div id="ehrStatus" class="status-output" style="margin-top:10px; min-height:20px; white-space:pre-wrap;"></div>
                 </details>
                 <script>
+// Import password lock: POSTs that write data to the database need the import password. It is asked once per browser tab
+// (kept in sessionStorage, never in the page or the server logs) and sent in the X-Import-Password header.
+(function () {
+    const GATED = ['/api/import-fhir', '/api/init-schema', '/api/ehr/fetch', '/api/snomed/hierarchy/load'];
+    const KEY = 'vrImportPw', realFetch = window.fetch.bind(window);
+    const gated = (url, opts) => { try { return String((opts && opts.method) || 'GET').toUpperCase() === 'POST' && GATED.includes(new URL(typeof url === 'string' ? url : url.url, location.href).pathname); } catch (e) { return false; } };
+    const get = () => { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } };
+    const set = v => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) {} };
+    window.vrImportLock = () => set('');
+    window.fetch = async function (url, opts) {
+        if (!gated(url, opts)) return realFetch(url, opts);
+        for (let attempt = 0; attempt < 3; attempt++) {
+            let pw = get();
+            if (!pw) { pw = window.prompt(attempt ? 'Wrong password. Import password:' : 'Import password (required to add data to the database):'); if (!pw) return new Response(JSON.stringify({ success: false, error: 'Import cancelled: no password entered.' }), { status: 401, headers: { 'Content-Type': 'application/json' } }); set(pw); }
+            const r = await realFetch(url, Object.assign({}, opts, { headers: Object.assign({}, (opts && opts.headers) || {}, { 'X-Import-Password': pw }) }));
+            if (r.status !== 401) return r;
+            set('');
+        }
+        return new Response(JSON.stringify({ success: false, error: 'Wrong import password.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    };
+})();
+</script>
+<script>
                 const EHR = { job: null, timer: null, presets: [] };
                 const ehrEl = id => document.getElementById(id);
                 function ehrShowAuth() {
@@ -2853,6 +2876,20 @@ conn.close()
                 function rdDownload() { if (RD.last && typeof vrDownloadJSON === 'function') vrDownloadJSON('analytics_readiness', RD.last, 'Analytics readiness'); }
                 </script>
 
+                        <details id="anLlmBox" style="margin-top:30px; padding:8px 12px;  border-radius:6px; font-size:13px;">
+                            <summary style="cursor:pointer; font-weight:bold;">AI settings (OpenRouter) <span id="anLlmSummary" class="an-muted"></span></summary>
+                            <p class="an-muted" style="margin:8px 0;">Used only to turn a typed question into the PICO/PECO form. The model never sees patient data and never writes SQL. The key is kept on the server (saved in this database as plain text: fine for a local demo; on a shared server use <code>.env</code>) and is never shown again. Do not expose this app without authentication.</p>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">API key (leave blank to keep the saved key)
+                                    <input id="anLlmKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-or-..." style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
+                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">Model (openrouter.ai/models)
+                                    <input id="anLlmModel" type="text" spellcheck="false" placeholder="provider/model-name" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
+                                <button id="anLlmSave" class="btn-secondary" onclick="saveLlmSettings()">Save</button>
+                                <button id="anLlmTest" class="btn-secondary" onclick="testLlm()">Test connection</button>
+                            </div>
+                            <div id="anLlmStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
+                        </details>
+
                 <details class="an-collapse analytics-section" id="anRun" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Run analytics</h3></summary>
                     
                     <!-- Mode Selector -->
@@ -2883,19 +2920,6 @@ conn.close()
                         <h4 style=" margin-top:0;">Analytics catalog</h4>
                         <p style=" font-size:13px;">Every analytic runs in V1 (text), V3 (codes) and V4 (codes + time) on the population selected in "Population / Batch" above, always restricted to the active cohort (activate a different one under "Existing Cohorts").</p>
                         <p id="anActiveCohort" style="font-size:13px; margin:6px 0 0 0; "></p>
-                        <details id="anLlmBox" style="margin-top:10px; padding:8px 12px;  border-radius:6px; font-size:13px;">
-                            <summary style="cursor:pointer; font-weight:bold;">AI settings (OpenRouter) <span id="anLlmSummary" class="an-muted"></span></summary>
-                            <p class="an-muted" style="margin:8px 0;">Used only to turn a typed question into the PICO/PECO form. The model never sees patient data and never writes SQL. The key is kept on the server (saved in this database as plain text: fine for a local demo; on a shared server use <code>.env</code>) and is never shown again. Do not expose this app without authentication.</p>
-                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">API key (leave blank to keep the saved key)
-                                    <input id="anLlmKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-or-..." style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
-                                <label style="display:flex; flex-direction:column; gap:3px; font-size:12px; ">Model (openrouter.ai/models)
-                                    <input id="anLlmModel" type="text" spellcheck="false" placeholder="provider/model-name" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"></label>
-                                <button id="anLlmSave" class="btn-secondary" onclick="saveLlmSettings()">Save</button>
-                                <button id="anLlmTest" class="btn-secondary" onclick="testLlm()">Test connection</button>
-                            </div>
-                            <div id="anLlmStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
-                        </details>
                         <div style="margin-top:10px;"><select id="anSelect" style="width:100%; padding:10px;  border-radius:6px; font-size:14px;"></select></div>
                         <p id="anDesc" style="font-size:13px; "></p>
                         <div id="anAskBox" style="display:none; margin-bottom:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
