@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node evidence.js --selftest && node terminology.js --selftest && node snomed-query.js --selftest && node notebook.js --selftest && node kg-cohort.js --selftest",
+    "test": "node evidence.js --selftest && node terminology.js --selftest && node snomed-query.js --selftest && node notebook.js --selftest && node kg-cohort.js --selftest && node fhir-connect.js --selftest && node readiness.js --selftest && node patient-explorer.js --selftest",
     "smoke": "node evidence.js --smoke"
   },
   "engines": {

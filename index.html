@@ -2133,7 +2133,7 @@ conn.close()
             
             
 <nav class="sub-nav" aria-label="Analytics sections">
-                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#outputSection">Output</a>
+                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anEhr">Connect to FHIR</a><a href="#anExplorer">Patient explorer</a><a href="#anReady">Readiness</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#outputSection">Output</a>
             </nav>
 <!-- Population and cohorts Section -->
             <div class="analytics-section" id="anCohorts">
@@ -2158,6 +2158,135 @@ conn.close()
                     </div>
                     <div id="synStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
                 </details>
+
+                <!-- Connect to a FHIR server (HAPI, Epic, Oracle Health, any R4 server) -->
+                <details class="an-collapse analytics-section" id="anEhr" style="margin-bottom:20px;">
+                    <summary class="an-sum"><h3 style="display:inline; margin:0;">Connect to a FHIR server</h3></summary>
+                    <p style="font-size:13px;">Reads patients and their conditions, observations, medications, encounters, procedures, allergies and immunizations from any FHIR R4 server (open test servers, Epic, Oracle Health, Medplum, cloud FHIR stores...) and saves them as a batch exactly like an imported file. Select the batch in "Population / Batch" afterwards. Logins and keys are used only for this request and are never saved. <b>Production servers return real patient data that will be stored in your database: only do that when you are authorized and your deployment is secured. For demos use the sandboxes.</b></p>
+                    <div class="an-params">
+                        <label>Server preset<br><select id="ehrPreset" onchange="ehrApplyPreset()"></select></label>
+                        <label style="min-width:340px;">Server URL (FHIR base)<br><input type="text" id="ehrUrl" placeholder="https://.../R4" style="width:100%"></label>
+                        <label>Login<br><select id="ehrAuth" onchange="ehrShowAuth()">
+                            <option value="none">None (open server)</option><option value="bearer">Access token</option><option value="basic">Username / password</option>
+                            <option value="client_secret">OAuth2 client credentials (secret)</option><option value="private_key_jwt">SMART Backend Services (private key)</option><option value="headers">Custom headers / API key</option></select></label>
+                    </div>
+                    <div id="ehrNote" style="font-size:12px; margin:6px 0; opacity:.8;"></div>
+                    <div class="an-params" id="ehrAuthBox">
+                        <label class="ehr-f" data-for="bearer">Access token<br><input type="password" id="ehrToken" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="basic">Username<br><input type="text" id="ehrUser" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="basic">Password<br><input type="password" id="ehrPass" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="client_secret private_key_jwt">Client id<br><input type="text" id="ehrCid" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="client_secret">Client secret<br><input type="password" id="ehrSecret" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="client_secret">Send credentials<br><select id="ehrClientAuth"><option value="basic">In Authorization header</option><option value="post">In request body</option></select></label>
+                        <label class="ehr-f" data-for="client_secret private_key_jwt" style="min-width:300px;">Token URL (empty = discover from server)<br><input type="text" id="ehrTokenUrl" style="width:100%"></label>
+                        <label class="ehr-f" data-for="client_secret private_key_jwt">Scope (optional)<br><input type="text" id="ehrScope" placeholder="system/*.read"></label>
+                        <label class="ehr-f" data-for="private_key_jwt">Signing algorithm<br><select id="ehrAlg"><option>RS384</option><option>RS256</option><option>RS512</option><option>ES384</option><option>ES256</option><option>ES512</option></select></label>
+                        <label class="ehr-f" data-for="private_key_jwt">Key id (kid)<br><input type="text" id="ehrKid" autocomplete="off"></label>
+                        <label class="ehr-f" data-for="private_key_jwt" style="min-width:340px;">Private key (PEM)<br><textarea id="ehrKey" rows="4" style="width:100%; font-family:monospace; font-size:11px;" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+                            <input type="file" accept=".pem,.key,.txt" onchange="ehrLoadKey(this)"></label>
+                        <label class="ehr-f" data-for="headers basic bearer client_secret private_key_jwt" style="min-width:300px;">Extra headers, one "Name: value" per line (optional)<br><textarea id="ehrHdrs" rows="2" style="width:100%; font-family:monospace; font-size:11px;"></textarea></label>
+                    </div>
+                    <div class="an-params" style="margin-top:8px;">
+                        <label>Which patients<br><select id="ehrSrc" onchange="ehrShowSrc()">
+                            <option value="list">First N patients (search)</option><option value="ids">Specific patient ids</option>
+                            <option value="group">Members of a Group</option><option value="bulk">Bulk export ($export)</option></select></label>
+                        <label>Number of patients<br><input type="number" id="ehrMax" value="25" min="1" max="2000"></label>
+                        <label>Batch name<br><input type="text" id="ehrBatch" value="fhir_fetch_1"></label>
+                        <label class="ehr-s" data-for="list" style="min-width:260px;">Extra patient search (optional)<br><input type="text" id="ehrPq" placeholder="family=Smith&amp;_lastUpdated=gt2024-01-01" style="width:100%"></label>
+                        <label class="ehr-s" data-for="ids" style="min-width:300px;">Patient ids (comma, space or new line)<br><textarea id="ehrIds" rows="2" style="width:100%"></textarea></label>
+                        <label class="ehr-s" data-for="group bulk">Group id<span class="ehr-s" data-for="bulk"> (empty = all patients)</span><br><input type="text" id="ehrGroup"></label>
+                    </div>
+                    <div style="margin-top:8px; font-size:13px;" id="ehrRes"></div>
+                    <details style="margin-top:8px; font-size:13px;"><summary>Advanced search settings</summary>
+                        <label>Search style<br><select id="ehrQP"><option value="default">Standard</option><option value="strict">Strict (servers that require an Observation category: Epic, Oracle Health)</option></select></label>
+                        <label style="display:block; margin-top:6px;">Search overrides (JSON, optional)<br><textarea id="ehrQ" rows="3" style="width:100%; font-family:monospace; font-size:11px;" placeholder='{"Observation": [{"category": "laboratory"}, {"category": "vital-signs"}], "Procedure": [{"date": "ge2020-01-01"}]}'></textarea></label>
+                    </details>
+                    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                        <button class="btn-secondary" id="ehrTestBtn" onclick="ehrTest()">Test connection</button>
+                        <button class="btn-primary" id="ehrFetchBtn" onclick="ehrFetch()">Fetch &amp; Import as Batch</button>
+                        <button class="btn-secondary" id="ehrCancelBtn" onclick="ehrCancel()" disabled>Cancel</button>
+                    </div>
+                    <div id="ehrStatus" class="status-output" style="margin-top:10px; min-height:20px; white-space:pre-wrap;"></div>
+                </details>
+                <script>
+                const EHR = { job: null, timer: null, presets: [] };
+                const ehrEl = id => document.getElementById(id);
+                function ehrShowAuth() {
+                    const t = ehrEl('ehrAuth').value;
+                    document.querySelectorAll('#ehrAuthBox .ehr-f').forEach(x => { x.style.display = x.dataset.for.split(' ').includes(t) ? '' : 'none'; });
+                }
+                function ehrShowSrc() {
+                    const t = ehrEl('ehrSrc').value;
+                    document.querySelectorAll('.ehr-s').forEach(x => { x.style.display = x.dataset.for.split(' ').includes(t) ? '' : 'none'; });
+                    ehrEl('ehrMax').title = t === 'bulk' ? 'Only the first N patients of the export are kept' : '';
+                }
+                function ehrApplyPreset() {
+                    const p = EHR.presets.find(x => x.id === ehrEl('ehrPreset').value); if (!p) return;
+                    ehrEl('ehrUrl').value = p.baseUrl || ''; ehrEl('ehrAuth').value = p.auth || 'none'; ehrEl('ehrSrc').value = p.source || 'list';
+                    ehrEl('ehrQP').value = p.queryProfile || 'default'; if (p.alg) ehrEl('ehrAlg').value = p.alg; if (p.ids !== undefined) ehrEl('ehrIds').value = p.ids;
+                    ehrEl('ehrNote').textContent = p.note || ''; ehrShowAuth(); ehrShowSrc();
+                }
+                function ehrLoadKey(inp) {
+                    const f = inp.files && inp.files[0]; if (!f) return;
+                    const r = new FileReader(); r.onload = () => { ehrEl('ehrKey').value = String(r.result); inp.value = ''; }; r.readAsText(f);   // read in the browser, sent only with the request
+                }
+                function ehrHeaders() {
+                    const h = {};
+                    ehrEl('ehrHdrs').value.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => { const i = l.indexOf(':'); if (i > 0) h[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
+                    return h;
+                }
+                function ehrConn() {
+                    return { baseUrl: ehrEl('ehrUrl').value.trim(), auth: { type: ehrEl('ehrAuth').value, token: ehrEl('ehrToken').value, username: ehrEl('ehrUser').value, password: ehrEl('ehrPass').value,
+                        clientId: ehrEl('ehrCid').value, clientSecret: ehrEl('ehrSecret').value, clientAuth: ehrEl('ehrClientAuth').value, tokenUrl: ehrEl('ehrTokenUrl').value, scope: ehrEl('ehrScope').value,
+                        alg: ehrEl('ehrAlg').value, kid: ehrEl('ehrKid').value, privateKey: ehrEl('ehrKey').value, headers: ehrHeaders() } };
+                }
+                async function ehrInit() {
+                    try {
+                        const r = await (await fetch('/api/ehr/info')).json();
+                        EHR.presets = r.presets || []; ehrEl('ehrMax').max = r.maxPatients;
+                        ehrEl('ehrPreset').innerHTML = EHR.presets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                        ehrEl('ehrRes').innerHTML = 'Include: ' + r.resources.map(x => `<label style="margin-right:12px"><input type="checkbox" class="ehrResChk" value="${x}" checked> ${x}</label>`).join('');
+                        ehrApplyPreset();
+                    } catch (e) { ehrEl('ehrStatus').textContent = 'Could not load settings: ' + e.message; }
+                }
+                async function ehrTest() {
+                    const st = ehrEl('ehrStatus'); st.className = 'status-output info'; st.textContent = 'Testing...';
+                    try {
+                        const r = await anPost('/api/ehr/test', { connection: ehrConn() }); if (!r.success) throw new Error(r.error);
+                        st.className = 'status-output success';
+                        st.textContent = `Connected to ${r.host}. FHIR ${r.fhirVersion || '?'}${r.software ? ', ' + r.software : ''}${r.authenticated ? ', login accepted' : ''}.` +
+                            (r.listPatients ? '' : '\nThis server does not allow listing patients without search parameters: use "Specific patient ids", a Group, or Bulk export.');
+                    } catch (e) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function ehrFetch() {
+                    const st = ehrEl('ehrStatus');
+                    try {
+                        st.className = 'status-output info'; st.textContent = 'Starting...';
+                        const r = await anPost('/api/ehr/fetch', { connection: ehrConn(), batchId: ehrEl('ehrBatch').value.trim(), maxPatients: Number(ehrEl('ehrMax').value) || 25,
+                            source: { type: ehrEl('ehrSrc').value, ids: ehrEl('ehrIds').value, groupId: ehrEl('ehrGroup').value.trim(), patientQuery: ehrEl('ehrPq').value },
+                            queryProfile: ehrEl('ehrQP').value, queryOverrides: ehrEl('ehrQ').value,
+                            resources: [...document.querySelectorAll('.ehrResChk:checked')].map(x => x.value) });
+                        if (!r.success) throw new Error(r.error);
+                        EHR.job = r.jobId; ehrEl('ehrFetchBtn').disabled = true; ehrEl('ehrCancelBtn').disabled = false; EHR.timer = setInterval(ehrPoll, 1500); ehrPoll();
+                    } catch (e) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function ehrPoll() {
+                    const st = ehrEl('ehrStatus');
+                    try {
+                        const j = (await (await fetch('/api/ehr/jobs/' + EHR.job)).json()).job, res = Object.entries(j.resources).map(([k, n]) => `${k} ${n}`).join(', ');
+                        const warn = j.errors.length ? `\nWarnings (${j.errors.length}): ${j.errors.slice(0, 3).join(' | ')}` : '';
+                        st.className = 'status-output info';
+                        st.textContent = `${j.server || ''} - ${j.phase}: ${j.patientsDone}/${j.patientsTotal} patients, ${j.imported.toLocaleString()} resources imported (${res || 'none yet'}) ${j.seconds}s` + warn;
+                        if (j.status === 'running') return;
+                        clearInterval(EHR.timer); ehrEl('ehrFetchBtn').disabled = false; ehrEl('ehrCancelBtn').disabled = true;
+                        st.className = 'status-output ' + (j.status === 'done' ? 'success' : 'error');
+                        st.textContent = (j.message || j.status) + warn + (j.status === 'done' ? '\nSelect it in "Population / Batch" and run analytics.' : '');
+                        if (j.batchSuffix) { if (typeof loadCohortBatches === 'function') await loadCohortBatches(); const sel = ehrEl('cohortBatchSelector'); const o = sel && [...sel.options].find(x => x.value === j.batchSuffix); if (o) sel.value = o.value; if (typeof reloadCatalogUI === 'function') reloadCatalogUI(true); }
+                    } catch (e) { clearInterval(EHR.timer); ehrEl('ehrFetchBtn').disabled = false; st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function ehrCancel() { try { await anPost('/api/ehr/jobs/' + EHR.job + '/cancel', {}); } catch (e) { /* polling shows the result */ } }
+                document.addEventListener('DOMContentLoaded', ehrInit);
+                </script>
 
                 <!-- Step 1: Select Population/Batch -->
                 <details class="an-collapse" style="margin-bottom:20px; padding:15px;  border-radius:8px; ">
@@ -2220,8 +2349,511 @@ conn.close()
                 </div>
                 
                 <!-- Clinical Analytics Section -->
-                <div class="analytics-section" id="anRun" style="margin-top:30px;">
-                    <h3>Run analytics</h3>
+                <!-- Patient data explorer -->
+                <style>
+                #anExplorer { scroll-margin-top: 150px; }
+                #anExplorer .pe-row { cursor: pointer; }
+                #anExplorer .pe-row:hover td, #anExplorer .pe-row:focus td { background: var(--green-l); }
+                #anExplorer .pe-row:focus { outline: 2px solid var(--green-d); outline-offset: -2px; }
+                #anExplorer .pe-chip { display: inline-block; padding: 3px 10px; margin: 0 6px 6px 0; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; background: #fff; }
+                #anExplorer .pe-chip b { font-weight: 600; }
+                #anExplorer .pe-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 10px; }
+                #anExplorer .pe-tab { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; color: var(--ink-2); }
+                #anExplorer .pe-tab.on { background: var(--green-l); color: var(--green-d); border-color: var(--green-d); font-weight: 600; }
+                #anExplorer .pe-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-top: 14px; background: #fff; }
+                #anExplorer .pe-flag-high { color: #c62828; font-weight: 600; } #anExplorer .pe-flag-low { color: #1565c0; font-weight: 600; } #anExplorer .pe-flag-abnormal { color: #ef6c00; font-weight: 600; }
+                #anExplorer .pe-year { margin: 14px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+                #anExplorer .pe-ev { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 13px; align-items: baseline; }
+                #anExplorer .pe-ev .d { flex: 0 0 82px; color: var(--muted); font-variant-numeric: tabular-nums; }
+                #anExplorer .pe-ev .k { flex: 0 0 96px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+                #anExplorer .pe-ev .k.condition { color: #6a1b9a; } #anExplorer .pe-ev .k.medication { color: #2e7d32; } #anExplorer .pe-ev .k.lab { color: #c62828; }
+                #anExplorer .pe-ev .k.procedure { color: #1565c0; } #anExplorer .pe-ev .k.encounter { color: #455a64; } #anExplorer .pe-ev .k.vaccine { color: #00838f; }
+                #anExplorer .pe-note { font-size: 12px; color: var(--muted); }
+                #anExplorer .pa-sec { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 12px; background: #fff; }
+                #anExplorer .pa-sec h4 { margin: 0 0 8px; font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+                #anExplorer .pa-nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+                #anExplorer .pa-node { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; background: #fafafa; max-width: 100%; }
+                #anExplorer .pa-node.med { border-left: 4px solid #2e7d32; } #anExplorer .pa-node.lab { border-left: 4px solid #c62828; flex: 1 1 100%; }
+                #anExplorer .pa-node .nm { font-weight: 600; } #anExplorer .pa-node .x { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--green-l); color: var(--green-d); font-weight: 700; font-size: 11.5px; }
+                #anExplorer .pa-vals { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
+                #anExplorer .pa-val { padding: 1px 7px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+                #anExplorer .pa-val.f-high { border-color: #c62828; } #anExplorer .pa-val.f-low { border-color: #1565c0; } #anExplorer .pa-val.f-abnormal { border-color: #ef6c00; }
+                #anExplorer .px-ctl { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; font-size: 12.5px; }
+                #anExplorer .px-ctl select { min-width: 280px; max-width: 100%; }
+                #anExplorer .px-chk { display: flex; gap: 6px; align-items: center; }
+                #anExplorer .px-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+                #anExplorer .px-card { display: flex; flex-direction: column; text-align: left; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; font: inherit; }
+                #anExplorer .px-card:hover { background: var(--green-l); } #anExplorer .px-card.on { border-color: var(--green-d); background: var(--green-l); }
+                #anExplorer .px-card.off { opacity: .5; cursor: default; }
+                #anExplorer .px-n { font-size: 20px; font-weight: 700; line-height: 1.1; } #anExplorer .px-h { font-size: 12.5px; font-weight: 600; } #anExplorer .px-s { font-size: 11px; color: var(--muted); min-height: 13px; }
+                #anExplorer .px-labels { flex: 0 0 128px; border-right: 1px solid var(--line); background: #fafbfa; border-radius: 8px 0 0 8px; }
+                #anExplorer .px-lane { display: flex; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); border-top: 1px solid #cfd6d2; box-sizing: border-box; }
+                #anExplorer .px-zoom { margin-left: auto; font-size: 12px; display: inline-flex; gap: 4px; align-items: center; }
+                #anExplorer .px-det { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: #fff; }
+                #anExplorer pre.pe-raw { max-height: 420px; overflow: auto; font-size: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fafafa; }
+                </style>
+                <details class="an-collapse analytics-section" id="anExplorer" style="margin-top:30px;" ontoggle="if (this.open) peFirstOpen()"><summary class="an-sum"><h3 style="display:inline; margin:0;">Patient data explorer</h3></summary>
+                    <p style="font-size:13px;">Browse the patients in the selected Population / Batch (and active cohort) and open any one to see everything imported for them: conditions, medications, labs and vitals (with abnormal flags and trends), procedures, encounters, allergies, vaccines and the raw FHIR record. Read-only. After you change the population or cohort above, press Search to refresh.</p>
+                    <div class="an-params">
+                        <label>Patient id or name<br><input type="text" id="peQ" placeholder="e.g. syn42-p17" onkeydown="if (event.key === 'Enter') peSearch(true)"></label>
+                        <label>Has condition / drug / lab / procedure<br><input type="text" id="peConcept" placeholder="name or code, e.g. diabet or 73211009" onkeydown="if (event.key === 'Enter') peSearch(true)"></label>
+                        <label>Gender<br><select id="peGender"><option value="">any</option><option value="female">female</option><option value="male">male</option><option value="other">other</option><option value="unknown">unknown</option></select></label>
+                        <label>Age from<br><input type="number" id="peAgeMin" min="0" max="130" style="width:80px;"></label>
+                        <label>Age to<br><input type="number" id="peAgeMax" min="0" max="130" style="width:80px;"></label>
+                        <label>Sort<br><select id="peSort"><option value="id">patient id</option><option value="age_desc">oldest first</option><option value="age_asc">youngest first</option></select></label>
+                        <label>Per page<br><select id="peLimit"><option>25</option><option>50</option><option>100</option></select></label>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                        <button class="btn-primary" id="peSearchBtn" onclick="peSearch(true)">Search</button>
+                        <button class="btn-secondary" onclick="peClear()">Clear filters</button>
+                    </div>
+                    <div id="peStatus" class="status-output" style="margin-top:10px; min-height:20px;" aria-live="polite"></div>
+                    <div id="peList" style="margin-top:8px; overflow-x:auto;"></div>
+                    <div id="pePager" style="margin-top:8px; display:none; align-items:center; gap:10px; font-size:13px;">
+                        <button class="btn-secondary" id="pePrev" onclick="pePage(-1)">Previous</button>
+                        <span id="pePageInfo"></span>
+                        <button class="btn-secondary" id="peNext" onclick="pePage(1)">Next</button>
+                    </div>
+                    <div id="peDetail" class="pe-card" style="display:none;"></div>
+                </details>
+                <script>
+                const PE = { offset: 0, total: 0, limit: 25, opened: false, tok: 0, rec: null, tab: 'timeline', labsAbnOnly: false };
+                const peEl = id => document.getElementById(id);
+                const peFlagTxt = { high: '▲ high', low: '▼ low', abnormal: '! abnormal' };
+                function peFirstOpen() { if (!PE.opened) { PE.opened = true; peSearch(true); } }
+                function peClear() {
+                    ['peQ', 'peConcept', 'peAgeMin', 'peAgeMax'].forEach(i => { peEl(i).value = ''; }); peEl('peGender').value = ''; peEl('peSort').value = 'id';
+                    peSearch(true);
+                }
+                function peQuery() {
+                    const s = anScope(), p = new URLSearchParams();
+                    if (s.batchId) p.set('batchId', s.batchId); if (s.batchGroup) p.set('batchGroup', s.batchGroup);
+                    const f = { q: peEl('peQ').value.trim(), concept: peEl('peConcept').value.trim(), gender: peEl('peGender').value, ageMin: peEl('peAgeMin').value, ageMax: peEl('peAgeMax').value, sort: peEl('peSort').value };
+                    Object.entries(f).forEach(([k, v]) => { if (v !== '') p.set(k, v); });
+                    return p;
+                }
+                async function peSearch(reset) {
+                    const st = peEl('peStatus'), tok = ++PE.tok;
+                    if (reset) PE.offset = 0;
+                    PE.limit = Number(peEl('peLimit').value) || 25;
+                    st.className = 'status-output info'; st.textContent = 'Loading patients...'; peEl('peSearchBtn').disabled = true;
+                    try {
+                        const p = peQuery(); p.set('limit', PE.limit); p.set('offset', PE.offset);
+                        const r = await (await fetch('/api/explorer/patients?' + p)).json();
+                        if (tok !== PE.tok) return;
+                        if (!r.success) throw new Error(r.details || r.error);
+                        PE.total = r.total; peRenderList(r);
+                        const sc = r.scope, bits = [`${sc.patients.toLocaleString()} patients in scope`, sc.cohort ? `cohort "${sc.cohort.name}"` : 'no cohort', `as of ${sc.asOf}`];
+                        st.className = 'status-output success'; st.textContent = `${r.total.toLocaleString()} matching · ${bits.join(' · ')}`;
+                    } catch (e) {
+                        if (tok !== PE.tok) return;
+                        st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; peEl('peList').innerHTML = ''; peEl('pePager').style.display = 'none';
+                    } finally { if (tok === PE.tok) peEl('peSearchBtn').disabled = false; }
+                }
+                function pePage(dir) { const n = PE.offset + dir * PE.limit; if (n < 0 || n >= PE.total) return; PE.offset = n; peSearch(false); }
+                function peRenderList(r) {
+                    if (!r.patients.length) { peEl('peList').innerHTML = '<div style="padding:10px; font-size:13px;">No patients match these filters in the current scope.</div>'; peEl('pePager').style.display = 'none'; return; }
+                    const rows = r.patients.map(p => `<tr class="pe-row" tabindex="0" data-id="${escapeHtml(p.id)}" onclick="peOpen(this.dataset.id)" onkeydown="if (event.key === 'Enter') peOpen(this.dataset.id)">
+                        <td><b>${escapeHtml(p.id)}</b>${p.name ? `<br><span class="pe-note">${escapeHtml(p.name)}</span>` : ''}</td><td>${escapeHtml(p.gender || '–')}</td><td>${p.age === null ? '–' : p.age}</td><td>${escapeHtml(p.birthDate || '–')}</td>
+                        <td>${p.conditions}</td><td>${p.medications}</td><td>${p.labs}</td><td>${p.procedures}</td><td>${p.encounters}</td></tr>`).join('');
+                    peEl('peList').innerHTML = `<table class="data-table" style="font-size:12.5px;"><thead><tr><th>Patient</th><th>Gender</th><th>Age</th><th>Born</th><th>Conditions</th><th>Medications</th><th>Labs / vitals</th><th>Procedures</th><th>Encounters</th></tr></thead><tbody>${rows}</tbody></table><div class="pe-note" style="margin-top:4px;">Conditions and medications count distinct codes; the others count records. Click a row to open the patient.</div>`;
+                    const from = r.offset + 1, to = r.offset + r.patients.length;
+                    peEl('pePageInfo').textContent = `${from.toLocaleString()}–${to.toLocaleString()} of ${r.total.toLocaleString()}`;
+                    peEl('pePrev').disabled = r.offset <= 0; peEl('peNext').disabled = to >= r.total; peEl('pePager').style.display = 'flex';
+                }
+                async function peOpen(id) {
+                    const box = peEl('peDetail'), tok = ++PE.tok;
+                    box.style.display = ''; box.innerHTML = '<div class="status-output info">Loading ' + escapeHtml(id) + '...</div>'; box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    try {
+                        const p = peQuery(); ['q', 'concept', 'gender', 'ageMin', 'ageMax', 'sort'].forEach(k => p.delete(k)); p.set('id', id);
+                        const r = await (await fetch('/api/explorer/patient?' + p)).json();
+                        if (tok !== PE.tok) return;
+                        if (!r.success) throw new Error(r.details || r.error);
+                        PE.rec = r; PE.tab = 'timeline'; PE.labsAbnOnly = false; PE.ex = null; peRenderRecord();
+                    } catch (e) { if (tok === PE.tok) box.innerHTML = '<div class="status-output error">Error: ' + escapeHtml(e.message) + '</div>'; }
+                }
+                function peClose() { peEl('peDetail').style.display = 'none'; PE.rec = null; }
+                function peDownload() { if (PE.rec && typeof vrDownloadJSON === 'function') vrDownloadJSON('patient_' + PE.rec.patient.id, PE.rec, 'Patient record'); }
+                function peTab(t) { PE.tab = t; peRenderRecord(); }
+                const peTabs = [['timeline', 'Timeline'], ['extended', 'Extended story'], ['allrec', 'All records'], ['conditions', 'Conditions'], ['medications', 'Medications'], ['labs', 'Labs / vitals'], ['procedures', 'Procedures'], ['encounters', 'Encounters'], ['other', 'Allergies & vaccines'], ['raw', 'Raw FHIR']];
+                function peRenderRecord() {
+                    const r = PE.rec, p = r.patient, c = r.counts, box = peEl('peDetail');
+                    const trunc = Object.keys(r.truncated || {});
+                    const chips = [['conditions', 'conditions'], ['medications', 'medications'], ['labs', 'labs / vitals'], ['procedures', 'procedures'], ['encounters', 'encounters'], ['allergies', 'allergies'], ['immunizations', 'vaccines']]
+                        .map(([k, l]) => `<span class="pe-chip"><b>${c[k]}${r.truncated && r.truncated[k] ? '+' : ''}</b> ${l}</span>`).join('');
+                    const tabs = peTabs.map(([k, l]) => `<button class="pe-tab${PE.tab === k ? ' on' : ''}" onclick="peTab('${k}')">${l}</button>`).join('');
+                    box.innerHTML = `<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+                        <div><h4 style="margin:0 0 4px;">${escapeHtml(p.name || p.id)}</h4><div class="pe-note">${p.name ? 'id ' + escapeHtml(p.id) + ' · ' : ''}${escapeHtml(p.gender || 'gender unknown')} · ${p.age === null ? 'age unknown' : p.age + ' years (as of ' + escapeHtml(p.as_of) + ')'} · born ${escapeHtml(p.birth_date || 'unknown')}</div></div>
+                        <div style="display:flex; gap:8px;"><button class="btn-secondary" onclick="peDownload()">Download JSON</button><button class="btn-secondary" onclick="peClose()">Close</button></div></div>
+                        <div style="margin-top:10px;">${chips}</div>
+                        ${trunc.length ? `<div class="pe-note">Showing the first 1,000 records of: ${trunc.map(escapeHtml).join(', ')}.</div>` : ''}
+                        <div class="pe-tabs" role="tablist">${tabs}</div><div id="peBody"></div>`;
+                    peEl('peBody').innerHTML = ({ timeline: peTimeline, extended: peExtended, allrec: peAllRecords, conditions: peConditions, medications: peMeds, labs: peLabs, procedures: peProcs, encounters: peEncs, other: peOther, raw: peRaw }[PE.tab])(r);
+                }
+                const peNone = t => `<div style="padding:8px 0; font-size:13px;">No ${t} imported for this patient.</div>`;
+                const peTable = (head, rows) => `<div style="overflow-x:auto;"><table class="data-table" style="font-size:12.5px;"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+                const peD = d => escapeHtml(d || 'undated');
+                function peTimeline(r) {
+                    const ev = [];
+                    r.conditions.forEach(x => ev.push({ d: x.date, k: 'condition', t: x.display + (x.status && x.status !== 'active' ? ` (${x.status})` : '') }));
+                    r.medications.forEach(x => ev.push({ d: x.date, k: 'medication', t: x.display + (x.dosage ? ' – ' + x.dosage : '') }));
+                    r.procedures.forEach(x => ev.push({ d: x.date, k: 'procedure', t: x.display }));
+                    r.encounters.forEach(x => ev.push({ d: x.start, k: 'encounter', t: [x.type || x.class, x.reason].filter(Boolean).join(': ') + (x.end && x.end !== x.start ? ` (until ${x.end})` : '') }));
+                    r.immunizations.forEach(x => ev.push({ d: x.date, k: 'vaccine', t: x.display || x.code }));
+                    r.labs.filter(x => x.flag === 'high' || x.flag === 'low' || x.flag === 'abnormal').forEach(x => ev.push({ d: x.date, k: 'lab', t: `${x.display}: ${x.value === null ? x.textValue : x.value} ${x.unit || ''} ${peFlagTxt[x.flag]}`.trim(), flag: x.flag }));
+                    if (!ev.length) return peNone('events');
+                    ev.sort((a, b) => (a.d || '9999').localeCompare(b.d || '9999') || a.k.localeCompare(b.k));
+                    const CAP = 400, shown = ev.slice(0, CAP); let year = null, out = '';
+                    for (const e of shown) {
+                        const y = e.d ? e.d.slice(0, 4) : 'Undated';
+                        if (y !== year) { year = y; out += `<div class="pe-year">${escapeHtml(y)}</div>`; }
+                        out += `<div class="pe-ev"><span class="d">${peD(e.d)}</span><span class="k ${e.k}">${e.k}</span><span${e.flag ? ` class="pe-flag-${e.flag}"` : ''}>${escapeHtml(e.t)}</span></div>`;
+                    }
+                    return `<div class="pe-note">Conditions, medications, procedures, encounters, vaccines and abnormal lab results in date order. Normal and unflagged labs are on the Labs tab.</div>${out}${ev.length > CAP ? `<div class="pe-note" style="margin-top:8px;">Showing the first ${CAP} of ${ev.length} events.</div>` : ''}`;
+                }
+                function peConditions(r) {
+                    if (!r.conditions.length) return peNone('conditions');
+                    return peTable(['Onset', 'Condition', 'Code', 'Status', 'Narrative'], r.conditions.map(x => `<tr><td>${peD(x.date)}</td><td>${escapeHtml(x.display)}</td><td class="pe-note">${escapeHtml(x.code || '')}</td><td>${escapeHtml(x.status || '–')}</td><td class="pe-note">${escapeHtml(x.note || '')}</td></tr>`));
+                }
+                function peMeds(r) {
+                    if (!r.medications.length) return peNone('medications');
+                    return peTable(['Prescribed', 'Medication', 'Code', 'Status', 'Dosage'], r.medications.map(x => `<tr><td>${peD(x.date)}</td><td>${escapeHtml(x.display)}</td><td class="pe-note">${escapeHtml(x.code || '')}</td><td>${escapeHtml(x.status || '–')}</td><td class="pe-note">${escapeHtml(x.dosage || '')}</td></tr>`));
+                }
+                function peProcs(r) {
+                    if (!r.procedures.length) return peNone('procedures');
+                    return peTable(['Date', 'Procedure', 'Code'], r.procedures.map(x => `<tr><td>${peD(x.date)}</td><td>${escapeHtml(x.display)}</td><td class="pe-note">${escapeHtml(x.code || '')}</td></tr>`));
+                }
+                function peEncs(r) {
+                    if (!r.encounters.length) return peNone('encounters');
+                    return peTable(['Start', 'End', 'Class', 'Type', 'Reason'], r.encounters.map(x => `<tr><td>${peD(x.start)}</td><td>${escapeHtml(x.end || '–')}</td><td>${escapeHtml(x.class || '–')}</td><td>${escapeHtml(x.type || '–')}</td><td>${escapeHtml(x.reason || '')}</td></tr>`));
+                }
+                function peOther(r) {
+                    const a = r.allergies.length ? peTable(['Substance', 'Reaction', 'Severity'], r.allergies.map(x => `<tr><td>${escapeHtml(x.substance || '–')}</td><td>${escapeHtml(x.reaction || '–')}</td><td>${escapeHtml(x.severity || '–')}</td></tr>`)) : peNone('allergies');
+                    const v = r.immunizations.length ? peTable(['Date', 'Vaccine', 'Code'], r.immunizations.map(x => `<tr><td>${peD(x.date)}</td><td>${escapeHtml(x.display || '–')}</td><td class="pe-note">${escapeHtml(x.code || '')}</td></tr>`)) : peNone('vaccines');
+                    return `<h4 style="margin:6px 0;">Allergies</h4>${a}<h4 style="margin:14px 0 6px;">Vaccines</h4>${v}`;
+                }
+                // ---- All records view: every diagnosis and procedure as a list; medications and labs as one node per distinct item
+                // with its frequency (labs also list every value, oldest first). ----
+                // Trend for one lab series: date-proportional line (even spacing when dates are missing), a dot per value coloured by flag,
+                // plus first -> last change. Needs at least 2 numeric values; otherwise returns ''.
+                function peTrend(pts) {
+                    const np = pts.filter(p => p.value !== null);
+                    if (np.length < 2) return '';
+                    const W = 220, H = 52, pad = 6, vs = np.map(p => p.value), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+                    const ts = np.map(p => (p.date ? Date.parse(p.date) : NaN)), dated = ts.every(Number.isFinite) && Math.max(...ts) > Math.min(...ts);
+                    const t0 = dated ? Math.min(...ts) : 0, tr = dated ? Math.max(...ts) - t0 : 1;
+                    const X = i => pad + (W - 2 * pad) * (dated ? (ts[i] - t0) / tr : i / (np.length - 1)), Y = v => H - pad - (H - 2 * pad) * (v - lo) / span;
+                    const col = { high: '#c62828', low: '#1565c0', abnormal: '#ef6c00' };
+                    const dots = np.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="3" fill="${col[p.flag] || '#62776d'}"><title>${escapeHtml((p.date || 'undated') + ': ' + p.value + (p.flag && peFlagTxt[p.flag] ? ' ' + peFlagTxt[p.flag] : ''))}</title></circle>`).join('');
+                    const line = np.map((p, i) => X(i).toFixed(1) + ',' + Y(p.value).toFixed(1)).join(' ');
+                    const f = vs[0], l = vs[vs.length - 1], d = l - f, pct = f !== 0 ? d / Math.abs(f) * 100 : null, flat = Math.abs(pct === null ? d : pct) < 5;
+                    const arrow = flat ? '→ stable' : d > 0 ? '↑ rising' : '↓ falling', r3 = v => String(Math.round(v * 1000) / 1000);
+                    const txt = `${arrow} (${r3(f)} → ${r3(l)}${pct === null ? '' : ', ' + (d > 0 ? '+' : '') + Math.round(pct) + '%'})`;
+                    return `<div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:6px;"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="trend"><polyline fill="none" stroke="#9aa9a1" stroke-width="1.5" points="${line}"/>${dots}</svg>
+                        <div class="pe-note"><b>${txt}</b><br>min ${r3(lo)} · max ${r3(hi)} · ${np.length} numeric values${dated ? '' : ' (spaced evenly, dates missing)'}</div></div>`;
+                }
+                function peAllRecords(r) {
+                    const nv = v => String(Math.round(v * 1000) / 1000), byDate = (a, b) => (a || '9999').localeCompare(b || '9999');
+                    const list = (items, kind, text) => items.length ? items.slice().sort((a, b) => byDate(a.date, b.date)).map(x => `<div class="pe-ev"><span class="d">${peD(x.date)}</span><span class="k ${kind}">${kind}</span><span>${escapeHtml(text(x))}</span></div>`).join('') : `<div class="pe-note">None recorded.</div>`;
+                    const sec = (title, n, unit, body) => `<div class="pa-sec"><h4>${title} <span class="pe-note">${n} ${unit}</span></h4>${body}</div>`;
+                    const range = ds => { const d = ds.filter(Boolean).sort(); return d.length ? (d[0] === d[d.length - 1] ? d[0] : d[0] + ' → ' + d[d.length - 1]) : 'undated'; };
+
+                    const dx = sec('Diagnoses', r.conditions.length, r.conditions.length === 1 ? 'record' : 'records',
+                        list(r.conditions, 'condition', x => x.display + (x.code ? ` [${x.code}]` : '') + (x.status && x.status !== 'active' ? ` (${x.status})` : '')));
+                    const pr = sec('Procedures', r.procedures.length, r.procedures.length === 1 ? 'record' : 'records',
+                        list(r.procedures, 'procedure', x => x.display + (x.code ? ` [${x.code}]` : '')));
+
+                    const mg = new Map();
+                    r.medications.forEach(x => { const k = x.code || x.display; if (!mg.has(k)) mg.set(k, { display: x.display, code: x.code, dates: [], doses: new Set() }); const g = mg.get(k); g.dates.push(x.date); if (x.dosage) g.doses.add(x.dosage); });
+                    const meds = [...mg.values()].sort((a, b) => b.dates.length - a.dates.length || a.display.localeCompare(b.display));
+                    const medBody = meds.length ? `<div class="pa-nodes">${meds.map(m => `<div class="pa-node med" title="${escapeHtml([...m.doses].join('; '))}"><span class="nm">${escapeHtml(m.display)}</span><span class="x">×${m.dates.length}</span><br><span class="pe-note">${escapeHtml(range(m.dates))}${m.code ? ' · ' + escapeHtml(m.code) : ''}</span></div>`).join('')}</div>` : '<div class="pe-note">None recorded.</div>';
+                    const med = sec('Medications', meds.length, `distinct (${r.medications.length} prescriptions)`, medBody);
+
+                    const lg = new Map();
+                    r.labs.forEach(x => { const k = `${x.code}|${x.unit || ''}`; if (!lg.has(k)) lg.set(k, { display: x.display, code: x.code, unit: x.unit || '', pts: [] }); lg.get(k).pts.push(x); });
+                    const labs = [...lg.values()].sort((a, b) => b.pts.length - a.pts.length || a.display.localeCompare(b.display));
+                    const labBody = labs.length ? `<div class="pa-nodes">${labs.map(l => { l.pts.sort((a, b) => byDate(a.date, b.date));
+                        const vals = l.pts.map(p => `<span class="pa-val${p.flag && p.flag !== 'normal' ? ' f-' + p.flag + ' pe-flag-' + p.flag : ''}" title="${escapeHtml(peD(p.date) + (p.flag && peFlagTxt[p.flag] ? ' ' + peFlagTxt[p.flag] : ''))}"><span class="pe-note">${peD(p.date)}</span> ${p.value === null ? escapeHtml(p.textValue || '–') : escapeHtml(nv(p.value))}</span>`).join('');
+                        return `<div class="pa-node lab"><span class="nm">${escapeHtml(l.display)}</span><span class="x">×${l.pts.length}</span> <span class="pe-note">${l.unit ? escapeHtml(l.unit) + ' · ' : ''}${escapeHtml(l.code || '')}</span>${peTrend(l.pts)}<div class="pa-vals">${vals}</div></div>`; }).join('')}</div>` : '<div class="pe-note">None recorded.</div>';
+                    const lab = sec('Labs / vitals', labs.length, `distinct tests (${r.labs.length} results)`, labBody);
+
+                    return `<div class="pe-note">Everything recorded for this patient in one place. Diagnoses and procedures are listed record by record; medications and labs appear once each with how often they occur. Labs with two or more numeric values show a trend chart (dots coloured by flag) and the change from first to last. Abnormal values are colour-coded; hover a value for its flag.</div>${dx}${pr}${med}${lab}`;
+                }
+                function peSpark(pts, flag) {
+                    const vs = pts.map(x => x.value).filter(v => v !== null);
+                    if (vs.length < 2) return '';
+                    const W = 110, H = 24, lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+                    const xy = vs.map((v, i) => [2 + (W - 4) * i / (vs.length - 1), H - 3 - (H - 6) * (v - lo) / span]);
+                    const col = flag === 'high' ? '#c62828' : flag === 'low' ? '#1565c0' : flag === 'abnormal' ? '#ef6c00' : '#62776d', last = xy[xy.length - 1];
+                    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="${col}" stroke-width="1.5" points="${xy.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ')}"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.5" fill="${col}"/></svg>`;
+                }
+                function peLabGroups(r) {
+                    const g = new Map();
+                    r.labs.forEach(x => { const k = `${x.code}|${x.unit || ''}`; if (!g.has(k)) g.set(k, { display: x.display, code: x.code, unit: x.unit || '', pts: [] }); g.get(k).pts.push(x); });
+                    return [...g.values()].map(x => { x.pts.sort((a, b) => (a.date || '').localeCompare(b.date || '')); x.last = x.pts[x.pts.length - 1];
+                        x.abn = x.pts.filter(p => p.flag === 'high' || p.flag === 'low' || p.flag === 'abnormal').length;
+                        const nv = x.pts.map(p => p.value).filter(v => v !== null); x.min = nv.length ? Math.min(...nv) : null; x.max = nv.length ? Math.max(...nv) : null; return x; })
+                        .sort((a, b) => b.abn - a.abn || a.display.localeCompare(b.display));
+                }
+                function peToggleAbn(on) { PE.labsAbnOnly = on; peRenderRecord(); }
+                function peLabRow(i) { const e = peEl('peLabRow' + i); if (e) e.style.display = e.style.display === 'none' ? '' : 'none'; }
+                function peLabs(r) {
+                    if (!r.labs.length) return peNone('labs or vitals');
+                    const all = peLabGroups(r), gs = PE.labsAbnOnly ? all.filter(x => x.abn) : all, num = v => (v === null || v === undefined ? '–' : String(Math.round(v * 1000) / 1000));
+                    const rows = gs.map((x, i) => { const l = x.last, fl = l.flag;
+                        const val = l.value === null ? escapeHtml(l.textValue || '–') : escapeHtml(num(l.value)) + (x.unit ? ' ' + escapeHtml(x.unit) : '');
+                        const series = x.pts.map(p => `<span style="display:inline-block; margin:2px 10px 2px 0;" class="${p.flag ? 'pe-flag-' + p.flag : ''}">${peD(p.date)}: ${p.value === null ? escapeHtml(p.textValue || '–') : escapeHtml(num(p.value))}</span>`).join('');
+                        return `<tr class="pe-row" onclick="peLabRow(${i})"><td>${escapeHtml(x.display)}<br><span class="pe-note">${escapeHtml(x.code || '')}</span></td><td>${x.pts.length}</td>
+                            <td class="${fl ? 'pe-flag-' + fl : ''}">${val}${fl && peFlagTxt[fl] ? ' ' + peFlagTxt[fl] : ''}<br><span class="pe-note">${peD(l.date)}</span></td>
+                            <td>${x.min === null ? '–' : num(x.min) + ' – ' + num(x.max)}</td><td>${x.abn || '–'}</td><td>${peSpark(x.pts, fl)}</td></tr>
+                            <tr id="peLabRow${i}" style="display:none;"><td colspan="6" style="font-size:12px;">${series}</td></tr>`; });
+                    return `<label style="font-size:13px;"><input type="checkbox" ${PE.labsAbnOnly ? 'checked' : ''} onchange="peToggleAbn(this.checked)"> abnormal results only (${all.filter(x => x.abn).length} of ${all.length} tests)</label>
+                        <div style="margin-top:6px;">${gs.length ? peTable(['Test', 'Results', 'Latest', 'Range seen', 'Abnormal', 'Trend'], rows) : peNone('abnormal results')}</div>
+                        <div class="pe-note" style="margin-top:4px;">Flags use the source's own interpretation or reference range when present, otherwise the abnormal limits in the terminology dictionary. Click a test to see every value.</div>`;
+                }
+                // ---- Extended story view: the patient's recorded data laid out under case-presentation headings. No clinical rules:
+                // the only inputs are the index diagnosis the user picks and two day-windows the user sets. ----
+                const PX_LANES = [['comorb', 'Comorbidities'], ['dx', 'Diagnosis (index)'], ['med', 'Medications'], ['proc', 'Procedures'], ['enc', 'Encounters'], ['lab', 'Labs / vitals']];
+                const PX_HEADS = [['comorb', 'Comorbidities'], ['dx', 'Diagnosis'], ['pres', 'Presentation'], ['plan', 'Initial plan'], ['med', 'Medications'], ['proc', 'Procedures'], ['later', 'Escalation · advance / recurrence'], ['disp', 'Disposition'], ['earlier', 'Earlier history']];
+                const PX_COL = { condition: '#6a1b9a', medication: '#2e7d32', procedure: '#1565c0', encounter: '#455a64', lab: '#c62828' };
+                const PX_BAND = { earlier: '#f1f1ee', pres: '#fff3e0', plan: '#e8f5e9', later: '#e3f2fd' };
+                const pxDay = s => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 864e5 : null);
+                const pxIso = n => new Date(n * 864e5).toISOString().slice(0, 10);
+                function pxState(r) {
+                    if (!PE.ex || PE.ex.pid !== r.patient.id) PE.ex = { pid: r.patient.id, idx: '', pre: 7, post: 14, sel: 'dx', even: false, allLabs: false, zoom: 1, hide: {}, pick: null, jump: null, jumpHead: null };
+                    return PE.ex;
+                }
+                function pxIndexOpts(r) {
+                    const g = new Map();
+                    r.conditions.forEach(x => { const k = x.code || x.display; if (!g.has(k)) g.set(k, { key: k, display: x.display, date: x.date, n: 0 }); const o = g.get(k); o.n++; if (x.date && (!o.date || x.date < o.date)) o.date = x.date; });
+                    return [...g.values()].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || a.display.localeCompare(b.display));
+                }
+                function pxBuild(r, S) {
+                    const opts = pxIndexOpts(r), io = S.idx ? opts.find(o => o.key === S.idx) : null, I = io ? pxDay(io.date) : null, evs = [];
+                    const add = o => { o.i = evs.length; o.n = pxDay(o.d); o.m = pxDay(o.end); o.heads = []; evs.push(o); return o; };
+                    r.conditions.forEach(x => { const lane = io && (x.code || x.display) === io.key ? 'dx' : 'comorb'; const e = add({ d: x.date, k: 'condition', lane, t: x.display, code: x.code, status: x.status, note: x.note }); if (io) e.heads.push(lane); });
+                    r.medications.forEach(x => add({ d: x.date, k: 'medication', lane: 'med', t: x.display, code: x.code, status: x.status, dosage: x.dosage, note: x.note }).heads.push('med'));
+                    r.procedures.forEach(x => add({ d: x.date, k: 'procedure', lane: 'proc', t: x.display, code: x.code, note: x.note }).heads.push('proc'));
+                    r.encounters.forEach(x => add({ d: x.start, end: x.end, k: 'encounter', lane: 'enc', t: [x.type || x.class, x.reason].filter(Boolean).join(': ') || 'Encounter', status: x.status, cls: x.class }));
+                    r.labs.forEach(x => {
+                        const abn = x.flag === 'high' || x.flag === 'low' || x.flag === 'abnormal';
+                        if (!abn && !S.allLabs) return;
+                        add({ d: x.date, k: 'lab', lane: 'lab', t: x.display, code: x.code, flag: x.flag, val: `${x.value === null ? (x.textValue || '–') : x.value} ${x.unit || ''}`.trim() });
+                    });
+                    if (I !== null) evs.forEach(e => {
+                        if (e.lane === 'dx' || e.n === null) return;
+                        e.heads.push(e.n < I - S.pre ? 'earlier' : e.n < I ? 'pres' : e.n <= I + S.post ? 'plan' : 'later');
+                    });
+                    const dated = evs.filter(e => e.n !== null), encs = dated.filter(e => e.lane === 'enc');
+                    const lastBy = list => list.reduce((b, e) => (!b || e.n > b.n || (e.n === b.n && (e.m || 0) >= (b.m || 0)) ? e : b), null);
+                    const le = lastBy(encs), la = lastBy(dated);
+                    [le, la].forEach(e => { if (e && !e.heads.includes('disp')) e.heads.push('disp'); });
+                    return { opts, io, I, evs, undated: evs.filter(e => e.n === null).length, lastEnc: le, lastAny: la };
+                }
+                function pxScale(days, W, even) {
+                    const U = [...new Set(days)].sort((a, b) => a - b), m = U.length - 1, lo = U[0], hi = U[m], pad = 14, w = W - 2 * pad;
+                    if (!even) return { U, f: d => pad + Math.min(1, Math.max(0, hi === lo ? 0.5 : (d - lo) / (hi - lo))) * w };
+                    return { U, f: d => {
+                        if (m === 0) return pad + w / 2; if (d <= U[0]) return pad; if (d >= U[m]) return pad + w;
+                        let a = 0, b = m; while (b - a > 1) { const c = (a + b) >> 1; if (U[c] <= d) a = c; else b = c; }
+                        return pad + ((a + (d - U[a]) / (U[b] - U[a])) / m) * w;
+                    } };
+                }
+                function pxSet(k, v) { PE.ex[k] = v; pxRender(); }
+                function pxSetIdx(v) { const S = PE.ex, o = pxIndexOpts(PE.rec)[Number(v)]; S.idx = v === '' || !o ? '' : o.key; S.pick = null; S.sel = S.idx ? 'dx' : ''; pxRender(); }
+                function pxDays(k, v) { const x = Math.floor(Number(v)); PE.ex[k] = Number.isFinite(x) ? Math.min(3650, Math.max(0, x)) : PE.ex[k]; pxRender(); }
+                function pxSel(k) { const S = PE.ex; S.sel = S.sel === k ? '' : k; S.pick = null; S.jumpHead = S.sel; pxRender(); }
+                function pxPick(i) { PE.ex.pick = PE.ex.pick === i ? null : i; pxRender(); }
+                function pxZoom(f) { const S = PE.ex; S.zoom = Math.min(12, Math.max(1, S.zoom * f)); pxRender(); }
+                function pxLane(k) { PE.ex.hide[k] = !PE.ex.hide[k]; pxRender(); }
+                function pxRender() {
+                    const S = PE.ex, old = peEl('pxScroll'), left = old ? old.scrollLeft : 0;
+                    peEl('peBody').innerHTML = peExtended(PE.rec);
+                    const sc = peEl('pxScroll'); if (sc) sc.scrollLeft = S.jump !== null ? S.jump : left; S.jump = null;
+                }
+                function peExtended(r) {
+                    const S = pxState(r), B = pxBuild(r, S), evs = B.evs, dated = evs.filter(e => e.n !== null), has = !!B.io;
+                    if (!evs.length) return peNone('conditions, medications, procedures, encounters or abnormal labs');
+                    const opts = B.opts.map((o, i) => `<option value="${i}"${o.key === S.idx ? ' selected' : ''}>${escapeHtml(o.display)} · ${escapeHtml(o.date || 'undated')}${o.n > 1 ? ' (' + o.n + ' records)' : ''}</option>`).join('');
+                    const ctl = `<div class="px-ctl"><label>Index diagnosis<br><select onchange="pxSetIdx(this.value)"><option value="">– choose from this patient's diagnoses –</option>${opts}</select></label>
+                        <label>Presentation window<br><input type="number" min="0" max="3650" value="${S.pre}" ${has ? '' : 'disabled'} onchange="pxDays('pre', this.value)" style="width:70px;"> days before index</label>
+                        <label>Initial plan window<br><input type="number" min="0" max="3650" value="${S.post}" ${has ? '' : 'disabled'} onchange="pxDays('post', this.value)" style="width:70px;"> days from index</label>
+                        <label class="px-chk"><input type="checkbox" ${S.even ? 'checked' : ''} onchange="pxSet('even', this.checked)"> even spacing (skip quiet gaps)</label>
+                        <label class="px-chk"><input type="checkbox" ${S.allLabs ? 'checked' : ''} onchange="pxSet('allLabs', this.checked)"> include normal / unflagged labs</label></div>`;
+                    const note = `<div class="pe-note" style="margin:6px 0;">${has ? 'Every other diagnosis is shown as a comorbidity. The windows are only a way to slice time around the index date; they are not clinical definitions, and nothing here is inferred. A record can sit under more than one heading.' : 'Choose an index diagnosis to split the record into headings. Until then, all conditions are shown under Comorbidities and nothing is grouped by phase.'}</div>`;
+                    // heading cards
+                    const cnt = k => evs.filter(e => e.heads.includes(k)).length;
+                    const span = k => { const d = evs.filter(e => e.heads.includes(k) && e.d).map(e => e.d).sort(); return d.length ? (d[0] === d[d.length - 1] ? d[0] : d[0] + ' → ' + d[d.length - 1]) : ''; };
+                    const phaseK = ['pres', 'plan', 'later', 'earlier'];
+                    const cards = PX_HEADS.map(([k, l]) => {
+                        const off = !has && (phaseK.includes(k) || k === 'dx'), c = off ? '–' : cnt(k);
+                        const sub = off ? 'needs an index' : k === 'disp' ? (B.lastAny ? 'last recorded ' + (B.lastAny.d || '') : '') : span(k);
+                        return `<button class="px-card${S.sel === k ? ' on' : ''}${off ? ' off' : ''}" ${off ? 'disabled' : ''} onclick="pxSel('${k}')"><span class="px-n">${c}</span><span class="px-h">${escapeHtml(l)}</span><span class="px-s">${escapeHtml(sub)}</span></button>`;
+                    }).join('');
+                    if (!dated.length) return `${ctl}${note}<div class="px-cards">${cards}</div><div class="pe-note">None of these records carry a date, so they cannot be placed on a timeline.</div>`;
+                    // timeline geometry
+                    const days = []; dated.forEach(e => { days.push(e.n); if (e.m !== null) days.push(e.m); }); if (B.I !== null) days.push(B.I);
+                    const lo = Math.min(...days), hi = Math.max(...days), uniq = new Set(days).size, W = Math.max(720, Math.round(900 * S.zoom), S.even ? uniq * 16 : 0);
+                    const SC = pxScale(days, W, S.even), x = SC.f, AX = 42, LH = 38;
+                    const lanes = PX_LANES.filter(l => !S.hide[l[0]] && !(l[0] === 'dx' && !has));
+                    const H = AX + lanes.length * LH;
+                    let g = '';
+                    if (has) {
+                        const I = B.I, cuts = [['earlier', lo - 1, I - S.pre], ['pres', I - S.pre, I], ['plan', I, I + S.post], ['later', I + S.post, hi + 1]];
+                        const names = { earlier: 'Earlier', pres: 'Presentation', plan: 'Initial plan', later: 'Escalation · advance / recurrence' };
+                        cuts.forEach(([k, a, b]) => {
+                            const xa = k === 'earlier' ? 0 : x(a), xb = k === 'later' ? W : x(b); if (xb - xa < 1) return;
+                            g += `<rect x="${xa}" y="0" width="${xb - xa}" height="${H}" fill="${PX_BAND[k]}" opacity=".75"/>`;
+                            if (xb - xa > 46) g += `<text x="${xa + 4}" y="11" font-size="10" fill="#555">${escapeHtml(xb - xa > 150 ? names[k] : names[k].slice(0, 9))}</text>`;
+                        });
+                        g += `<line x1="${x(I)}" x2="${x(I)}" y1="0" y2="${H}" stroke="#4a148c" stroke-dasharray="4 3"/><text x="${x(I) + 3}" y="22" font-size="10" fill="#4a148c">index ${pxIso(I)}</text>`;
+                    }
+                    // axis ticks
+                    let tk = [];
+                    if (S.even) { const step = Math.max(1, Math.ceil(SC.U.length / Math.max(1, Math.floor(W / 84)))); SC.U.forEach((d, j) => { if (j % step === 0) tk.push([d, pxIso(d)]); }); }
+                    else {
+                        const yr = new Date(lo * 864e5).getUTCFullYear(), yb = new Date(hi * 864e5).getUTCFullYear();
+                        if (hi - lo > 1100) { for (let y = yr; y <= yb + 1; y++) tk.push([Date.UTC(y, 0, 1) / 864e5, String(y)]); }
+                        else { for (let y = yr; y <= yb; y++) for (let m = 0; m < 12; m++) tk.push([Date.UTC(y, m, 1) / 864e5, y + '-' + String(m + 1).padStart(2, '0')]); }
+                        tk = tk.filter(t => t[0] >= lo && t[0] <= hi);
+                    }
+                    tk.forEach(([d, l]) => { g += `<line x1="${x(d)}" x2="${x(d)}" y1="${AX - 6}" y2="${H}" stroke="#d9dedb" stroke-width=".7"/><text x="${x(d) + 2}" y="${AX - 8}" font-size="10" fill="#6b7a72">${escapeHtml(l)}</text>`; });
+                    lanes.forEach((l, li) => { g += `<line x1="0" x2="${W}" y1="${AX + li * LH}" y2="${AX + li * LH}" stroke="#cfd6d2"/>`; });
+                    // markers
+                    const laneIdx = Object.fromEntries(lanes.map((l, i) => [l[0], i])), stack = {};
+                    let minX = {};
+                    dated.forEach(e => {
+                        if (!(e.lane in laneIdx)) return;
+                        const xs = x(e.n), key = e.lane + Math.round(xs / 7), c = stack[key] = (stack[key] === undefined ? 0 : stack[key] + 1), y = AX + laneIdx[e.lane] * LH + 10 + (c % 3) * 10;
+                        const dim = S.sel && !e.heads.includes(S.sel) ? ' opacity=".16"' : '', picked = S.pick === e.i, tip = `${e.d}${e.end && e.end !== e.d ? ' → ' + e.end : ''} · ${e.k}: ${e.t}${e.val ? ' = ' + e.val : ''}`;
+                        const col = e.k === 'lab' ? (e.flag === 'high' ? '#c62828' : e.flag === 'low' ? '#1565c0' : e.flag === 'abnormal' ? '#ef6c00' : '#9aa5a0') : PX_COL[e.k];
+                        const st = picked ? ' stroke="#000" stroke-width="2"' : '';
+                        if (S.sel) e.heads.forEach(h => { if (h === S.sel) minX[S.sel] = Math.min(minX[S.sel] === undefined ? 1e9 : minX[S.sel], xs); });
+                        if (e.lane === 'enc') { const w = Math.max(5, e.m !== null ? x(e.m) - xs : 5); g += `<rect x="${xs}" y="${y - 5}" width="${w}" height="10" rx="2" fill="${col}"${dim}${st} style="cursor:pointer" onclick="pxPick(${e.i})"><title>${escapeHtml(tip)}</title></rect>`; }
+                        else g += `<circle cx="${xs}" cy="${y}" r="4.5" fill="${e.k === 'lab' && !e.flag ? '#fff' : col}" stroke="${picked ? '#000' : col}" stroke-width="${picked ? 2 : 1.2}"${dim} style="cursor:pointer" onclick="pxPick(${e.i})"><title>${escapeHtml(tip)}</title></circle>`;
+                        if (e.heads.includes('disp') && e.lane in laneIdx) g += `<circle cx="${xs}" cy="${y}" r="8" fill="none" stroke="#000" stroke-dasharray="2 2"${dim}/>`;
+                    });
+                    if (S.jumpHead && minX[S.jumpHead] !== undefined) S.jump = Math.max(0, minX[S.jumpHead] - 60); S.jumpHead = null;
+                    const labels = `<div style="height:${AX}px;"></div>` + lanes.map(l => `<div class="px-lane" style="height:${LH}px;">${escapeHtml(!has && l[0] === 'comorb' ? 'Conditions' : l[1])}</div>`).join('');
+                    const chips = PX_LANES.filter(l => !(l[0] === 'dx' && !has)).map(l => `<button class="pe-tab${S.hide[l[0]] ? '' : ' on'}" onclick="pxLane('${l[0]}')">${escapeHtml(!has && l[0] === 'comorb' ? 'Conditions' : l[1])}</button>`).join('');
+                    const zoom = `<span class="px-zoom"><button class="btn-secondary" onclick="pxZoom(1/1.5)" ${S.zoom <= 1 ? 'disabled' : ''}>−</button><button class="btn-secondary" onclick="pxZoom(1.5)" ${S.zoom >= 12 ? 'disabled' : ''}>+</button> zoom ${Math.round(S.zoom * 100)}%</span>`;
+                    const tl = `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 4px;">${chips}${zoom}</div>
+                        <div style="display:flex; border:1px solid var(--line); border-radius:8px; background:#fff;"><div class="px-labels">${labels}</div>
+                        <div id="pxScroll" style="overflow-x:auto; flex:1;"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Patient timeline by heading">${g}</svg></div></div>
+                        <div class="pe-note" style="margin-top:4px;">Circles are single records, bars are encounters (start to end). Colors follow the Timeline tab; labs are colored by flag. A dashed ring marks the last recorded encounter and the last recorded activity. Click a record for details, click a heading above to highlight and jump to it.${B.undated ? ` ${B.undated} undated record${B.undated > 1 ? 's are' : ' is'} not plotted but listed under their heading.` : ''}</div>`;
+                    // detail
+                    let det = '';
+                    if (S.pick !== null && evs[S.pick]) {
+                        const e = evs[S.pick], rows = [['Date', e.d ? e.d + (e.end && e.end !== e.d ? ' → ' + e.end : '') : 'undated'], ['Kind', e.k], ['Code', e.code], ['Value', e.val], ['Status', e.status], ['Dosage', e.dosage], ['Class', e.cls], ['Note', e.note],
+                            ['Under headings', e.heads.map(h => (PX_HEADS.find(p => p[0] === h) || [0, h])[1]).join(', ') || (has ? '–' : 'choose an index diagnosis')]].filter(x => x[1]);
+                        det = `<div class="px-det"><b>${escapeHtml(e.t)}</b>${rows.map(([a, b]) => `<div><span class="pe-note">${escapeHtml(a)}</span> ${escapeHtml(String(b))}</div>`).join('')}</div>`;
+                    } else if (S.sel) {
+                        const mem = evs.filter(e => e.heads.includes(S.sel)).sort((a, b) => (a.d || '9999').localeCompare(b.d || '9999') || a.k.localeCompare(b.k)), CAP = 300;
+                        const title = (PX_HEADS.find(p => p[0] === S.sel) || [0, ''])[1];
+                        const extra = S.sel === 'disp' ? `<div class="pe-note">As recorded: ${B.lastEnc ? 'last encounter ' + escapeHtml(B.lastEnc.t) + ' (' + escapeHtml(B.lastEnc.d + (B.lastEnc.end ? ' → ' + B.lastEnc.end : '') + (B.lastEnc.status ? ', status ' + B.lastEnc.status : '')) + ')' : 'no dated encounter'}${B.lastAny ? '; last dated record of any kind ' + escapeHtml(B.lastAny.d) : ''}. The data has no discharge or outcome field, so this is not a discharge or outcome statement.</div>` : '';
+                        det = `<div class="px-det"><b>${escapeHtml(title)}</b> <span class="pe-note">${mem.length} record${mem.length === 1 ? '' : 's'}</span>${extra}${mem.length ? mem.slice(0, CAP).map(e => `<div class="pe-ev" style="cursor:pointer" onclick="pxPick(${e.i})"><span class="d">${peD(e.d)}</span><span class="k ${e.k}">${e.k}</span><span${e.flag ? ` class="pe-flag-${e.flag}"` : ''}>${escapeHtml(e.t + (e.val ? ': ' + e.val : '') + (e.dosage ? ' – ' + e.dosage : ''))}</span></div>`).join('') : '<div class="pe-note">Nothing recorded under this heading.</div>'}${mem.length > CAP ? `<div class="pe-note">Showing the first ${CAP} of ${mem.length}.</div>` : ''}</div>`;
+                    }
+                    return `${ctl}${note}<div class="px-cards">${cards}</div>${tl}${det}`;
+                }
+                function peRaw(r) { return `<div class="pe-note">FHIR Patient resource as imported.</div><pre class="pe-raw">${escapeHtml(JSON.stringify(r.patient.resource, null, 2))}</pre>`; }
+                (function () { const s = document.getElementById('cohortBatchSelector'); if (s) s.addEventListener('change', () => { PE.tok++; PE.rec = null; peEl('peDetail').style.display = 'none'; peEl('peList').innerHTML = ''; peEl('pePager').style.display = 'none'; peEl('peStatus').className = 'status-output info'; peEl('peStatus').textContent = 'Population changed. Press Search to load its patients.'; }); })();
+                </script>
+
+                <!-- Analytics readiness -->
+                <details class="an-collapse analytics-section" id="anReady" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Analytics readiness</h3></summary>
+                    <p style="font-size:13px;">Checks the selected Population / Batch (and active cohort) before you run anything: profiles the data, then runs every analytic in every version it has (V1 text, V3 codes, V4 codes + time) once with default settings and reports which return results, which are empty or fail, why, and what to fix. A full check runs every analytic once, so it can take a few minutes on large populations.</p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <button class="btn-secondary" id="rdProfileBtn" onclick="rdProfile()">Check data profile (fast)</button>
+                        <button class="btn-primary" id="rdCheckBtn" onclick="rdCheck()">Check all analytics</button>
+                        <button class="btn-secondary" id="rdCancelBtn" onclick="rdCancel()" disabled>Cancel</button>
+                        <button class="btn-secondary" id="rdDownloadBtn" onclick="rdDownload()" disabled>Download JSON</button>
+                    </div>
+                    <div id="rdStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
+                    <progress id="rdBar" value="0" max="1" style="width:100%; display:none;"></progress>
+                    <div id="rdInsights" style="margin-top:10px; font-size:13px;"></div>
+                    <div id="rdProfile" style="margin-top:10px; overflow-x:auto;"></div>
+                    <div id="rdSummary" style="margin-top:10px; overflow-x:auto;"></div>
+                    <div id="rdFilter" style="margin-top:10px; font-size:13px; display:none;">
+                        Show:
+                        <label><input type="radio" name="rdF" value="all" checked onchange="rdRender()"> all</label>
+                        <label><input type="radio" name="rdF" value="runnable" onchange="rdRender()"> runnable</label>
+                        <label><input type="radio" name="rdF" value="blocked" onchange="rdRender()"> not runnable</label>
+                        <label><input type="radio" name="rdF" value="input" onchange="rdRender()"> needs a choice</label>
+                        <input type="text" id="rdSearch" placeholder="filter by name or category" oninput="rdRender()" style="margin-left:10px; min-width:220px;">
+                    </div>
+                    <div id="rdTable" style="margin-top:8px; overflow-x:auto;"></div>
+                </details>
+                <script>
+                const RD = { job: null, timer: null, last: null };
+                const rdEl = id => document.getElementById(id);
+                const rdIcon = { good: '✔', info: 'ℹ', warn: '⚠', bad: '✖' };
+                const rdLabel = { ok: 'Runnable', empty: 'No rows', needs_input: 'Needs a choice', error: 'Error', timeout: 'Too slow', na: '–', skipped: '·' };
+                const rdColor = { ok: '#2e7d32', empty: '#ef6c00', needs_input: '#1565c0', error: '#c62828', timeout: '#6a1b9a', na: '#888', skipped: '#888' };
+                function rdInsights(list) { rdEl('rdInsights').innerHTML = (list || []).map(i => `<div style="margin:3px 0;">${rdIcon[i.level] || 'ℹ'} ${escapeHtml(i.text)}</div>`).join(''); }
+                function rdProfileTable(P) {
+                    if (!P) { rdEl('rdProfile').innerHTML = ''; return; }
+                    const pc = (x, n) => n ? Math.round(1000 * x / n) / 10 + '%' : '–';
+                    const rows = Object.values(P.tables).map(t => `<tr><td>${escapeHtml(t.label)}</td><td>${t.n.toLocaleString()}</td><td>${t.patients.toLocaleString()}</td><td>${pc(t.coded, t.n)}</td><td>${t.dated === undefined ? '–' : pc(t.dated, t.n)}</td><td>${pc(t.texted, t.n)}</td><td>${t.first_d || '–'} → ${t.last_d || '–'}</td></tr>`).join('');
+                    rdEl('rdProfile').innerHTML = `<table class="data-table" style="font-size:12px;"><thead><tr><th>Data (${P.patients.toLocaleString()} patients)</th><th>Records</th><th>Patients</th><th>Coded</th><th>Dated</th><th>Narrative</th><th>Date range</th></tr></thead><tbody>${rows}</tbody></table>`;
+                }
+                function rdSummaryTable(S) {
+                    if (!S) { rdEl('rdSummary').innerHTML = ''; return; }
+                    const rows = ['v1', 'v3', 'v4'].map(m => { const p = S.perMode[m]; return `<tr><td><b>${m.toUpperCase()}</b>${S.bestMode === m ? ' (best fit)' : ''}</td><td>${p.total}</td><td style="color:${rdColor.ok}">${p.ok}</td><td style="color:${rdColor.empty}">${p.empty}</td><td style="color:${rdColor.needs_input}">${p.needs_input}</td><td style="color:${rdColor.error}">${p.error + p.timeout}</td></tr>`; }).join('');
+                    rdEl('rdSummary').innerHTML = `<table class="data-table" style="font-size:12px;"><thead><tr><th>Version</th><th>Analytics</th><th>Runnable</th><th>No rows</th><th>Needs a choice</th><th>Error / slow</th></tr></thead><tbody>${rows}</tbody></table>`;
+                }
+                function rdRender() {
+                    const j = RD.last; if (!j || !j.rows || !j.rows.length) { rdEl('rdTable').innerHTML = ''; rdEl('rdFilter').style.display = 'none'; return; }
+                    rdEl('rdFilter').style.display = '';
+                    const f = (document.querySelector('input[name=rdF]:checked') || {}).value || 'all', q = rdEl('rdSearch').value.trim().toLowerCase();
+                    const ms = ['v1', 'v3', 'v4'], st = (r, m) => (r.modes[m] || {}).status;
+                    const rows = j.rows.filter(r => {
+                        if (q && !(`${r.title} ${r.category}`.toLowerCase().includes(q))) return false;
+                        const s = ms.map(m => st(r, m));
+                        if (f === 'runnable') return s.includes('ok');
+                        if (f === 'blocked') return s.some(x => ['empty', 'error', 'timeout'].includes(x));
+                        if (f === 'input') return s.includes('needs_input');
+                        return true;
+                    });
+                    const cell = (r, m) => {
+                        const c = r.modes[m] || { status: 'na' }, tip = [c.message, c.reasons && c.reasons.length ? 'Why: ' + c.reasons.join('; ') : '', c.ms ? Math.round(c.ms / 100) / 10 + 's' : ''].filter(Boolean).join(' | ');
+                        return `<td title="${escapeHtml(tip)}" style="color:${rdColor[c.status]}; white-space:nowrap;">${rdLabel[c.status] || c.status}${c.status === 'ok' ? ` (${c.rows})` : ''}</td>`;
+                    };
+                    const why = r => { const out = []; for (const m of ms) { const c = r.modes[m]; if (c && c.status !== 'ok' && c.status !== 'na' && c.status !== 'skipped') { const t = c.message && c.status !== 'empty' ? c.message : (c.reasons && c.reasons[0]) || 'ran with default settings and found nothing'; out.push(`${m.toUpperCase()}: ${t}`); } } return out.slice(0, 3).join(' · '); };
+                    rdEl('rdTable').innerHTML = `<table class="data-table" style="font-size:12px;"><thead><tr><th>Analytic</th><th>Category</th><th>V1 text</th><th>V3 codes</th><th>V4 codes + time</th><th>Why not (hover cells for detail)</th></tr></thead><tbody>${rows.map(r => `<tr><td>${escapeHtml(r.title)}</td><td>${escapeHtml(r.category)}</td>${ms.map(m => cell(r, m)).join('')}<td style="font-size:11px;">${escapeHtml(why(r))}</td></tr>`).join('')}</tbody></table><div style="font-size:12px; margin-top:4px;">${rows.length} of ${j.rows.length} analytics shown. "Runnable" means rows came back with default settings; it does not judge whether the numbers are meaningful.</div>`;
+                }
+                async function rdProfile() {
+                    const st = rdEl('rdStatus'); st.className = 'status-output info'; st.textContent = 'Profiling the data...';
+                    try {
+                        const r = await anPost('/api/readiness/profile', anScope()); if (!r.success) throw new Error(r.details || r.error);
+                        RD.last = { profile: r.profile, insights: r.insights, rows: [], summary: null }; rdInsights(r.insights); rdProfileTable(r.profile); rdSummaryTable(null); rdRender();
+                        st.className = 'status-output success'; st.textContent = 'Data profile ready. Press "Check all analytics" to test each analytic.';
+                    } catch (e) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function rdCheck() {
+                    const st = rdEl('rdStatus'); st.className = 'status-output info'; st.textContent = 'Starting...';
+                    try {
+                        const r = await anPost('/api/readiness/check', anScope()); if (!r.success) throw new Error(r.details || r.error);
+                        RD.job = r.jobId; rdEl('rdCheckBtn').disabled = true; rdEl('rdProfileBtn').disabled = true; rdEl('rdCancelBtn').disabled = false; rdEl('rdBar').style.display = '';
+                        RD.timer = setInterval(rdPoll, 2000); rdPoll();
+                    } catch (e) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function rdPoll() {
+                    const st = rdEl('rdStatus');
+                    try {
+                        const j = (await (await fetch('/api/readiness/jobs/' + RD.job)).json()).job; RD.last = j;
+                        rdEl('rdBar').max = j.total || 1; rdEl('rdBar').value = j.done; rdInsights(j.insights); rdProfileTable(j.profile); rdSummaryTable(j.summary); rdRender();
+                        st.className = 'status-output info'; st.textContent = `Testing analytics: ${j.done} of ${j.total} versions (${j.seconds}s)`;
+                        if (j.status === 'running') return;
+                        clearInterval(RD.timer); rdEl('rdCheckBtn').disabled = false; rdEl('rdProfileBtn').disabled = false; rdEl('rdCancelBtn').disabled = true; rdEl('rdBar').style.display = 'none'; rdEl('rdDownloadBtn').disabled = false;
+                        st.className = 'status-output ' + (j.status === 'done' ? 'success' : 'error');
+                        st.textContent = j.status === 'done' ? `Check finished in ${j.seconds}s.` : (j.message || 'Check ' + j.status + '.');
+                    } catch (e) { clearInterval(RD.timer); rdEl('rdCheckBtn').disabled = false; rdEl('rdProfileBtn').disabled = false; st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                }
+                async function rdCancel() { try { await anPost('/api/readiness/jobs/' + RD.job + '/cancel', {}); } catch (e) { /* poll shows result */ } }
+                function rdDownload() { if (RD.last && typeof vrDownloadJSON === 'function') vrDownloadJSON('analytics_readiness', RD.last, 'Analytics readiness'); }
+                </script>
+
+                <details class="an-collapse analytics-section" id="anRun" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Run analytics</h3></summary>
                     
                     <!-- Mode Selector -->
                     <div style="margin-top:15px; display:flex; align-items:center; gap:15px; font-size:13px;">
@@ -2287,15 +2919,15 @@ conn.close()
                             </div>
                             <div id="anTemplateStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                         </div>
-                        <div id="anCompareBox" style="margin-top:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
-                            <strong>Compare A vs B</strong> <span class="an-muted">(scope A is the Population / Batch selected above; same analytic, mode and parameters on both sides)</span>
+                        <details id="anCompareBox" style="margin-top:12px; padding:10px 12px;  border-radius:6px; font-size:13px;">
+                            <summary style="cursor:pointer; user-select:none;"><strong>Compare A vs B</strong> <span class="an-muted">(scope A is the Population / Batch selected above; same analytic, mode and parameters on both sides)</span></summary>
                             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
                                 <label for="anCompareSelect" style="font-weight:bold;">Compare with (scope B):</label>
                                 <select id="anCompareSelect" onfocus="refreshCompareOptions()" style="padding:7px; min-width:240px;  border-radius:4px; font-size:13px;"><option value="">(choose scope B)</option></select>
                                 <button id="anCompareBtn" class="btn-secondary" onclick="compareScopes()">Compare A vs B</button>
                             </div>
                             <div class="an-muted" style="margin-top:6px;">The active cohort applies to both sides unless scope B is itself a cohort (then B runs on all batches restricted to that cohort).</div>
-                        </div>
+                        </details>
                         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
                             <button class="btn-primary" onclick="runCatalogAnalytic([demoMode()])">Run analytic</button>
                             <button class="btn-secondary" onclick="runCatalogAnalytic(['v1','v3','v4'])">Compare V1 / V3 / V4</button>
@@ -2304,7 +2936,7 @@ conn.close()
                         </div>
                         <div id="anStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Cohort knowledge graph: built from the patients of the current population / cohort (GET /api/kg/cohort) -->
                 <style>
@@ -2328,8 +2960,7 @@ conn.close()
                     .kgc-mx th.c { height:auto; padding:4px 0; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; font-weight:normal; max-height:150px; overflow:hidden; text-overflow:ellipsis; }
                     .kgc-chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; border:1px solid #bbb; margin:1px 2px 1px 0; background:#fafafa; }
                 </style>
-                <div class="analytics-section" id="anCKG" style="margin-top:30px;">
-                    <h3 style="margin-top:0;">Cohort knowledge graph</h3>
+                <details class="an-collapse analytics-section" id="anCKG" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Cohort knowledge graph</h3></summary>
                     <div class="an-muted" style="margin-bottom:6px;">Built from the patients in the selected <em>Population / Batch</em> and the <em>active cohort</em>: every condition, drug, lab / vital and procedure in the data becomes a node, and two nodes are linked when the same patients have both. Links are associations seen in this data (counts, lift, order in time), not clinical claims. Links that also exist in the built-in reference links (<code>terminology.js</code>) are marked, and those links that never occur in this cohort can be shown as dashed lines.</div>
 
                     <div class="kgc-row">
@@ -2412,11 +3043,10 @@ conn.close()
                             <span class="an-muted" id="kgcCounts"></span>
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
-                <div class="analytics-section" id="outputSection" style="margin-top:30px;">
-                    <h3 style="margin-top:0;">Output</h3>
+                <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
                     <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Download the whole section as JSON, or upload a file you downloaded earlier to view it again.</div>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
                         <button class="btn-secondary" onclick="anDownloadOutput()">Download output JSON</button>
@@ -2434,7 +3064,7 @@ conn.close()
                     <div id="anAssist" class="assist" hidden></div>
                     <div id="anEmpty" class="an-muted" style="margin-top:10px;">No output yet. Run an analytic above, or show a knowledge graph.</div>
                     <div id="anResults" style="margin-top:10px;"></div>
-                </div>
+                </details>
 
             </div>
 
@@ -2473,23 +3103,25 @@ conn.close()
 <p>Hospitals and health systems now hold large amounts of patient data in FHIR, but getting a trustworthy answer from it is still slow, specialist work. Four problems come up again and again:</p>
 <table><thead><tr><th>The problem</th><th>What Vibe Rounds gives you</th></tr></thead><tbody>
 <tr><td><strong>The answer depends on how you read the record.</strong> Ask "how many patients have diabetes?" of the notes, of the codes, or of the codes with dates, and you often get three different numbers. Most tools show you one, without saying so.</td><td><strong>Three answers side by side.</strong> Every analytic runs from the clinical notes, the codes, and the codes with dates on the same patients, so you can see how much a result depends on the method and where the data is weak.</td></tr>
-<tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it.</td></tr>
+<tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it. <em>Analytics readiness</em> goes one step further: it runs every analytic in each method once and tells you which ones this data can support, and why not for the rest.</td></tr>
 <tr><td><strong>Turning a clinical question into a study takes skill and time.</strong> You need to know the code sets, write cohort SQL, pick an analysis and decide what to look at next.</td><td><strong>A faster path from question to result.</strong> Type the question in plain English or ask for suggested studies, and the form is filled in for you. A query builder writes the cohort SQL from clinical concepts, including descendants in the SNOMED CT hierarchy.</td></tr>
 <tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic, nothing runs until you click, and you decide each step.</td></tr></tbody></table>
 <p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, either the SQL or a notebook, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
 
 <section id="ab-what"><h3>What it does</h3>
-<p class="about-callout">You bring FHIR patient data, from your own files or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
+<p class="about-callout">You bring FHIR patient data, from your own files, the open HAPI FHIR test server or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
 <p><strong>The assistant is analyst-led.</strong> After each run it reads every result so far, together with the choices you have already made. It summarizes where the analysis stands, flags what it noticed (important, unusual, caution, data quality), and proposes up to four next analytics with a short reason each. You run a suggestion, skip it, mark a finding important or dismiss it, and those decisions shape the next round.</p>
+<p><strong>You can look at the data itself, not only at results.</strong> The <em>Patient data explorer</em> lists the patients of the current scope and opens any one of them with their conditions, medications, lab series, procedures, encounters, allergies and raw FHIR resource. The <em>Cohort knowledge graph</em> is built from the active cohort: conditions, drugs, labs and procedures as nodes, and links where they occur in the same patients, with lift, which one usually comes first and the typical gap in days. Links that terminology.js already knows (for example a condition and its usual drug) are tagged, including known links that never appear in this cohort. These are co-occurrence counts, not clinical claims.</p>
 <p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers. It never writes SQL, never touches the database, and every figure comes from a deterministic analytic, not from the model.</p></section>
 
 <section id="ab-loop"><h3>How a research session works</h3>
 <ol>
+<li><strong>Bring data and check it.</strong> Import your own FHIR files, fetch a sample from the HAPI test server, or generate a synthetic batch. Then run <em>Analytics readiness</em> to see how much of the data is coded, dated and narrative, and which analytics can run in which method.</li>
 <li><strong>Ask, get ideas, or define.</strong> Type a question in plain English and the assistant fills in the PICO or PECO study form for you to review. Not sure what to ask? Press <em>Suggest a few studies</em> (optionally after typing a topic such as kidney or blood pressure) and pick one of up to four suggested questions, each checked against the known conditions, drugs and outcomes before it is shown. Or build a cohort yourself, including with the SNOMED CT query builder.</li>
 <li><strong>Run an analytic.</strong> Pick one from the catalog, or run the dashboard to cover everything for the cohort.</li>
 <li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
 <li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions.</li>
-<li><strong>Go deeper.</strong> Export a Jupyter notebook for survival analysis, modelling or anything the interface does not offer.</li></ol>
+<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph, or export a Jupyter notebook for survival analysis, modelling or anything the interface does not offer.</li></ol>
 <p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
 
 <section id="ab-who"><h3>Who it benefits</h3>
@@ -2504,7 +3136,9 @@ conn.close()
 <ul>
 <li><strong>Explore an unfamiliar dataset with a guide.</strong> Run a first analytic, ask the assistant what stands out, and follow its suggestions, skipping what is not useful.</li>
 <li><strong>Turn a question into a study.</strong> Write the question in plain English, or ask for a few suggested studies on a topic, review the PICO or PECO form it fills in, run it, and have the result explained.</li>
-<li><strong>Assess a FHIR export before an ETL project.</strong> Run the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
+<li><strong>Assess a FHIR export before an ETL project.</strong> Run Analytics readiness and the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
+<li><strong>See what a cohort looks like.</strong> Open the cohort knowledge graph to see which conditions, drugs and labs travel together, then open individual patients in the explorer to check a pattern against the record.</li>
+<li><strong>Try it on a public FHIR server.</strong> Fetch a few dozen patients from the HAPI test server and use Analytics readiness to see how much, or how little, their data supports. Test data only, never real patients.</li>
 <li><strong>Compare phenotype definitions.</strong> Build a diabetes cohort by exact code, by code plus descendants, and by text, then compare how many patients each captures.</li>
 <li><strong>Explore care gaps and safety signals.</strong> Overdue screening, risky drug pairs, and prescribing after an allergy was recorded, on synthetic data you can share freely.</li>
 <li><strong>Teach clinical analytics.</strong> Generate a batch, assign students different cohorts, and have them explain why the text, code and time methods disagree.</li>
@@ -2527,7 +3161,7 @@ conn.close()
 <li>Treating the assistant's output as findings. Its flags and suggestions are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
 <li>Real patient data without authentication and your organization's approval. The app has no login and runs cohort SQL as written. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy.</li>
 <li>Multi-site studies, formal phenotype validation or publication-grade inference. Counts are descriptive, the bundled terminology is demo content, and there is no peer-reviewed validation of the methods.</li>
-<li>Very large datasets. Import is one insert per resource and some analytics take minutes at thousands of patients.</li></ul></section>
+<li>Very large datasets. Import is chunked and bulk-loaded, but it is still a single PostgreSQL instance, some analytics take minutes at thousands of patients, and the knowledge graph shows only the top concepts per type.</li></ul></section>
 
 <section id="ab-purpose"><h3>Scope and intent</h3>
 <p>Vibe Rounds is a research and teaching workbench with an AI assistant on top. It loads FHIR R4 data into PostgreSQL, lets you define cohorts, and runs a catalog of clinical analytics in three ways that differ in what evidence they use: narrative text, codes, or codes plus time. The assistant helps you read the results and decide what to ask next. Its central question is practical: how much do results change depending on whether you read the notes, trust the codes, or reason over dates?</p>
@@ -6365,6 +6999,7 @@ function anRenderItem(run, t, d) {
 function anStartRun(label, opts) {
     opts = opts || {};
     const out = document.getElementById('anResults');
+    const osec = document.getElementById('outputSection'); if (osec && osec.tagName === 'DETAILS') osec.open = true;
     const run = { n: opts.n || ++CAT.runSeq, label, results: [], items: [], ranAt: opts.ranAt || new Date().toISOString(), imported: !!opts.imported,
         cohort: 'cohort' in opts ? opts.cohort : anActiveCohortName(), population: 'population' in opts ? opts.population : anPopulationLabel(),
         patients: opts.patients != null ? opts.patients : null, params: opts.params || {}, modes: opts.modes || [] };

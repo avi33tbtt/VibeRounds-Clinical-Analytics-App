@@ -1197,6 +1197,9 @@ require('./snomed-query')(app, pool, { sanitizeBatchId });
 // Jupyter notebook generator for the Extended Analytics tab
 require('./notebook')(app, pool, { sanitizeBatchId });
 
+// Fetch patients from Epic / Oracle Health / any FHIR server into a batch (Analytics tab)
+require('./fhir-connect')(app, pool, { port });
+
 // Serve static files from the current directory (for the web interface) - after API routes
 const path = require('path');
 app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
