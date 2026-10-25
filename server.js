@@ -5,6 +5,7 @@ const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('stream/promises');
 const { Readable } = require('stream');
 const sqlGuard = require('./security').sqlGuard;
+const POP = require('./population');   // canonical population keys (batch:<suffix> / group:<base>) shared with analytics
 const app = express();
 const port = parseInt(process.env.PORT || '3001', 10); // Render sets PORT
 console.log('Server.js loaded');
@@ -306,6 +307,7 @@ const SCHEMA_SQL = `
         name VARCHAR(255) NOT NULL,
         description TEXT,
         criteria_sql TEXT,
+        population_scope VARCHAR(255),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -781,13 +783,49 @@ app.post('/api/import-fhir', express.json({ limit: '10gb' }), async (req, res) =
 
 // Cohort management endpoints
 
+// Every change to "which cohort is active" (create, activate, deactivate, the list's clean-up) runs inside one transaction that holds
+// this advisory lock, so two overlapping requests (a double click, two tabs, a click during a list refresh) run one after the other.
+// Without it, two overlapping activations could leave TWO cohorts active, and "the active cohort" was then decided by whichever
+// transaction started last (updated_at used NOW(), the transaction START time) - so an earlier click could win and the old cohort showed.
+const COHORT_LOCK = 7340211;
+async function withCohortLock(fn) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query('SELECT pg_advisory_xact_lock($1)', [COHORT_LOCK]);
+    const out = await fn(c);
+    await c.query('COMMIT');
+    return out;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; } finally { c.release(); }
+}
+
+// A cohort belongs to exactly one population (see population.js). It is orphaned when that population does not exist (any more),
+// or when it was never saved (cohorts made before binding existed).
+const isOrphaned = (row, allSuffixes) => !POP.exists(POP.toKey(row.population_scope), allSuffixes);
+
+// Cohorts that disappear when the batches in `drop` are deleted: a batch cohort dies with its batch, a group cohort with its last batch.
+async function cohortsLostBy(db, drop, allSuffixes) {
+  const rows = (await db.query('SELECT id, name, population_scope, is_active FROM cohorts')).rows;
+  const lost = new Set(POP.keysLostBy(drop, allSuffixes, rows.map(r => POP.toKey(r.population_scope)).filter(Boolean)));
+  return rows.filter(r => lost.has(POP.toKey(r.population_scope)));
+}
+// dropdown value ('group:<base>' or a batch suffix) -> the batch suffixes it covers
+const suffixesOfValue = (value, all) => POP.suffixes(POP.toKey(value), all);
+
 // Get all cohorts
 app.get('/api/cohorts', async (req, res) => {
   try {
     // Older data may still have several active cohorts: keep only the most recently updated one.
-    await pool.query('UPDATE cohorts SET is_active = FALSE WHERE is_active AND id <> (SELECT id FROM cohorts WHERE is_active ORDER BY updated_at DESC, id DESC LIMIT 1)');
-    const result = await pool.query('SELECT * FROM cohorts ORDER BY created_at DESC');
-    res.json({ success: true, cohorts: result.rows });
+    await withCohortLock(c => c.query('UPDATE cohorts SET is_active = FALSE WHERE is_active AND id <> (SELECT id FROM cohorts WHERE is_active ORDER BY updated_at DESC, id DESC LIMIT 1)'));
+    // A cohort whose population is gone (or was never saved) is flagged `orphaned` and cannot stay active.
+    const all = await listBatchSuffixes();
+    let rows = (await pool.query('SELECT * FROM cohorts ORDER BY created_at DESC')).rows;
+    const stale = rows.filter(r => r.is_active && isOrphaned(r, all)).map(r => r.id);
+    if (stale.length) {
+      await withCohortLock(c => c.query('UPDATE cohorts SET is_active = FALSE, updated_at = clock_timestamp() WHERE id = ANY($1)', [stale]));
+      rows = rows.map(r => stale.includes(r.id) ? { ...r, is_active: false } : r);
+    }
+    res.json({ success: true, cohorts: rows.map(r => ({ ...r, orphaned: isOrphaned(r, all), population_option: POP.toOption(POP.toKey(r.population_scope)) })) });
   } catch (err) {
     console.error('Error fetching cohorts:', err);
     res.status(500).json({ error: 'Failed to fetch cohorts', details: err.message });
@@ -812,24 +850,25 @@ app.get('/api/cohorts/:id', async (req, res) => {
 // Create a new cohort
 app.post('/api/cohorts', express.json(), async (req, res) => {
   try {
-    const { name, description, criteria_sql } = req.body;
-    const crit = sqlGuard.checkCriteria(criteria_sql);
+    const { name, description } = req.body;
+    const crit = sqlGuard.prepareCriteria(req.body.criteria_sql);   // comments are removed; the comment-free text is what is stored
+    const criteria_sql = crit.sql;
     if (!crit.ok) return res.status(400).json({ success: false, error: crit.error });
     if (!name) {
       return res.status(400).json({ error: 'Cohort name is required' });
     }
+    // Every cohort belongs to exactly one existing population (a batch or a batch group) for its whole life.
+    const population_scope = POP.toKey(req.body.population_scope);   // canonical key; only compared / matched, never put in SQL text
+    if (!population_scope) return res.status(400).json({ success: false, error: 'Select the population (or batch) this cohort is built for.' });
+    if (!POP.exists(population_scope, await listBatchSuffixes())) return res.status(400).json({ success: false, error: 'That population does not exist (it may have been deleted). Reload the list and pick another.' });
     // Only one cohort is active at a time: the new cohort becomes the active one and every other cohort is switched off.
-    const client = await pool.connect();
-    let result;
-    try {
-      await client.query('BEGIN');
+    const result = await withCohortLock(async client => {
       await client.query('UPDATE cohorts SET is_active = FALSE WHERE is_active');
-      result = await client.query(
-        `INSERT INTO cohorts (name, description, criteria_sql, is_active) VALUES ($1, $2, $3, TRUE) RETURNING *`,
-        [name, description || null, criteria_sql || null]
+      return client.query(
+        `INSERT INTO cohorts (name, description, criteria_sql, population_scope, is_active, updated_at) VALUES ($1, $2, $3, $4, TRUE, clock_timestamp()) RETURNING *`,
+        [name, description || null, criteria_sql || null, population_scope]
       );
-      await client.query('COMMIT');
-    } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
+    });
     res.json({ success: true, cohort: result.rows[0] });
   } catch (err) {
     console.error('Error creating cohort:', err);
@@ -837,12 +876,13 @@ app.post('/api/cohorts', express.json(), async (req, res) => {
   }
 });
 
-// Update a cohort
+// Update a cohort. The population a cohort is bound to is NOT editable here (any population_scope in the body is ignored).
 app.put('/api/cohorts/:id', express.json(), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, criteria_sql } = req.body;
-    const crit = sqlGuard.checkCriteria(criteria_sql);
+    const { name, description } = req.body;
+    const crit = sqlGuard.prepareCriteria(req.body.criteria_sql);
+    const criteria_sql = crit.sql;
     if (!crit.ok) return res.status(400).json({ success: false, error: crit.error });
     const result = await pool.query(
       'UPDATE cohorts SET name = $1, description = $2, criteria_sql = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
@@ -877,11 +917,16 @@ app.delete('/api/cohorts/:id', async (req, res) => {
 app.post('/api/cohorts/:id/activate', async (req, res) => {
   try {
     const { id } = req.params;
+    const cur = await pool.query('SELECT * FROM cohorts WHERE id = $1', [id]);
+    if (cur.rows.length === 0) return res.status(404).json({ error: 'Cohort not found' });
+    if (isOrphaned(cur.rows[0], await listBatchSuffixes())) {
+      return res.status(409).json({ success: false, code: 'cohort_orphaned', error: 'This cohort cannot be activated: its population no longer exists (or was never saved). Assign a population to it, or delete it.' });
+    }
     // one statement, so there is never a moment with two active cohorts
-    const all = await pool.query(
-      'UPDATE cohorts SET is_active = (id = $1), updated_at = CASE WHEN id = $1 THEN NOW() ELSE updated_at END WHERE is_active OR id = $1 RETURNING *',
+    const all = await withCohortLock(c => c.query(
+      'UPDATE cohorts SET is_active = (id = $1), updated_at = CASE WHEN id = $1 THEN clock_timestamp() ELSE updated_at END WHERE is_active OR id = $1 RETURNING *',
       [id]
-    );
+    ));
     const result = { rows: all.rows.filter(r => String(r.id) === String(id)) };
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Cohort not found' });
@@ -893,14 +938,36 @@ app.post('/api/cohorts/:id/activate', async (req, res) => {
   }
 });
 
+// Give an ORPHANED cohort (population deleted, or never saved) a population again. This is the only way a binding changes;
+// a cohort that is still bound to an existing population is refused. The cohort stays inactive: activate it afterwards.
+app.post('/api/cohorts/:id/rebind', express.json(), async (req, res) => {
+  try {
+    const key = POP.toKey(req.body && req.body.population_scope);
+    if (!key) return res.status(400).json({ success: false, error: 'Select a population.' });
+    const all = await listBatchSuffixes();
+    if (!POP.exists(key, all)) return res.status(400).json({ success: false, error: 'That population does not exist.' });
+    const out = await withCohortLock(async c => {
+      const cur = await c.query('SELECT * FROM cohorts WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (!cur.rows.length) return { status: 404, body: { error: 'Cohort not found' } };
+      if (!isOrphaned(cur.rows[0], all)) return { status: 409, body: { success: false, error: 'This cohort is still bound to an existing population; the binding cannot be changed.' } };
+      const r = await c.query('UPDATE cohorts SET population_scope = $2, is_active = FALSE, updated_at = clock_timestamp() WHERE id = $1 RETURNING *', [req.params.id, key]);
+      return { status: 200, body: { success: true, cohort: { ...r.rows[0], orphaned: false, population_option: POP.toOption(key) } } };
+    });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    console.error('Error rebinding cohort:', err);
+    res.status(500).json({ error: 'Failed to assign the population', details: err.message });
+  }
+});
+
 // Deactivate a cohort
 app.post('/api/cohorts/:id/deactivate', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      'UPDATE cohorts SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING *',
+    const result = await withCohortLock(c => c.query(
+      'UPDATE cohorts SET is_active = FALSE, updated_at = clock_timestamp() WHERE id = $1 RETURNING *',
       [id]
-    );
+    ));
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Cohort not found' });
     }
@@ -929,18 +996,36 @@ async function listBatchSuffixes() {
   return r.rows.map(x => x.suffix).filter(Boolean);
 }
 
+// Preview for the delete confirmation: which cohorts would be deleted together with this population (dropdown value: 'group:<base>' or a batch suffix)
+app.get('/api/populations/:value/cohorts', async (req, res) => {
+  try {
+    const all = await listBatchSuffixes();
+    const drop = suffixesOfValue(req.params.value, all);
+    if (!drop.length) return res.status(404).json({ error: 'Population not found' });
+    const lost = await cohortsLostBy(pool, drop, all);
+    res.json({ success: true, cohorts: lost.map(r => ({ id: r.id, name: r.name, is_active: r.is_active })) });
+  } catch (err) {
+    console.error('Error previewing population delete:', err);
+    res.status(500).json({ error: 'Failed to look up the cohorts of this population', details: err.message });
+  }
+});
+
 // Delete one batch
 app.delete('/api/batches/:batchId', async (req, res) => {
-  const suffix = sanitizeBatchId(req.params.batchId || '');
+  const suffix = sanitizeBatchId(req.params.batchId || '').toLowerCase();
   const client = await pool.connect();
   try {
-    if (!(await listBatchSuffixes()).includes(suffix)) {
+    const all = await listBatchSuffixes();
+    if (!all.includes(suffix)) {
       return res.status(404).json({ error: 'Batch not found' });
     }
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [COHORT_LOCK]);
+    const lost = await cohortsLostBy(client, [suffix], all);   // cohorts bound to this batch (or to a group whose last batch this is)
+    if (lost.length) await client.query('DELETE FROM cohorts WHERE id = ANY($1)', [lost.map(r => r.id)]);
     await dropBatchTables(client, suffix);
     await client.query('COMMIT');
-    res.json({ success: true, deleted: [suffix], message: `Batch ${suffix} deleted` });
+    res.json({ success: true, deleted: [suffix], deletedCohorts: lost.map(r => ({ id: r.id, name: r.name })), message: `Batch ${suffix} deleted` + (lost.length ? ` together with ${lost.length} cohort(s) bound to it` : '') });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error deleting batch:', err);
@@ -952,15 +1037,19 @@ app.delete('/api/batches/:batchId', async (req, res) => {
 
 // Delete a whole population (batch group = all batches sharing the base name)
 app.delete('/api/batch-groups/:baseName', async (req, res) => {
-  const baseName = sanitizeBatchId(req.params.baseName || '');
+  const baseName = sanitizeBatchId(req.params.baseName || '').toLowerCase();
   const client = await pool.connect();
   try {
-    const members = (await listBatchSuffixes()).filter(sfx => sfx.replace(/(_\d+)$/, '') === baseName);
+    const all = await listBatchSuffixes();
+    const members = POP.suffixes(`group:${baseName}`, all);
     if (members.length === 0) return res.status(404).json({ error: 'Batch group not found' });
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [COHORT_LOCK]);
+    const lost = await cohortsLostBy(client, members, all);   // the group's cohorts, plus cohorts bound to any single batch of it
+    if (lost.length) await client.query('DELETE FROM cohorts WHERE id = ANY($1)', [lost.map(r => r.id)]);
     for (const sfx of members) await dropBatchTables(client, sfx);
     await client.query('COMMIT');
-    res.json({ success: true, deleted: members, message: `Deleted ${members.length} batch(es) in group ${baseName}` });
+    res.json({ success: true, deleted: members, deletedCohorts: lost.map(r => ({ id: r.id, name: r.name })), message: `Deleted ${members.length} batch(es) in group ${baseName}` + (lost.length ? ` together with ${lost.length} cohort(s) bound to it` : '') });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error deleting batch group:', err);
@@ -1175,7 +1264,7 @@ app.get('/api/db-overview', async (req, res) => {
 // every batch, filtered by the cohort's criteria. Used by the population-details endpoint.
 async function getActiveCohortPatientSource() {
   const cohortResult = await pool.query(
-    'SELECT id, name, criteria_sql FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC LIMIT 1'
+    'SELECT id, name, criteria_sql FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC, id DESC LIMIT 1'
   );
   if (cohortResult.rows.length === 0) {
     const err = new Error('No active cohort. Activate a cohort in "Existing Cohorts" first.');
@@ -1183,7 +1272,7 @@ async function getActiveCohortPatientSource() {
     throw err;
   }
   const cohort = cohortResult.rows[0];
-  sqlGuard.assertCriteria(cohort.criteria_sql);   // refuse stored criteria that are not a plain read-only expression
+  cohort.criteria_sql = sqlGuard.assertCriteria(cohort.criteria_sql);   // refuse stored criteria that are not a plain read-only expression (comments, if any, are dropped)
 
   const suffixResult = await readPool.query(`
     SELECT SUBSTRING(table_name FROM 'fhir_patient_(.+)') AS suffix
@@ -1286,6 +1375,22 @@ app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'i
 async function initializeDatabaseSchema() {
   try {
     await pool.query(STARTUP_SQL);
+    // A cohort is bound to the Population / Batch it was made for (canonical key batch:<suffix> or group:<base>, see population.js).
+    try { await pool.query('ALTER TABLE IF EXISTS cohorts ADD COLUMN IF NOT EXISTS population_scope VARCHAR(255)'); }
+    catch (err) { console.error('Could not add cohorts.population_scope (cohorts will not remember their population):', err.message); }
+    // Binding migration: store canonical keys (batch:<suffix> / group:<base>). Cohorts without a usable population are NOT deleted;
+    // they show up as `orphaned` (cannot be activated until a population is assigned or the cohort is deleted).
+    try {
+      const rows = (await pool.query('SELECT id, population_scope FROM cohorts WHERE population_scope IS NOT NULL')).rows;
+      for (const r of rows) { const k = POP.toKey(r.population_scope); if (k !== r.population_scope) await pool.query('UPDATE cohorts SET population_scope = $2 WHERE id = $1', [r.id, k]); }
+      await pool.query(`ALTER TABLE cohorts DROP CONSTRAINT IF EXISTS cohorts_population_scope_chk`);
+      await pool.query(`ALTER TABLE cohorts ADD CONSTRAINT cohorts_population_scope_chk CHECK (population_scope IS NULL OR population_scope ~ '^(group|batch):[a-z0-9_]+$')`);
+      const all = await listBatchSuffixes();
+      const stale = (await pool.query('SELECT * FROM cohorts WHERE is_active')).rows.filter(r => isOrphaned(r, all)).map(r => r.id);
+      if (stale.length) { await pool.query('UPDATE cohorts SET is_active = FALSE, updated_at = clock_timestamp() WHERE id = ANY($1)', [stale]); console.warn(`Deactivated ${stale.length} cohort(s) whose population no longer exists.`); }
+      const orphans = (await pool.query('SELECT * FROM cohorts')).rows.filter(r => isOrphaned(r, all)).length;
+      if (orphans) console.warn(`${orphans} cohort(s) are not bound to an existing population (flagged "orphaned" in the Cohorts tab).`);
+    } catch (err) { console.error('Cohort population migration failed:', err.message); }
     console.log('Database schema initialized successfully');
   } catch (err) {
     console.error('Error initializing database schema:', err);

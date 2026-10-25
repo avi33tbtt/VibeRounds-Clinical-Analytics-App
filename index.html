@@ -1565,16 +1565,16 @@ label{color:var(--ink-2)}
             <!-- Architecture Plan Section -->
             <div class="plan-section">
                 <div class="page-head"><h2>Architecture</h2><p>How data moves from FHIR sources into a standardized database and on to analytics.</p></div>
-                <p>This is the complete architecture for your healthcare data analytics system.</p>
+                <p>How the system fits together: import, a per-batch PostgreSQL schema, three analytics paths, and a security layer around all of it.</p>
                 
                 <h3>Goal</h3>
-                <p>Get FHIR healthcare data (JSON, NDJSON, CSV, etc.) → process it into a standardized database → run analytics on it: the built-in catalog, or free-hand analytics described in plain English (an AI writes the query, you review it, it runs as fixed read-only SQL).</p>
+                <p>Get FHIR healthcare data (JSON, NDJSON, Synthea CSV, the HAPI test server or the built-in synthetic generator) → load it into a standardized PostgreSQL schema, one set of tables per batch → bind a cohort to a population → run analytics: the built-in catalog, free-hand analytics described in plain English (an AI writes the query, you review it, it runs as fixed read-only SQL), or the AI assistant that reads results and suggests next steps.</p>
                 
                 <h3>System Architecture</h3>
                 <figure class="arch-figure">
-<svg viewBox="0 0 960 716" role="img" aria-labelledby="arch-t arch-d" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 960 800" role="img" aria-labelledby="arch-t arch-d" xmlns="http://www.w3.org/2000/svg">
 <title id="arch-t">System architecture</title>
-<desc id="arch-d">Users import FHIR files, which are processed into a PostgreSQL database. The built-in catalog analytics and the AI-assisted custom analytics (plain-English question, reviewed read-only query) both read from the database, and in-app results appear in the dashboard.</desc>
+<desc id="arch-d">Users import FHIR files, which are processed into a PostgreSQL database. Everything sits behind sign-in. The built-in catalog, the AI-assisted custom analytics (plain-English question, reviewed read-only query) and the AI assistant all read from the database through a SELECT-only connection, and results appear in the dashboard. A security layer (sign-in, audit log, SQL guard, SELECT-only database role) spans the whole system.</desc>
 <defs>
   <marker id="arch-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
     <path class="arch-arrowhead" d="M1 1 L9 5 L1 9 z"/>
@@ -1583,7 +1583,7 @@ label{color:var(--ink-2)}
 <g class="arch-ui">
   <rect class="arch-card" x="40" y="60" width="400" height="84" rx="14"/>
   <text class="arch-title" x="64" y="91">Import data</text>
-  <text class="arch-sub" x="64" y="114">Select a folder of FHIR JSON, NDJSON or Synthea CSV</text>
+  <text class="arch-sub" x="64" y="114">FHIR files, HAPI test server or built-in synthetic data</text>
   <circle class="arch-badge" cx="412" cy="87" r="12"/>
   <text class="arch-badge-n" x="412" y="91.5">1</text>
 </g>
@@ -1591,8 +1591,8 @@ label{color:var(--ink-2)}
 <g class="arch-ing">
   <rect class="arch-card" x="40" y="200" width="400" height="112" rx="14"/>
   <text class="arch-title" x="64" y="231">Processing</text>
-  <text class="arch-sub" x="64" y="254">Detect format, parse, validate, normalize</text>
-  <text class="arch-sub" x="64" y="272">Each record is tagged with a batch ID</text>
+  <text class="arch-sub" x="64" y="254">Detect format (JSON, NDJSON, CSV), parse, normalize</text>
+  <text class="arch-sub" x="64" y="272">Each import becomes its own batch (fhir_*_&lt;batch&gt; tables)</text>
   <rect class="arch-bar-track" x="64" y="286" width="352" height="10" rx="5"/>
   <rect class="arch-bar-fill" x="64" y="286" width="246" height="10" rx="5"/>
 </g>
@@ -1600,7 +1600,7 @@ label{color:var(--ink-2)}
 <g class="arch-sto">
   <rect class="arch-card" x="40" y="368" width="400" height="176" rx="14"/>
   <text class="arch-title" x="64" y="399">PostgreSQL</text>
-  <text class="arch-sub" x="64" y="422">Standard schema derived from FHIR</text>
+  <text class="arch-sub" x="64" y="422">One set of fhir_* tables per imported batch</text>
   <g class="arch-chip"><rect x="64" y="436" width="68" height="24" rx="12"/><text x="98.0" y="452">patient</text></g>
   <g class="arch-chip"><rect x="140" y="436" width="81" height="24" rx="12"/><text x="180.5" y="452">encounter</text></g>
   <g class="arch-chip"><rect x="229" y="436" width="95" height="24" rx="12"/><text x="276.5" y="452">observation</text></g>
@@ -1620,16 +1620,16 @@ label{color:var(--ink-2)}
 <g class="arch-ui">
   <rect class="arch-card" x="520" y="60" width="400" height="84" rx="14"/>
   <text class="arch-title" x="544" y="91">Run analysis</text>
-  <text class="arch-sub" x="544" y="114">Choose a cohort and an analytics type, then run</text>
+  <text class="arch-sub" x="544" y="114">Pick a population and cohort, then an analytic</text>
   <circle class="arch-badge" cx="892" cy="87" r="12"/>
   <text class="arch-badge-n" x="892" y="91.5">2</text>
 </g>
 <path class="arch-flow" d="M720 144 V193" marker-end="url(#arch-arrowhead)"/>
 <g class="arch-ana">
   <rect class="arch-card" x="520" y="200" width="400" height="112" rx="14"/>
-  <text class="arch-title" x="544" y="231">In-app analytics</text>
-  <text class="arch-sub" x="544" y="254">Node.js runs preset queries inside the web app</text>
-  <text class="arch-sub" x="544" y="272">Prevalence, demographics, vital-sign trends, cohorts</text>
+  <text class="arch-title" x="544" y="231">Analytics: three paths</text>
+  <text class="arch-sub" x="544" y="254">Catalog: 14 analytics x V1 / V3 / V4, run by Node.js</text>
+  <text class="arch-sub" x="544" y="272">Custom plain-English SQL, AI assistant and AI researcher</text>
 </g>
 <path class="arch-flow" d="M720 312 V361" marker-end="url(#arch-arrowhead)"/>
 <g class="arch-ui">
@@ -1651,22 +1651,39 @@ label{color:var(--ink-2)}
 <text class="arch-legend-text" x="554" y="623">Layer 3: analytics</text>
 <g class="arch-sto"><line class="arch-dashed" x1="520" y1="648" x2="542" y2="648"/></g>
 <text class="arch-legend-text" x="554" y="653">Optional component</text>
+<g class="arch-ing"><rect class="arch-card" x="520" y="670" width="22" height="16" rx="5"/></g>
+<text class="arch-legend-text" x="554" y="683">Security layer (spans all layers)</text>
+<g class="arch-ing">
+  <rect class="arch-card" x="40" y="708" width="880" height="76" rx="14"/>
+  <text class="arch-title" x="64" y="737">Security layer</text>
+  <text class="arch-sub" x="64" y="758" style="font-size:12.5px">Sign-in and sessions (scrypt, admin role) · tamper-evident audit log · import password · SQL guard on cohort criteria</text>
+  <text class="arch-sub" x="64" y="775" style="font-size:12.5px">All user-written SQL and every analytic run on a separate SELECT-only database role (db-readonly.sql)</text>
+</g>
 </svg>
 </figure>
 
-                <h3>Three Layers (with openEHR enhancement option)</h3>
+                <h3>Three Layers plus a Security Layer (with openEHR enhancement option)</h3>
                 <ul>
-                    <li><strong>Layer 1 - Data Ingestion (Web App):</strong> User selects folder → detects format → parses & validates → normalizes → loads into storage layer with a batch ID.</li>
+                    <li><strong>Layer 1 - Data Ingestion (Web App):</strong> User selects files or a folder (or fetches from the HAPI test server, or generates synthetic data) → detects format (JSON, NDJSON, Synthea CSV) → parses → normalizes → loads into the storage layer as a named batch. Imports are locked behind the import password.</li>
                     <li><strong>Layer 2 - Storage Layer (Option A - Direct FHIR or Option B - openEHR CDR):</strong>
                         <ul>
-                            <li><em>Option A (Current Approach):</em> Standardized PostgreSQL schema (Patient, Encounter, Observation, Diagnosis, Procedure, Medication, Allergy tables).</li>
+                            <li><em>Option A (Current Approach):</em> Standardized PostgreSQL schema (Patient, Encounter, Observation, Diagnosis, Procedure, Immunization, Medication, Allergy tables), created separately for every imported batch. Batches that share a base name form a group. A <em>population key</em> (<code>batch:&lt;suffix&gt;</code> or <code>group:&lt;base&gt;</code>) says which batches an analysis covers, and every cohort is bound to exactly one population.</li>
                             <li><em>Option B (openEHR Enhancement):</em> openEHR Clinical Data Repository (CDR) storing data via Reference Model + Archetypes, providing clinically validated, version-stable persistence with built-in governance.</li>
                         </ul>
                     </li>
-<li><strong>Layer 3 - Analytics:</strong> 
+<li><strong>Layer 3 - Analytics (three paths):</strong> 
     <ul>
-        <li><strong>In-App Analytics (Node.js):</strong> Quick, preset analytics running directly in the web application. Provides immediate insights with predefined queries for prevalence, demographics, vital signs trends, and basic cohort analysis. Ideal for rapid prototyping and quick stakeholder reviews.</li>
-        <li><strong>Custom analytics in plain English (LLM-built query):</strong> For free-hand questions the catalog does not cover, describe the analysis in English; an LLM writes one read-only SQL query for the selected mode (V1, V3 or V4), you review and can edit it, and then it runs as fixed SQL. The LLM only writes the query: running it is deterministic (same query and data, same result, no LLM call), and the SQL is shown with every result.</li>
+        <li><strong>Analytics catalog (Node.js):</strong> 14 analytics, each in up to three methods (V1 text, V3 codes, V4 codes + time), run on the active cohort. The Dashboard runs all of them at once, and <em>Analytics readiness</em> reports which ones the loaded data can support. Special V4 analytics include the inpatient trajectory and the disease module (diabetes, hypertension).</li>
+        <li><strong>Custom analytics in plain English (LLM-built query):</strong> For free-hand questions the catalog does not cover, describe the analysis in English; an LLM writes one read-only SQL query for the selected mode (V1, V3 or V4), you review and can edit it, and then it runs as fixed SQL. The LLM only drafts the query: running it is deterministic (no LLM call), and the SQL is shown with every result. Only the question is sent to the model, never patient data.</li>
+        <li><strong>AI assistant (optional, your own OpenRouter key):</strong> fills PICO/PECO study forms from a plain-English question, suggests studies, explains results, flags findings, proposes the next analytic from the catalog and compares A vs B. It never runs SQL itself. The <strong>AI researcher</strong> chains it: for 1 to 20 rounds it runs an analytic (catalog, or a plain-English question drafted as a read-only query), asks for an insight and next suggestions, writes a summary and runs the top suggestion, with optional pause-to-review of AI-written queries. Every AI route is audit-logged.</li>
+        <li><strong>Data exploration:</strong> a patient data explorer, a cohort knowledge graph built from the data (co-occurrence, lift, typical order), a SNOMED CT query builder that writes cohort SQL with descendants and ancestors, and reviewer decisions (<code>concept_overrides</code>) that adjust chronic lists, first-line drugs, risky pairs and lab limits.</li>
+    </ul>
+</li>
+<li><strong>Security layer (spans all layers):</strong>
+    <ul>
+        <li><strong>Sign-in:</strong> every page and <code>/api/*</code> call needs a session. Passwords are scrypt hashes in <code>users</code>; sessions store only a token hash; there is an admin role.</li>
+        <li><strong>Audit log:</strong> admin-only tab. Sign-ins, data-changing requests, patient-level reads and AI requests are recorded in an append-only, hash-chained table (tamper-evident, not tamper-proof).</li>
+        <li><strong>SQL guard + SELECT-only role:</strong> cohort criteria must be one read-only <code>WHERE</code> expression (<code>security.js</code>), and cohort SQL, analytics, the knowledge graph, readiness and the explorer run on a separate SELECT-only database connection created with <code>db-readonly.sql</code>.</li>
     </ul>
 </li>
                 </ul>
@@ -1688,40 +1705,47 @@ SELECT o/data[at0001]/value/magnitude FROM OBSERVATION o WHERE o/archetype_id = 
                 </ul>
                 
                 <h3>Standardized Schema (FHIR-derived tables)</h3>
+                <p>Every import creates its own set of tables named <code>fhir_*_&lt;batch&gt;</code> (for example <code>fhir_patient_demo_1</code>). The base names below are the template for each set.</p>
                 <ul>
                     <li><code>fhir_patient</code> - demographics (patient_id, gender, birth_date, address)</li>
                     <li><code>fhir_encounter</code> - encounters (patient_id, encounter_type, start_date, end_date)</li>
-                    <li><code>fhir_observation</code> - labs & vitals (patient_id, code, value, unit, effective_date)</li>
+                    <li><code>fhir_observation</code> - labs &amp; vitals (patient_id, code, value, unit, effective_date)</li>
                     <li><code>fhir_diagnosis</code> - conditions (patient_id, code, code_system, onset_date)</li>
                     <li><code>fhir_procedure</code> - procedures (patient_id, code, performed_date)</li>
+                    <li><code>fhir_immunization</code> - immunizations</li>
                     <li><code>fhir_medication</code> - medications (patient_id, medication_code, prescribed_date)</li>
                     <li><code>fhir_allergy</code> - allergies (patient_id, substance, reaction, severity)</li>
                 </ul>
-                <p><em>Every table also stores: fhir_resource_type, fhir_resource_id, json_content (full original JSON), imported_at, ingestion_batch_id.</em></p>
+                <p><em>Every FHIR table also stores: fhir_resource_type, fhir_resource_id, json_content (full original JSON), imported_at, ingestion_batch_id.</em></p>
+                <p>Tables that are not per batch (none of them hold patient data, except where noted):</p>
+                <ul>
+                    <li><code>cohorts</code> - saved cohorts with criteria SQL and <code>population_scope</code> (the population each cohort is bound to)</li>
+                    <li><code>concept_overrides</code> - reviewer decisions; <code>pico_templates</code> - saved PICO/PECO forms</li>
+                    <li><code>snomed_isa</code>, <code>snomed_concept</code>, <code>snomed_dictionary</code>, <code>snomed_dictionary_meta</code>, <code>snomed_hier_meta</code> - code hierarchy and code dictionary for the query builder</li>
+                    <li><code>users</code>, <code>sessions</code>, <code>audit_log</code>, <code>app_settings</code> - sign-in, audit and the OpenRouter settings. The SELECT-only role cannot read these.</li>
+                </ul>
 
                 <h3>Preprocessing Pipeline (Format-Agnostic)</h3>
                 <ol>
-                    <li><strong>Format Detection</strong> - auto-detect JSON / NDJSON / CSV / XML / HL7</li>
-                    <li><strong>Parsing</strong> - convert to Python objects (FHIR resources)</li>
-                    <li><strong>Validation</strong> - required fields, valid code systems (ICD-10, LOINC, SNOMED CT), valid dates</li>
+                    <li><strong>Format Detection</strong> - JSON bundles, NDJSON and Synthea CSV (XML and HL7 v2 are not supported)</li>
+                    <li><strong>Parsing</strong> - read FHIR resources (Patient, Condition, Observation, MedicationStatement / MedicationRequest, Encounter, Procedure, AllergyIntolerance, Immunization)</li>
+                    <li><strong>Validation</strong> - codes are kept as they appear in the files; the data-quality analytic and Analytics readiness later report unrecognised code systems and impossible dates</li>
                     <li><strong>Normalization</strong> - map columns → standard columns, standardize units, unify codes, handle missing values</li>
-                    <li><strong>Deduplication</strong> - remove duplicate records</li>
+                    <li><strong>Re-import</strong> - importing again into the same batch updates records by FHIR resource id (no separate deduplication step)</li>
                     <li><strong>Loading</strong> - batch inserts into PostgreSQL with batch_id tracking</li>
-                    <li><strong>Data Quality Report</strong> - summary of records, errors, warnings, missing fields</li>
+                    <li><strong>Data Quality Report</strong> - the <em>Data quality and completeness</em> analytic and <em>Analytics readiness</em> measure coding, dating and narrative coverage</li>
                 </ol>
 
                 <h3>The Key Guarantee</h3>
                 <p>Once preprocessing completes successfully, the analytics layer is <strong>blind to the input format</strong>. It only sees the standard schema:</p>
                 <div class="code-block" style="font-size: 13px; max-height: 180px; overflow-y: auto;">
-# This query is ALWAYS identical, regardless of input format (JSON, CSV, NDJSON)
-df = pd.read_sql_query("""
-    SELECT AVG(value) FROM fhir_observation
-    WHERE code = '8480-6'   -- LOINC: systolic blood pressure
-""", engine)
+-- The same query works for every batch, whatever the input format (JSON, CSV, NDJSON)
+SELECT AVG(value) FROM fhir_observation_demo_1
+WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 </div>
 
                 <h3>4 Methods of Analytics</h3>
-                <p>Once your data is in the standardized schema, analytics can be run in 4 different ways. Here's how they compare:</p>
+                <p>Once your data is in the standardized schema, analytics can be run in different ways. Here's how they compare. <strong>V1, V3 and V4 are implemented; V2 (LLM-assisted coding) is a preprocessing idea that is not part of this release.</strong></p>
                 
                 <div class="analytics-methods-table">
                     <table>
@@ -1779,12 +1803,12 @@ df = pd.read_sql_query("""
 
                 <h3>Tech Stack</h3>
                 <ul>
-                    <li><strong>Web Frontend:</strong> React or HTML/JS (your current page)</li>
-                    <li><strong>Backend API:</strong> Node.js/Express (your current stack)</li>
-                    <li><strong>Database:</strong> PostgreSQL ✓</li>
-                    <li><strong>FHIR Parsing:</strong> fhirclient (Python), hapi-fhir (Java)</li>
-                    <li><strong>Analytics:</strong> pandas, numpy, scikit-learn, statsmodels</li>
-                    <li><strong>Visualization:</strong> Plotly, matplotlib, dashboard.io</li>
+                    <li><strong>Web Frontend:</strong> a single HTML/JS page (<code>index.html</code>) plus <code>login.html</code></li>
+                    <li><strong>Backend API:</strong> Node.js (18+) / Express</li>
+                    <li><strong>Database:</strong> PostgreSQL (read/write connection for imports and bookkeeping, separate SELECT-only connection for queries)</li>
+                    <li><strong>FHIR Import:</strong> built-in Node.js parser and bulk loader (pg-copy-streams); optional connector to the public HAPI FHIR test server</li>
+                    <li><strong>Analytics:</strong> SQL run by Node.js (the catalog); optional OpenRouter LLM for the assistant; a pandas/Jupyter notebook generator exists but is switched off unless <code>ENABLE_NOTEBOOK=true</code></li>
+                    <li><strong>Visualization:</strong> plain SVG charts drawn in the browser, plus a canvas-based knowledge graph</li>
                 </ul>
 
                 <h3>Implementation Roadmap</h3>
@@ -1799,13 +1823,20 @@ df = pd.read_sql_query("""
                     <li><strong>Phase 3 (ongoing):</strong> Data validation rules, HIPAA-compliant security (encryption, access controls), incremental re-ingestion, data quality dashboard</li>
                 </ul>
 
-                <h3>Security & Compliance (HIPAA)</h3>
+                <h3>Security &amp; Compliance</h3>
+                <p><strong>Built in:</strong></p>
                 <ul>
-                    <li>Encrypt data at rest and in transit</li>
-                    <li>Access controls with least privilege</li>
-                    <li>Audit logging for all access</li>
-                    <li>De-identify PHI where possible before analytics</li>
-                    <li>Backup/recovery plan</li>
+                    <li>Sign-in for the whole app (scrypt password hashes, 12-hour sessions, brute-force lockout, same-site checks), with an admin role</li>
+                    <li>Import password as a second lock on anything that adds data</li>
+                    <li>Audit log of sign-ins, data changes, patient-level reads and AI requests, append-only and hash-chained, with integrity check and CSV export</li>
+                    <li>SQL guard on cohort criteria, and a SELECT-only database role for all queries over user-written SQL</li>
+                    <li>A data-use notice that must be confirmed before import (consented, de-identified, ethically approved data only)</li>
+                </ul>
+                <p><strong>Not built in (your deployment and policy):</strong></p>
+                <ul>
+                    <li>Encryption at rest and in transit (use HTTPS and an encrypted database volume), backups and recovery</li>
+                    <li>Multiple user roles and user management from the UI (only <code>admin</code> exists today)</li>
+                    <li>Any regulatory certification. The app is not HIPAA-certified, not a medical device, and is meant for synthetic or de-identified data.</li>
                 </ul>
             </div>
             </div>
@@ -1815,56 +1846,40 @@ df = pd.read_sql_query("""
                 <div class="page-head"><h2>Analytics capabilities</h2><p>What the platform can analyse today, and what becomes possible once the standardized schema is loaded.</p></div>
                 <p>This section details the healthcare analytics capabilities possible with this system once FHIR data is loaded into the standardized schema.</p>
                 
-                <h3>What Analytics Can Be Done *Today* with the Current System</h3>
-                <p>Your system now includes the complete healthcare analytics platform with:</p>
+                <h3>What Can Be Done Today with the Current System</h3>
+                <p>The system is a working clinical analytics workbench behind sign-in. What it covers today:</p>
                 <ul>
-                    <li><strong>Standardized FHIR Schema:</strong> PostgreSQL tables for patients, encounters, observations, diagnoses, procedures, medications, and allergies</li>
-                    <li><strong>Data Processing Pipeline:</strong> File/folder picker that accepts FHIR JSON/NDJSON and Synthea CSV formats, normalizes them into the standardized schema</li>
-                    <li><strong>Analytics Engine:</strong> V1, V3 and V4 analytics methods (text matching, code-based, and code+temporality analysis; V2 is not included in this release)</li>
-                    <li><strong>Cohort Management:</strong> Create, activate/deactivate, and filter analytics by patient cohorts</li>
-                    <li><strong>Patient Data Explorer:</strong> Browse and search processed patient data across all resource types</li>
+                    <li><strong>Data in:</strong> your own FHIR files (JSON, NDJSON, Synthea CSV), a fetch from the public HAPI FHIR test server, or a deterministic synthetic generator (with optional messy-data and inpatient-detail modes). Each import becomes a batch with its own <code>fhir_*_&lt;batch&gt;</code> tables; batches with a shared base name form a group.</li>
+                    <li><strong>Analytics readiness:</strong> a data profile (coded, dated and narrative share per resource type) and a one-click check of which analytics each method can run on this data, with reasons for those that cannot.</li>
+                    <li><strong>Cohorts bound to a population:</strong> create cohorts with criteria SQL or the SNOMED CT query builder (exact code, descendants or ancestors). Each cohort belongs to one population and the active cohort decides the scope of everything else.</li>
+                    <li><strong>Analytics catalog and Dashboard:</strong> 14 analytics, each in V1 (text), V3 (codes) and V4 (codes + time) where meaningful, plus the Dashboard that runs all of them for the active cohort. This includes the V4 <em>Inpatient trajectory</em> and <em>Disease module</em> (diabetes, hypertension) analytics.</li>
+                    <li><strong>Custom analytic in plain English:</strong> an LLM drafts one read-only SELECT for the chosen method, you review it, and it runs as fixed SQL with the query shown.</li>
+                    <li><strong>AI assistant (optional):</strong> plain-English question to PICO/PECO form, suggested studies, result explanations, flagged findings, suggested next analytics and A vs B comparison.</li>
+                    <li><strong>AI researcher (optional):</strong> an automated loop of up to 20 rounds: run an analytic, get an AI insight, get suggested next analytics, write a summary, run the top suggestion. Start from a selected analytic or a plain-English question; stop or continue at any time; optional pause to review AI-written queries.</li>
+                    <li><strong>Patient data explorer and cohort knowledge graph:</strong> browse individual patients, and see which conditions, drugs, labs and procedures co-occur in the cohort (lift, order, typical gap), with a patient projection and matrix view.</li>
+                    <li><strong>Reviewer decisions:</strong> concept overrides for chronic conditions, first-line drugs, risky drug pairs and lab limits, stored without patient data and applied across analytics (API <code>/api/overrides</code>).</li>
+                    <li><strong>Output and export:</strong> charts and tables for every result, the SQL used, and download / upload of the Output section.</li>
+                    <li><strong>Security and audit:</strong> sign-in, import password, SQL guard, SELECT-only database role and a tamper-evident audit log (admin tab).</li>
                 </ul>
-                <p>With data loaded into the standardized schema, you can run:</p>
+                <p>Some of what the catalog answers:</p>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Analysis Type</th>
-                            <th>Example Query/Operation</th>
-                            <th>What It Shows</th>
-                        </tr>
+                        <tr><th>Question</th><th>Catalog analytic</th><th>What it shows</th></tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Patient Count</td>
-                            <td><code>SELECT COUNT(*) FROM fhir_patient;</code></td>
-                            <td>Total number of patients in the dataset</td>
-                        </tr>
-                        <tr>
-                            <td>Condition Prevalence</td>
-                            <td><code>SELECT code, code_system, COUNT(*) as count FROM fhir_diagnosis GROUP BY code, code_system ORDER BY count DESC LIMIT 10;</code></td>
-                            <td>Top 10 most frequent conditions with their code systems</td>
-                        </tr>
-                        <tr>
-                            <td>Observation Trends</td>
-                            <td><code>SELECT AVG(value) as avg_value, effective_date FROM fhir_observation WHERE code = ‘8480-6’ GROUP BY effective_date ORDER BY effective_date;</code></td>
-                            <td>Average systolic blood pressure over time (example with LOINC 8480-6)</td>
-                        </tr>
-                        <tr>
-                            <td>Medication Usage</td>
-                            <td><code>SELECT medication_code, COUNT(*) as prescriptions FROM fhir_medication GROUP BY medication_code ORDER BY prescriptions DESC LIMIT 10;</code></td>
-                            <td>Top 10 most frequently prescribed medications</td>
-                        </tr>
-                        <tr>
-                            <td>Cohort Analysis</td>
-                            <td>Filter any analysis by patient cohort (e.g., female patients over 65 with diabetes)</td>
-                            <td>Comparative analytics across different patient populations</td>
-                        </tr>
+                        <tr><td>Who is in the data?</td><td>Demographic distributions</td><td>Gender, age, race and ethnicity, by notes, codes, or new cases in a date window</td></tr>
+                        <tr><td>What conditions are common?</td><td>Condition prevalence and incidence; Multimorbidity burden</td><td>Patients per condition, new cases per year, chronic conditions per patient</td></tr>
+                        <tr><td>How are drugs used?</td><td>Medication utilization; Treatment patterns; Polypharmacy and risky pairs</td><td>Prescriptions and new starts, time from diagnosis to first drug, risky combinations</td></tr>
+                        <tr><td>Are labs and chronic disease under control?</td><td>Lab and vital summary; Chronic disease control; Disease module</td><td>Distributions, yearly trends, control rates and where the uncontrolled patients concentrate</td></tr>
+                        <tr><td>What about hospital use and care gaps?</td><td>Encounter utilization; Preventive screening; Inpatient trajectory</td><td>ED visits, 30-day readmissions, overdue screening, stay pathways</td></tr>
+                        <tr><td>Can I trust this data?</td><td>Data quality and completeness; Analytics readiness</td><td>Coding coverage, unrecognised code systems, impossible dates, which analytics are runnable</td></tr>
+                        <tr><td>Something the catalog lacks?</td><td>Custom analytic (plain English)</td><td>A reviewed, read-only query for a free-hand question</td></tr>
                     </tbody>
                 </table>
-                <p><em>The system is ready for healthcare data analytics - load your FHIR/Synthea data via the preprocessing page to begin analysis.</em></p>
+                <p><em>Load FHIR or synthetic data on the Import data tab (or the Analytics tab) to begin.</em></p>
                 
                 <h3>What Becomes Possible Once the Standardized Schema Is Loaded</h3>
-                <p>When you have ingested FHIR resources into the tables (<code>fhir_patient</code>, <code>fhir_encounter</code>, <code>fhir_observation</code>, <code>fhir_diagnosis</code>, <code>fhir_procedure</code>, <code>fhir_medication</code>, <code>fhir_allergy</code>), you can run analytics in <strong>two complementary ways</strong>:</p>
+                <p>When you have ingested FHIR resources into the tables (<code>fhir_patient</code>, <code>fhir_encounter</code>, <code>fhir_observation</code>, <code>fhir_diagnosis</code>, <code>fhir_procedure</code>, <code>fhir_medication</code>, <code>fhir_allergy</code>), you can run analytics in <strong>three complementary ways</strong>:</p>
                 
                 <div class="analytics-methods-table">
                     <table>
@@ -1878,9 +1893,9 @@ df = pd.read_sql_query("""
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>In-App Analytics</strong></td>
+                                <td><strong>Catalog analytics (in-app)</strong></td>
                                 <td>Node.js + SQL queries in web application</td>
-                                <td>Quick insights, dashboards, preset analytics, stakeholder reporting</td>
+                                <td>Quick insights, dashboards, 14 preset analytics in V1 / V3 / V4, stakeholder reporting</td>
                                 <td>Low-Medium</td>
                             </tr>
                             <tr>
@@ -1889,20 +1904,25 @@ df = pd.read_sql_query("""
                                 <td>Free-hand questions outside the catalog, restricted to the selected mode (V1, V3 or V4)</td>
                                 <td>Low-Medium</td>
                             </tr>
+                            <tr>
+                                <td><strong>AI assistant and AI researcher</strong></td>
+                                <td>OpenRouter model (your key) reading results the catalog produced</td>
+                                <td>Study forms (PICO/PECO), explaining results, flagging findings, choosing the next analytic, or the AI researcher chaining several rounds; it never runs SQL itself</td>
+                                <td>Low</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
                 
                 <!-- Exhaustive Analytics Capabilities Table -->
                 <h3>Exhaustive Analytics Capabilities Table</h3>
-                <p>This table shows which analytics capabilities the in-app analytics and each analytics method (V1, V3, V4) can support. V1 uses narrative text only, V3 uses codes only (no dates), and V4 uses codes plus dates. V2 (LLM-assisted coding) is a preprocessing idea that is not included in this release, so it is not rated here.</p>
+                <p>This table shows which analytics capabilities the in-app catalog and each analytics method (V1, V3, V4) can support. V1 uses narrative text only, V3 uses codes only (no dates), and V4 uses codes plus dates. V2 (LLM-assisted coding) is a preprocessing idea that is not included in this release, so it is not rated here.</p>
                 <table class="analytics-capabilities-table">
                     <thead>
                         <tr>
                             <th>Analytics Capability</th>
                             <th>In-App Analytics (Node.js)</th>
-                            <th>Python/Jupyter Analytics</th>
-                            <th>V1 (text)</th>
+                                                        <th>V1 (text)</th>
                             <th>V3 (codes)</th>
                             <th>V4 (codes + time)</th>
                         </tr>
@@ -1911,14 +1931,12 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Patient Demographics</td>
                     <td>✅ Excellent</td>
-                    <td>✅ Excellent</td>
                     <td>✅ Good</td>
                     <td>✅ Excellent</td>
                     <td>✅ Excellent</td>
                 </tr>
                 <tr>
                     <td>Medication Usage Patterns</td>
-                    <td>✅ Excellent</td>
                     <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>✅ Good</td>
@@ -1927,7 +1945,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Observation Trends &amp; Vital Signs</td>
                     <td>✅ Excellent</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>✅ Good</td>
                     <td>✅ Excellent</td>
@@ -1935,7 +1952,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Cohort Definition &amp; Filtering</td>
                     <td>✅ Good</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Limited</td>
                     <td>✅ Good</td>
                     <td>✅ Good</td>
@@ -1943,14 +1959,12 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Simple Quality Measures (HEDIS-lite)</td>
                     <td>✅ Good</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>⚠️ Fair</td>
                     <td>✅ Excellent</td>
                 </tr>
                 <tr>
                     <td>Temporal Sequencing</td>
-                    <td>✅ Excellent</td>
                     <td>✅ Excellent</td>
                     <td>❌ Not possible</td>
                     <td>❌ Not possible</td>
@@ -1959,7 +1973,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Longitudinal Analysis</td>
                     <td>✅ Good</td>
-                    <td>✅ Excellent</td>
                     <td>❌ Not possible</td>
                     <td>❌ Not possible</td>
                     <td>✅ Excellent</td>
@@ -1967,7 +1980,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>NLP on Clinical Text</td>
                     <td>⚠️ Fair</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>❌ Not used</td>
                     <td>❌ Not used</td>
@@ -1975,7 +1987,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Survival / Time-to-Event Analysis</td>
                     <td>⚠️ Fair</td>
-                    <td>✅ Excellent</td>
                     <td>❌ Not possible</td>
                     <td>❌ Not possible</td>
                     <td>⚠️ Fair</td>
@@ -1983,7 +1994,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Risk Scoring &amp; Predictive Modeling</td>
                     <td>⚠️ Fair</td>
-                    <td>✅ Excellent</td>
                     <td>❌ Not possible</td>
                     <td>⚠️ Fair</td>
                     <td>⚠️ Fair</td>
@@ -1991,7 +2001,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Comorbidity Patterns &amp; Networks</td>
                     <td>⚠️ Fair</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>✅ Good</td>
                     <td>✅ Good</td>
@@ -1999,7 +2008,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Health Equity / Disparity Analysis</td>
                     <td>✅ Good</td>
-                    <td>✅ Excellent</td>
                     <td>❌ Poor</td>
                     <td>✅ Good</td>
                     <td>✅ Good</td>
@@ -2007,7 +2015,6 @@ df = pd.read_sql_query("""
                 <tr>
                     <td>Utilization Analysis (encounters, ED, readmissions)</td>
                     <td>✅ Good</td>
-                    <td>✅ Excellent</td>
                     <td>⚠️ Fair</td>
                     <td>✅ Good</td>
                     <td>✅ Excellent</td>
@@ -2018,13 +2025,11 @@ df = pd.read_sql_query("""
                     <td>❌ Not supported</td>
                     <td>❌ Not supported</td>
                     <td>❌ Not supported</td>
-                    <td>❌ Not supported</td>
                 </tr>
                     </tbody>
                 </table>
                 <ul class="an-muted" style="font-size:12.5px;">
                     <li><strong>In-App</strong> ratings describe what the built-in catalog actually runs (for example Kaplan-Meier curves, rule-based risk points, ordered condition pairs, equity ratios). It has no regression, machine-learning or Cox models, and only keyword/synonym/simple-negation text matching rather than real NLP.</li>
-                    <li hidden><strong>Python/Jupyter</strong> ratings are what the Python ecosystem can do on the same database; this app generates a starter notebook (Extended Analytics tab: orientation cells plus a few recipes), not finished analyses.</li>
                     <li><strong>V3</strong> uses no dates, so it cannot do sequencing, trends, longitudinal or time-to-event work; those need V4. <strong>V1</strong> and <strong>V4</strong> do not replace NLP libraries: V4 ignores narrative text.</li>
                     <li><strong>Cost / Financial</strong> is not supported by anyone: the schema holds no charge, claim or payment fields.</li>
                 </ul>
@@ -2331,6 +2336,7 @@ conn.close()
                             <select id="cohortBatchSelector" style="width:100%; padding:10px;  border-radius:6px; font-size:14px;">
                                 <option value="">-- Loading populations... --</option>
                             </select>
+                            <div id="popBindNote" style="display:none; margin-top:6px; font-size:12px; color:#8a5a00;" aria-live="polite"></div>
                         </div>
                         <button id="loadBatchDetailsBtn" class="btn-primary" style="padding:10px 20px; font-size:14px; height:fit-content;">View Population Details
                         </button>
@@ -2426,7 +2432,7 @@ conn.close()
                 #anExplorer pre.pe-raw { max-height: 420px; overflow: auto; font-size: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fafafa; }
                 </style>
                 <details class="an-collapse analytics-section" id="anExplorer" style="margin-top:30px;" ontoggle="if (this.open) peFirstOpen()"><summary class="an-sum"><h3 style="display:inline; margin:0;">Patient data explorer</h3></summary>
-                    <p style="font-size:13px;">Browse the patients in the selected Population / Batch (and active cohort) and open any one to see everything imported for them: conditions, medications, labs and vitals (with abnormal flags and trends), procedures, encounters, allergies, vaccines and the raw FHIR record. Read-only. After you change the population or cohort above, press Search to refresh.</p>
+                    <p style="font-size:13px;">Browse the patients in the selected Population / Batch (and active cohort) and open any one to see everything imported for them: conditions, medications, labs and vitals (with abnormal flags and trends), procedures, encounters, allergies, vaccines and the raw FHIR record. Read-only. The list reloads by itself when you create, activate, deactivate or delete a cohort. If it ever looks wrong, press Reload: it re-checks the active cohort and confirms the list matches it. After changing the population above, press Search.</p>
                     <div class="an-params">
                         <label>Patient id or name<br><input type="text" id="peQ" placeholder="e.g. syn42-p17" onkeydown="if (event.key === 'Enter') peSearch(true)"></label>
                         <label>Has condition / drug / lab / procedure<br><input type="text" id="peConcept" placeholder="name or code, e.g. diabet or 73211009" onkeydown="if (event.key === 'Enter') peSearch(true)"></label>
@@ -2439,6 +2445,7 @@ conn.close()
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px;">
                         <button class="btn-primary" id="peSearchBtn" onclick="peSearch(true)">Search</button>
                         <button class="btn-secondary" onclick="peClear()">Clear filters</button>
+                        <button class="btn-secondary" id="peReloadBtn" onclick="peReload({ render: true })" title="Re-reads the active cohort from the server, switches to its population, reloads this list and checks they match">Reload (check active cohort)</button>
                     </div>
                     <div id="peStatus" class="status-output" style="margin-top:10px; min-height:20px;" aria-live="polite"></div>
                     <div id="peList" style="margin-top:8px; overflow-x:auto;"></div>
@@ -2450,10 +2457,54 @@ conn.close()
                     <div id="peDetail" class="pe-card" style="display:none;"></div>
                 </details>
                 <script>
-                const PE = { offset: 0, total: 0, limit: 25, opened: false, tok: 0, rec: null, tab: 'timeline', labsAbnOnly: false };
+                const PE = { offset: 0, total: 0, limit: 25, opened: false, tok: 0, rec: null, tab: 'timeline', labsAbnOnly: false, stale: false, rl: 0, lastOk: false, lastCohortId: null };
                 const peEl = id => document.getElementById(id);
                 const peFlagTxt = { high: '▲ high', low: '▼ low', abnormal: '! abnormal' };
-                function peFirstOpen() { if (!PE.opened) { PE.opened = true; peSearch(true); } }
+                function peFirstOpen() { if (!PE.opened || PE.stale) { PE.opened = true; PE.stale = false; peReload({ render: false }); } }
+                // Reload = ask the server which cohort is active RIGHT NOW, follow that cohort's population, load the list, then check that
+                // the list really was built for that cohort (retrying up to 3 times if not). Used by the Reload button, by every cohort change
+                // (create / activate / deactivate / delete) and when the explorer is opened after a cohort change.
+                async function peReload(opt) {
+                    opt = opt || {};
+                    const my = ++PE.rl, st = peEl('peStatus'), btn = peEl('peReloadBtn'), sleep = ms => new Promise(r => setTimeout(r, ms));
+                    if (btn) { btn.disabled = true; btn.textContent = 'Reloading...'; }
+                    PE.rec = null; peEl('peDetail').style.display = 'none';
+                    try {
+                        let note = '';
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            const res = await fetch('/api/cohorts', { cache: 'no-store' });
+                            if (!res.ok) throw new Error('Could not read the cohorts (HTTP ' + res.status + ')');
+                            const d = await res.json();
+                            if (my !== PE.rl) return;
+                            const list = d.cohorts || [], active = list.find(c => c.is_active) || null;
+                            if (opt.render && typeof renderCohortsList === 'function') renderCohortsList(list);
+                            const sel = document.getElementById('cohortBatchSelector');
+                            const wantPop = active ? popOption(active.population_scope) : '';
+                            if (sel && wantPop && sel.value !== wantPop && [...sel.options].some(o => o.value === wantPop)) {
+                                sel.value = wantPop; sel.dispatchEvent(new Event('change', { bubbles: true }));   // clears the list; the search below refills it
+                            }
+                            await peSearch(true);
+                            if (my !== PE.rl) return;
+                            if (!PE.lastOk) return;   // peSearch already showed its own error
+                            const wantId = active ? active.id : null;
+                            if (PE.lastCohortId === wantId) { note = active ? ' \u00b7 matches active cohort \u2713' : ' \u00b7 no active cohort \u2713'; break; }
+                            if (attempt < 2) { await sleep(400); continue; }
+                            st.className = 'status-output error';
+                            st.textContent = 'The list is for cohort ' + (PE.lastCohortId === null ? '(none)' : '#' + PE.lastCohortId) + ' but the active cohort is ' + (active ? '"' + active.name + '"' : '(none)') + '. Press Reload again; if this repeats, restart the server.';
+                            return;
+                        }
+                        if (note) st.textContent += note;
+                    } catch (e) {
+                        if (my === PE.rl) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; }
+                    } finally { if (btn && my === PE.rl) { btn.disabled = false; btn.textContent = 'Reload (check active cohort)'; } }
+                }
+                // Called after a cohort is created, activated, deactivated or deleted. A collapsed explorer reloads when it is next opened.
+                function peRefreshForCohortChange() {
+                    const box = peEl('anExplorer');
+                    if (box && !box.open) { if (PE.opened) PE.stale = true; return; }
+                    PE.opened = true;
+                    peReload({ render: false });
+                }
                 function peClear() {
                     ['peQ', 'peConcept', 'peAgeMin', 'peAgeMax'].forEach(i => { peEl(i).value = ''; }); peEl('peGender').value = ''; peEl('peSort').value = 'id';
                     peSearch(true);
@@ -2467,6 +2518,7 @@ conn.close()
                 }
                 async function peSearch(reset) {
                     const st = peEl('peStatus'), tok = ++PE.tok;
+                    PE.lastOk = false;
                     if (reset) PE.offset = 0;
                     PE.limit = Number(peEl('peLimit').value) || 25;
                     st.className = 'status-output info'; st.textContent = 'Loading patients...'; peEl('peSearchBtn').disabled = true;
@@ -2475,8 +2527,8 @@ conn.close()
                         const r = await (await fetch('/api/explorer/patients?' + p)).json();
                         if (tok !== PE.tok) return;
                         if (!r.success) throw new Error(r.details || r.error);
-                        PE.total = r.total; peRenderList(r);
-                        const sc = r.scope, bits = [`${sc.patients.toLocaleString()} patients in scope`, sc.cohort ? `cohort "${sc.cohort.name}"` : 'no cohort', `as of ${sc.asOf}`];
+                        PE.total = r.total; peRenderList(r); PE.lastCohortId = r.scope.cohort ? r.scope.cohort.id : null; PE.lastOk = true;
+                        const sc = r.scope, bits = [`population ${(sc.batches || []).length === 1 ? sc.batches[0] : (sc.batches || []).length + ' batches'}`, `${sc.patients.toLocaleString()} patients in scope`, sc.cohort ? `cohort "${sc.cohort.name}"` : 'no cohort', `as of ${sc.asOf}`];
                         st.className = 'status-output success'; st.textContent = `${r.total.toLocaleString()} matching · ${bits.join(' · ')}`;
                     } catch (e) {
                         if (tok !== PE.tok) return;
@@ -3418,22 +3470,23 @@ conn.close()
 <tr><td><strong>The answer depends on how you read the record.</strong> Ask "how many patients have diabetes?" of the notes, of the codes, or of the codes with dates, and you often get three different numbers. Most tools show you one, without saying so.</td><td><strong>Three answers side by side.</strong> Every analytic runs from the clinical notes, the codes, and the codes with dates on the same patients, so you can see how much a result depends on the method and where the data is weak.</td></tr>
 <tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it. <em>Analytics readiness</em> goes one step further: it runs every analytic in each method once and tells you which ones this data can support, and why not for the rest.</td></tr>
 <tr><td><strong>Turning a clinical question into a study takes skill and time.</strong> You need to know the code sets, write cohort SQL, pick an analysis and decide what to look at next.</td><td><strong>A faster path from question to result.</strong> Type the question in plain English or ask for suggested studies, and the form is filled in for you. A query builder writes the cohort SQL from clinical concepts, including descendants in the SNOMED CT hierarchy.</td></tr>
-<tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic, nothing runs until you click, and you decide each step.</td></tr></tbody></table>
+<tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic (or a query you reviewed), and you decide each step. The one exception to click-by-click is the optional <em>AI researcher</em>, which runs a number of rounds you set (below).</td></tr></tbody></table>
 <p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, the SQL, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
 
 <section id="ab-what"><h3>What it does</h3>
 <p class="about-callout">You bring FHIR patient data, from your own files, the open HAPI FHIR test server or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
 <p><strong>The assistant is analyst-led.</strong> After each run it reads every result so far, together with the choices you have already made. It summarizes where the analysis stands, flags what it noticed (important, unusual, caution, data quality), and proposes up to four next analytics with a short reason each. You run a suggestion, skip it, mark a finding important or dismiss it, and those decisions shape the next round.</p>
+<p><strong>Or let it run several rounds for you: the AI researcher.</strong> Set a number of rounds (1 to 20) and start from either the analytic you selected or a plain-English question. Each round runs an analytic on the chosen population and active cohort, asks the model for an insight on the result, asks for suggested next analytics, writes a short summary, and runs the top suggestion as the next round. You can stop after any step, continue from where it ended, and optionally pause to review and edit any AI-written query before it runs. It can only choose catalog analytics or plain-English questions, so the same limits apply as for the assistant, but it does chain steps without a click from you, so check the log before trusting the trail it followed.</p>
 <p><strong>You can look at the data itself, not only at results.</strong> The <em>Patient data explorer</em> lists the patients of the current scope and opens any one of them with their conditions, medications, lab series, procedures, encounters, allergies and raw FHIR resource. The <em>Cohort knowledge graph</em> is built from the active cohort: conditions, drugs, labs and procedures as nodes, and links where they occur in the same patients, with lift, which one usually comes first and the typical gap in days. Links that terminology.js already knows (for example a condition and its usual drug) are tagged, including known links that never appear in this cohort. These are co-occurrence counts, not clinical claims.</p>
-<p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers. It never writes SQL, never touches the database, and every figure comes from a deterministic analytic, not from the model.</p></section>
+<p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers. It never runs SQL and never touches the database. The one place it writes a query is the <em>custom analytic</em>: it drafts a single read-only SELECT, you review and can edit it, and only then does it run as fixed SQL. Every figure comes from a deterministic analytic or a query you approved, not from the model.</p></section>
 
 <section id="ab-loop"><h3>How a research session works</h3>
 <ol>
 <li><strong>Bring data and check it.</strong> Import your own FHIR files, fetch a sample from the HAPI test server, or generate a synthetic batch. Then run <em>Analytics readiness</em> to see how much of the data is coded, dated and narrative, and which analytics can run in which method.</li>
-<li><strong>Ask, get ideas, or define.</strong> Type a question in plain English and the assistant fills in the PICO or PECO study form for you to review. Not sure what to ask? Press <em>Suggest a few studies</em> (optionally after typing a topic such as kidney or blood pressure) and pick one of up to four suggested questions, each checked against the known conditions, drugs and outcomes before it is shown. Or build a cohort yourself, including with the SNOMED CT query builder.</li>
+<li><strong>Ask, get ideas, or define.</strong> Type a question in plain English and the assistant fills in the PICO or PECO study form for you to review. Not sure what to ask? Press <em>Suggest a few studies</em> (optionally after typing a topic such as kidney or blood pressure) and pick one of up to four suggested questions, each checked against the known conditions, drugs and outcomes before it is shown. Or build a cohort yourself, including with the SNOMED CT query builder. A cohort is saved against one population (a batch or a batch group) and always runs on it.</li>
 <li><strong>Run an analytic.</strong> Pick one from the catalog, or run the dashboard to cover everything for the cohort.</li>
 <li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
-<li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions.</li>
+<li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions. Or start the <em>AI researcher</em> to chain a few rounds automatically and read the log afterwards.</li>
 <li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph.</li></ol>
 <p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
 
@@ -3448,6 +3501,7 @@ conn.close()
 <section id="ab-use"><h3>Use cases</h3>
 <ul>
 <li><strong>Explore an unfamiliar dataset with a guide.</strong> Run a first analytic, ask the assistant what stands out, and follow its suggestions, skipping what is not useful.</li>
+<li><strong>Let it explore a cohort for a few rounds.</strong> Start the AI researcher from an analytic or a plain-English question, set three to five rounds, then read the insight, suggestions and summary of each round to see where it went and why.</li>
 <li><strong>Turn a question into a study.</strong> Write the question in plain English, or ask for a few suggested studies on a topic, review the PICO or PECO form it fills in, run it, and have the result explained.</li>
 <li><strong>Assess a FHIR export before an ETL project.</strong> Run Analytics readiness and the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
 <li><strong>See what a cohort looks like.</strong> Open the cohort knowledge graph to see which conditions, drugs and labs travel together, then open individual patients in the explorer to check a pattern against the record.</li>
@@ -3460,9 +3514,9 @@ conn.close()
 <section id="ab-fit"><h3>Where it fits among current tools</h3>
 <p>Vibe Rounds is a small, single-purpose workbench, not a replacement for the established platforms. This is how it compares by category. It is a general comparison, so check the current features of any tool you are evaluating.</p>
 <table><thead><tr><th>Category (examples)</th><th>What these tools are strong at</th><th>How Vibe Rounds differs</th></tr></thead><tbody>
-<tr><td>General AI chat and "talk to your data" tools</td><td>Free-form questions on almost anything, and flexible code or SQL generation</td><td>The model does not write SQL or produce numbers. It reads results from fixed, tested analytics and picks the next one from the catalog, so every figure is reproducible and checkable. It is less flexible by design.</td></tr>
+<tr><td>General AI chat and "talk to your data" tools</td><td>Free-form questions on almost anything, and flexible code or SQL generation</td><td>The model does not run SQL or produce numbers. It reads results from fixed, tested analytics and picks the next one from the catalog; the one query it can draft is shown to you for review before it runs. Every figure is reproducible and checkable. It is less flexible by design.</td></tr>
 <tr><td>OMOP and OHDSI stack (OMOP CDM, ATLAS, HADES)</td><td>A standard data model, validated community phenotypes and a large research network</td><td>Works on FHIR-derived tables directly, with no ETL to a common model. It has no network, no shared phenotype library and no validation record behind it.</td></tr>
-<tr><td>Cohort discovery platforms (i2b2, SHRINE and commercial federated networks)</td><td>Cohort counts across institutions, governance and production deployments</td><td>Single database, single user, with no federation or access governance. It adds the text-versus-codes-versus-time comparison, SQL output and an assistant that suggests next steps.</td></tr>
+<tr><td>Cohort discovery platforms (i2b2, SHRINE and commercial federated networks)</td><td>Cohort counts across institutions, governance and production deployments</td><td>Single database with simple sign-in and an audit log, but no federation and no institution-level access governance. It adds the text-versus-codes-versus-time comparison, SQL output and an assistant that suggests next steps.</td></tr>
 <tr><td>Synthetic patient generators (Synthea and similar)</td><td>Broad, disease-module-based synthetic populations in FHIR</td><td>The generator is built into the analysis loop, with controlled data defects and correlated outcomes so analytic methods can be tested. It is narrower in scope.</td></tr>
 <tr><td>Clinical NLP (cTAKES, MedCAT and similar)</td><td>Real concept extraction and negation from free text</td><td>The text method is deliberately simple matching with synonyms and basic negation. It is a baseline to compare against codes, not an NLP engine.</td></tr>
 <tr><td>General BI and notebooks (Metabase, Superset, Jupyter)</td><td>Flexible dashboards and unlimited analysis</td><td>Clinical content comes ready-made: terminologies, a hierarchy-aware query builder and analytics with clinical definitions. For anything beyond that, the custom analytic turns a plain-English question into a reviewed, read-only query that runs as fixed SQL.</td></tr></tbody></table>
@@ -3471,8 +3525,8 @@ conn.close()
 <section id="ab-notfor"><h3>When not to use it</h3>
 <ul>
 <li>Clinical decision-making or anything regulated. It is not a medical device, and the assistant gives no treatment advice.</li>
-<li>Treating the assistant's output as findings. Its flags and suggestions are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
-<li>Real patient data without authentication and your organization's approval. The app has no login and runs cohort SQL as written. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy.</li>
+<li>Treating the assistant's output as findings. Its flags and suggestions, and the path the AI researcher follows across rounds, are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
+<li>Real patient data without your organization's approval. The app has sign-in, an audit log and a SELECT-only database role, but it has one role (admin), no federation and no regulatory certification, and it is not a validated clinical system. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy.</li>
 <li>Multi-site studies, formal phenotype validation or publication-grade inference. Counts are descriptive, the bundled terminology is demo content, and there is no peer-reviewed validation of the methods.</li>
 <li>Very large datasets. Import is chunked and bulk-loaded, but it is still a single PostgreSQL instance, some analytics take minutes at thousands of patients, and the knowledge graph shows only the top concepts per type.</li></ul></section>
 
@@ -4863,7 +4917,8 @@ function renderPaginatedResults() {
                             body: JSON.stringify({
                                 name: cohortName.trim(),
                                 description: cohortDescription || null,
-                                criteria_sql: cohortCriteria
+                                criteria_sql: cohortCriteria,
+                                population_scope: (() => { const sel = document.getElementById('cohortBatchSelector'); const o = sel && [...sel.options].find(x => x.value === batchId); return o ? o.value : batchId; })()
                             })
                         })
                         .then(response => response.json())
@@ -5381,6 +5436,8 @@ async function refreshCohortsList() {
         
         const data = await response.json();
         renderCohortsList(data.cohorts || []);
+        // Every cohort change (create, activate, deactivate, delete) ends here. Creating a cohort also makes it the active one.
+        if (typeof peRefreshForCohortChange === 'function') peRefreshForCohortChange();
     } catch (err) {
         console.error('Error refreshing cohorts:', err);
         container.innerHTML = `<p class="error">Error loading cohorts: ${err.message}</p>`;
@@ -5399,6 +5456,10 @@ async function createCohort() {
         return;
     }
     
+    if (!(document.getElementById('cohortBatchSelector') || {}).value) {
+        alert('Select the Population / Batch this cohort is built for. A cohort stays bound to it.');
+        return;
+    }
     const statusDiv = getStatusDiv();
     statusDiv.className = 'status-output info';
     statusDiv.textContent = 'Creating cohort...';
@@ -5410,17 +5471,16 @@ async function createCohort() {
             body: JSON.stringify({
                 name: name,
                 description: descInput.value.trim() || null,
-                criteria_sql: criteriaInput.value.trim() || null
+                criteria_sql: criteriaInput.value.trim() || null,
+                population_scope: (document.getElementById('cohortBatchSelector') || {}).value || null
             })
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        }
+        if (!response.ok) throw new Error(await apiErrorText(response));
         
         const data = await response.json();
         statusDiv.className = 'status-output success';
-        statusDiv.textContent = `Cohort "${data.cohort.name}" created successfully!`;
+        statusDiv.textContent = `Cohort "${data.cohort.name}" created successfully for population ${popLabel(data.cohort.population_scope)}.`;
         
         // Clear form
         nameInput.value = '';
@@ -5436,28 +5496,65 @@ async function createCohort() {
     }
 }
 
+// One cohort action at a time: a second click while the first is still running is ignored (overlapping requests could leave two cohorts active).
+let cohortBusy = false;
+// Population keys come from the server as batch:<suffix> / group:<base>; the dropdown uses a bare suffix for a batch.
+function popOption(scope) { return !scope ? '' : String(scope).startsWith('batch:') ? String(scope).slice(6) : String(scope); }
+function popLabel(scope) { return !scope ? 'not saved' : String(scope).startsWith('group:') ? `${String(scope).slice(6)} (all batches)` : `batch ${popOption(scope)}`; }
+async function apiErrorText(response) {
+    const t = await response.text();
+    try { const j = JSON.parse(t); return j.error || j.details || `HTTP ${response.status}`; } catch (e) { return `HTTP ${response.status}: ${t.slice(0, 200)}`; }
+}
+// A cohort keeps the population it was built for. The dropdown only chooses the population for a NEW cohort; say so when it differs.
+function updatePopBindNote() {
+    const note = document.getElementById('popBindNote'), sel = document.getElementById('cohortBatchSelector');
+    if (!note || !sel) return;
+    const active = (cohortState.cohorts || []).find(c => c.is_active);
+    const want = active ? popOption(active.population_scope) : '';
+    if (active && want && sel.value && sel.value !== want) {
+        note.style.display = 'block';
+        note.textContent = `Analyses, the explorer and the knowledge graph use the population of the active cohort "${active.name}" (${popLabel(active.population_scope)}), not this selection. This selection is used for a new cohort.`;
+    } else { note.style.display = 'none'; note.textContent = ''; }
+}
+// Orphaned cohort (population deleted or never saved): give it the population chosen in the dropdown (the only way a binding changes)
+async function assignCohortPopulation(id) {
+    const sel = document.getElementById('cohortBatchSelector'), v = sel && sel.value;
+    if (!v) { alert('Select a Population / Batch in the dropdown first.'); return; }
+    if (cohortBusy) return; cohortBusy = true;
+    try {
+        const response = await fetch(`/api/cohorts/${id}/rebind`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ population_scope: v }) });
+        if (!response.ok) throw new Error(await apiErrorText(response));
+        await refreshCohortsList();
+        showStatus('Population assigned. Activate the cohort to use it.', 'success');
+    } catch (err) { showStatus(`Error assigning the population: ${err.message}`, 'error'); } finally { cohortBusy = false; }
+}
+window.assignCohortPopulation = assignCohortPopulation;
+
 // Activate Cohort
 async function activateCohort(id) {
+    if (cohortBusy) return; cohortBusy = true;
     try {
         const response = await fetch(`/api/cohorts/${id}/activate`, {
             method: 'POST'
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        }
+        if (!response.ok) throw new Error(await apiErrorText(response));
         
         const data = await response.json();
+        // A cohort made for a population brings that population with it: switch the dropdown (this resets the explorer and the analytics pickers).
+        const sel = document.getElementById('cohortBatchSelector'), scope = popOption(data.cohort && data.cohort.population_scope);
+        if (sel && scope && sel.value !== scope && [...sel.options].some(o => o.value === scope)) { sel.value = scope; sel.dispatchEvent(new Event('change', { bubbles: true })); }
         await refreshCohortsList();
         showStatus(`Cohort "${data.cohort.name}" activated`, 'success');
     } catch (err) {
         console.error('Error activating cohort:', err);
         showStatus(`Error activating cohort: ${err.message}`, 'error');
-    }
+    } finally { cohortBusy = false; }
 }
 
 // Deactivate Cohort
 async function deactivateCohort(id) {
+    if (cohortBusy) return; cohortBusy = true;
     try {
         const response = await fetch(`/api/cohorts/${id}/deactivate`, {
             method: 'POST'
@@ -5473,7 +5570,7 @@ async function deactivateCohort(id) {
     } catch (err) {
         console.error('Error deactivating cohort:', err);
         showStatus(`Error deactivating cohort: ${err.message}`, 'error');
-    }
+    } finally { cohortBusy = false; }
 }
 
 // Delete Cohort
@@ -6484,7 +6581,7 @@ function renderCohortsList(cohorts) {
         if (!bar) return;
         const c = list && list.length ? list[0] : null;
         bar.style.background = list && list.length ? '#e8f5e9' : '#fff8e1'; bar.style.borderColor = list && list.length ? '#c8e6c9' : '#ffe082';
-        bar.innerHTML = c ? '✅ <strong>Active cohort:</strong> ' + escapeHtml(c.name) + ' <span style="color:#555;">&mdash; ' + (c.criteria_sql ? escapeHtml(c.criteria_sql) : 'All patients') + '</span>'
+        bar.innerHTML = c ? '✅ <strong>Active cohort:</strong> ' + escapeHtml(c.name) + ' <span style="color:#555;">&mdash; ' + (c.criteria_sql ? escapeHtml(c.criteria_sql) : 'All patients') + ' &middot; population ' + escapeHtml(popLabel(c.population_scope)) + '</span>'
                           : 'No active cohort &mdash; analytics cover all patients in the selected population.';
     };
     if (!cohorts || cohorts.length === 0) {
@@ -6497,6 +6594,7 @@ function renderCohortsList(cohorts) {
     // One cohort is active at a time; every analytic runs on it.
     const activeCohorts = cohorts.filter(c => c.is_active).sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.id - b.id);
     paintBar(activeCohorts);
+    updatePopBindNote();
     if (cnt) cnt.textContent = '(' + cohorts.length + ')';
     const badge = document.getElementById('anActiveCohort');
     if (badge) badge.textContent = activeCohorts.length ? `Active cohort applied to every run: ${activeCohorts[0].name}` : 'No active cohort - runs cover all patients in the selected population.';
@@ -6518,11 +6616,13 @@ function renderCohortsList(cohorts) {
                         ${active ? `<span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Active - in use</span>` : '<span style="background:#9e9e9e; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Inactive</span>'}
                     </div>
                     ${cohort.description ? `<p style="margin:4px 0; color:#666; font-size:13px;">${escapeHtml(cohort.description)}</p>` : ''}
+                    <p style="margin:4px 0; font-size:12px; color:#555;"><strong>Population:</strong> ${cohort.orphaned ? `<span style="color:#b3261e; font-weight:600;">&#9888; orphaned &mdash; ${cohort.population_scope ? escapeHtml(popLabel(cohort.population_scope)) + ' no longer exists' : 'no population was saved for this cohort'}</span>` : escapeHtml(popLabel(cohort.population_scope))}</p>
                     <p style="margin:4px 0; font-size:12px; color:#555;"><strong>Criteria:</strong> ${cohort.criteria_sql ? escapeHtml(cohort.criteria_sql) : '<em>All patients</em>'}</p>
                     <p style="margin:4px 0; font-size:12px; color:#888;">${createdDate}</p>
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                    ${active ? btn('#ff9800', 'Deactivate', `deactivateCohort(${cohort.id})`) : btn('#4CAF50', 'Activate', `activateCohort(${cohort.id})`)}
+                    ${active ? btn('#ff9800', 'Deactivate', `deactivateCohort(${cohort.id})`) : cohort.orphaned ? btn('#9e9e9e', 'Activate (needs a population)', `alert('This cohort has no existing population. Select a population in the dropdown and press Assign selected population, or delete the cohort.')`) : btn('#4CAF50', 'Activate', `activateCohort(${cohort.id})`)}
+                    ${cohort.orphaned ? btn('#546e7a', 'Assign selected population', `assignCohortPopulation(${cohort.id})`) : ''}
                     ${btn('#f44336', '🗑 Delete', `deleteCohort(${cohort.id})`)}
                 </div>
             </div>
@@ -6542,7 +6642,12 @@ async function deleteSelectedPopulation() {
     const msg = isGroup
         ? `Delete the ENTIRE population group "${name}" and all batches in it?\nAll patients, conditions, observations, etc. in these batches will be permanently removed.`
         : `Delete batch "${name}"?\nAll its patients, conditions, observations, etc. will be permanently removed.`;
-    if (!confirm(msg + '\n\nThis cannot be undone.')) return;
+    let cohortNote = '';
+    try {
+        const pv = await (await fetch(`/api/populations/${encodeURIComponent(value)}/cohorts`)).json();
+        if (pv && pv.success && pv.cohorts.length) cohortNote = `\n\nThese ${pv.cohorts.length} cohort(s) are bound to it and will ALSO be deleted:\n- ` + pv.cohorts.map(c => c.name).join('\n- ');
+    } catch (e) { cohortNote = '\n\nCohorts bound to this population will also be deleted.'; }
+    if (!confirm(msg + cohortNote + '\n\nThis cannot be undone.')) return;
     try {
         const url = isGroup ? `/api/batch-groups/${encodeURIComponent(name)}` : `/api/batches/${encodeURIComponent(name)}`;
         const response = await fetch(url, { method: 'DELETE' });
@@ -6553,6 +6658,7 @@ async function deleteSelectedPopulation() {
         const detail = document.getElementById('batchDetailContent');
         if (detail) detail.innerHTML = '';
         await loadCohortBatches();
+        await refreshCohortsList();   // the population's cohorts are gone too
         showStatus(data.message || 'Deleted', 'success');
     } catch (err) {
         console.error('Error deleting population:', err);
@@ -6571,6 +6677,7 @@ function setupCohortEventListeners() {
         // Optionally auto-load details when selection changes
         // loadBatchDetails(); // Uncomment if you want auto-load
         reloadCatalogUI(); // Step D.2d: condition options depend on the selected population
+        updatePopBindNote();
     });
 }
 

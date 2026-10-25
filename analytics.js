@@ -174,7 +174,7 @@ function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askM
     const truncated = rows.length > MAX_ROWS; rows = rows.slice(0, MAX_ROWS).map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, clean(v)])));
     const title = String(x.title || 'Custom analytic').replace(/[\u0000-\u001f]/g, ' ').slice(0, 80) || 'Custom analytic';
     return { success: true, id: 'custom_query', title, mode, methodInfo: methodInfo[mode], custom: { sql: c.sql, question: String(x.question || '').slice(0, MAX_Q), truncated },
-      scope: { patients: ctx.patients, cohort: ctx.cohort, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf },
+      scope: { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf },
       sections: [{ name: 'result', title: truncated ? `Result (first ${MAX_ROWS} rows)` : 'Result', columns: rows.length ? Object.keys(rows[0]) : fields.map(f => f.name), rows }] };
   }
 
@@ -331,7 +331,7 @@ const dictCodes = d => Object.values(d).map(v => v.code).filter(Boolean);
 
 async function buildProfile(pool, ctx) {
   const r = await pool.query(profileSql(ctx.with), [dictCodes(T.CONDITIONS), dictCodes(T.LABS), dictCodes(T.MEDICATIONS)]);
-  const raw = r.rows[0].prof, P = { patients: raw.patients, gender: raw.gender, birth: raw.birth, texted: raw.texted, tables: {}, asOf: ctx.asOf, scope: { cohort: ctx.cohort, batches: ctx.suffixes.map(s => s || '(legacy tables)') } };
+  const raw = r.rows[0].prof, P = { patients: raw.patients, gender: raw.gender, birth: raw.birth, texted: raw.texted, tables: {}, asOf: ctx.asOf, scope: { cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(s => s || '(legacy tables)') } };
   for (const a of Object.keys(TABLES)) P.tables[a] = Object.assign({ label: TABLES[a].label }, raw[a]);
   P.tables.dx.dict = raw.dictDx; P.tables.ob.dict = raw.dictOb; P.tables.rx.dict = raw.dictRx;
   const firsts = Object.values(P.tables).map(t => t.first_d).filter(Boolean).sort(), lasts = Object.values(P.tables).map(t => t.last_d).filter(Boolean).sort();
@@ -2188,6 +2188,7 @@ __s.analyticsExt = analyticsExt;
 
 const T = require('./knowledge').terminology;
 const G = T.graph;
+const POP = require('./population');
 
 // ---------------------------------------------------------------- helpers
 class Q { constructor() { this.params = []; } add(v, cast) { this.params.push(v); return `$${this.params.length}${cast ? '::' + cast : ''}`; } }
@@ -2835,22 +2836,30 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
   async function resolveScope(opts = {}) {
     const names = new Set((await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name LIKE 'fhir\\_%'`)).rows.map(r => r.table_name));
     const all = [...names].map(n => (n.match(/^fhir_patient_(.+)$/) || [])[1]).filter(Boolean);
-    let suffixes;
-    if (opts.batchId) suffixes = [sanitizeBatchId(opts.batchId)];
-    else if (opts.batchGroup) suffixes = all.filter(s => s.startsWith(opts.batchGroup));
-    else suffixes = all;
-    suffixes = suffixes.filter(s => names.has(tbl('patient', s)));
-    if (!suffixes.length) {
-      if (!opts.batchId && !opts.batchGroup && names.has('fhir_patient')) suffixes = [''];
-      else throw httpErr(404, 'No imported FHIR data found. Import a batch or generate synthetic data first.');
-    }
+    // The cohort is resolved FIRST: a cohort is bound to the population it was built for, and that population is its scope.
     let cohort = null;
     if (opts.useCohort !== false) {
       const r = opts.cohortId
-        ? await pool.query('SELECT id, name, criteria_sql FROM cohorts WHERE id = $1', [opts.cohortId])
-        : await pool.query('SELECT id, name, criteria_sql FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC LIMIT 1').catch(() => ({ rows: [] }));
+        ? await pool.query('SELECT id, name, criteria_sql, population_scope FROM cohorts WHERE id = $1', [opts.cohortId])
+        : await pool.query('SELECT id, name, criteria_sql, population_scope FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC, id DESC LIMIT 1').catch(() => ({ rows: [] }));
       if (opts.cohortId && !r.rows.length) throw httpErr(404, 'Cohort not found');
       cohort = r.rows[0] || null;
+    }
+    let suffixes, population = null;
+    if (cohort) {
+      // batchId / batchGroup in the request (the dropdown) are ignored: the cohort's own population always wins.
+      population = POP.toKey(cohort.population_scope);
+      suffixes = POP.suffixes(population, all);
+      if (!suffixes.length) throw Object.assign(httpErr(409, `Cohort "${cohort.name}" is not bound to an existing population (it was never saved or the population was deleted). Assign a population to it in the Cohorts tab, or delete it.`), { code: 'cohort_orphaned' });
+    } else {
+      if (opts.batchId) suffixes = [sanitizeBatchId(opts.batchId)];
+      else if (opts.batchGroup) suffixes = POP.suffixes(`group:${opts.batchGroup}`, all);
+      else suffixes = all;
+      suffixes = suffixes.filter(s => names.has(tbl('patient', s)));
+      if (!suffixes.length) {
+        if (!opts.batchId && !opts.batchGroup && names.has('fhir_patient')) suffixes = [''];
+        else throw httpErr(404, 'No imported FHIR data found. Import a batch or generate synthetic data first.');
+      }
     }
     const criteria = require('./security').sqlGuard.assertCriteria((cohort && cohort.criteria_sql) || '');   // 400 if the stored criteria are not a plain read-only expression
     const refRegex = /\bfhir_(patient|encounter|observation|diagnosis|procedure|medication|allergy|immunization)\b(?!_)/g;
@@ -2876,7 +2885,7 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
       asOf = d ? (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10)) : new Date().toISOString().slice(0, 10);
     }
     const total = (await pool.query(`${withSql} SELECT count(*)::int AS n FROM p`)).rows[0].n;
-    return { with: `${withSql}, ref AS (SELECT '${asOf}'::date AS d)`, suffixes, cohort: cohort ? { id: cohort.id, name: cohort.name } : null, asOf, patients: Number(total) };
+    return { with: `${withSql}, ref AS (SELECT '${asOf}'::date AS d)`, suffixes, population, cohort: cohort ? { id: cohort.id, name: cohort.name } : null, asOf, patients: Number(total) };
   }
 
   const clean = v => (typeof v === 'bigint' ? Number(v) : v instanceof Date ? v.toISOString().slice(0, 10) : v);
@@ -2920,7 +2929,7 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
       useArgs = normalizeConcept(args, display, mode, learned);
     }
     const sections = await runSections(a[mode](useArgs, ctx), ctx);
-    return { success: true, id, title: a.title, mode, methodInfo: METHOD_INFO[mode], scope: { patients: ctx.patients, cohort: ctx.cohort, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf }, sections };
+    return { success: true, id, title: a.title, mode, methodInfo: METHOD_INFO[mode], scope: { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf }, sections };
   }
 
   async function demographics({ dim = 'gender', mode = 'v1', args = {}, ...scopeOpts }) {
@@ -2965,7 +2974,7 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
     const r = await pool.query(sql, [lim + 1]);
     const rows = r.rows.map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, clean(v)])));
     const truncated = rows.length > lim;
-    return { success: true, type, label: t.label, scope: { patients: ctx.patients, cohort: ctx.cohort, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf }, count: Math.min(rows.length, lim), truncated, concepts: rows.slice(0, lim) };
+    return { success: true, type, label: t.label, scope: { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf }, count: Math.min(rows.length, lim), truncated, concepts: rows.slice(0, lim) };
   }
 
   // ---- Step D.2b: condition options built from the data (the D.1 `dx` inventory), cached per scope.
@@ -3109,9 +3118,36 @@ module.exports.Q = Q;
 // Sections that have their own tests are reachable here too.
 module.exports.sections = { customAnalytic, readiness, analyticsExt };
 
+
+// A cohort is bound to its population: resolveScope uses that population and ignores the batch / group the page sends.
+async function scopeBindingSelftest() {
+  const assert = require('assert');
+  const tables = ['a_1', 'a_2', 'ab_1', 'b'].map(x => ({ table_name: 'fhir_patient_' + x }));
+  const mk = cohortRow => ({ query: async (sql) => /information_schema/.test(sql) ? { rows: tables }
+    : /FROM cohorts/.test(sql) ? { rows: cohortRow ? [cohortRow] : [] } : { rows: [{ n: 7, d: null }] } });
+  const bound = id => ({ id, name: 'C', criteria_sql: '', population_scope: 'group:a' });
+  let ctx = await createEngine(mk(bound(1))).resolveScope({ batchId: 'b', useCohort: true });
+  assert.deepStrictEqual(ctx.suffixes, ['a_1', 'a_2'], 'the cohort population wins over the dropdown batch, and group a does not include ab_1');
+  assert.strictEqual(ctx.population, 'group:a');
+  ctx = await createEngine(mk(bound(1))).resolveScope({ batchGroup: 'ab', cohortId: 1 });
+  assert.deepStrictEqual(ctx.suffixes, ['a_1', 'a_2']);
+  ctx = await createEngine(mk({ id: 2, name: 'One', criteria_sql: '', population_scope: 'batch:b' })).resolveScope({ batchGroup: 'a' });
+  assert.deepStrictEqual(ctx.suffixes, ['b']);
+  for (const scope of ['group:gone', null]) {
+    await assert.rejects(() => createEngine(mk({ id: 3, name: 'Lost', criteria_sql: '', population_scope: scope })).resolveScope({ batchId: 'b' }),
+      e => e.status === 409 && e.code === 'cohort_orphaned' && /not bound to an existing population/.test(e.message));
+  }
+  ctx = await createEngine(mk(null)).resolveScope({ batchGroup: 'a' });          // no cohort: the dropdown decides, with the exact group rule
+  assert.deepStrictEqual(ctx.suffixes, ['a_1', 'a_2']); assert.strictEqual(ctx.population, null);
+  ctx = await createEngine(mk(bound(1))).resolveScope({ batchGroup: 'ab', useCohort: false });
+  assert.deepStrictEqual(ctx.suffixes, ['ab_1']);
+  console.log('analytics.js scope-binding self-test: all checks passed');
+}
+
 if (require.main === module && process.argv.includes('--selftest')) {
   (async () => {
     for (const m of [customAnalytic, readiness]) await m.selftest();
+    await scopeBindingSelftest();
     console.log('analytics.js: all self-tests passed');
   })().catch(e => { console.error(e); process.exit(1); });
 }

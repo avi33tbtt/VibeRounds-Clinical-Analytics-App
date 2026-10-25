@@ -19,6 +19,7 @@
 // Smoke test of every analytic against a running server:  node evidence.js --smoke
 // Each section is wrapped in its own function, so helper names (bad, isPlain, ...) never clash.
 'use strict';
+const POP = require('./population');   // canonical population keys; a cohort's own population decides the scope
 
 // ======================================================================
 // SECTION: OpenRouter settings, saving and "Test connection" (Steps 4.5-4.7)
@@ -1631,10 +1632,11 @@ function register(app, pool, engine, { fail }) {
   const one = v => (Array.isArray(v) ? v[0] : v);
   const int = (v, lo, hi, def) => { if (v === undefined || v === '') return def; const x = Math.floor(Number(v)); if (!Number.isFinite(x)) return def; return Math.min(hi, Math.max(lo, x)); };
   const scopeOf = q => ({ batchId: one(q.batchId), batchGroup: one(q.batchGroup), cohortId: one(q.cohortId), useCohort: true });
-  const scopeOut = ctx => ({ patients: ctx.patients, cohort: ctx.cohort, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf });
+  const scopeOut = ctx => ({ patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf });
 
   app.get('/api/explorer/patients', async (req, res) => {
     try {
+      res.set('Cache-Control', 'no-store');   // the list depends on the active cohort, which changes without the URL changing
       const q = req.query, gender = String(one(q.gender) || '').toLowerCase();
       if (gender && !['male', 'female', 'other', 'unknown'].includes(gender)) return res.status(400).json({ success: false, error: 'gender must be male, female, other or unknown' });
       const ageMin = int(one(q.ageMin), 0, 130, null), ageMax = int(one(q.ageMax), 0, 130, null);
@@ -1652,6 +1654,7 @@ function register(app, pool, engine, { fail }) {
 
   app.get('/api/explorer/patient', async (req, res) => {
     try {
+      res.set('Cache-Control', 'no-store');
       const id = String(one(req.query.id) || '').trim();
       if (!id) return res.status(400).json({ success: false, error: 'id is required' });
       const ctx = await engine.resolveScope(scopeOf(req.query));
@@ -2158,10 +2161,16 @@ async function resolve(pool, sanitize, body) {
   const mode = b.cohortMode || 'active';
   if (mode === 'active' || mode === 'id') {
     const r = mode === 'id'
-      ? await pool.query('SELECT id, name, criteria_sql FROM cohorts WHERE id = $1', [parseInt(b.cohortId, 10) || 0])
-      : await pool.query('SELECT id, name, criteria_sql FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC LIMIT 1').catch(() => ({ rows: [] }));
+      ? await pool.query('SELECT id, name, criteria_sql, population_scope FROM cohorts WHERE id = $1', [parseInt(b.cohortId, 10) || 0])
+      : await pool.query('SELECT id, name, criteria_sql, population_scope FROM cohorts WHERE is_active = TRUE ORDER BY updated_at DESC, id DESC LIMIT 1').catch(() => ({ rows: [] }));
     if (mode === 'id' && !r.rows.length) throw httpErr(404, 'Cohort not found');
-    if (r.rows.length) { criteria = (r.rows[0].criteria_sql || '').trim(); cohortText = `cohort "${r.rows[0].name}"`; }
+    if (r.rows.length) {
+      // a cohort is bound to its own population: that population replaces the batch / group that was requested
+      const pop = POP.toKey(r.rows[0].population_scope), own = POP.suffixes(pop, all);
+      if (!own.length) throw Object.assign(httpErr(409, `Cohort "${r.rows[0].name}" is not bound to an existing population. Assign a population to it in the Cohorts tab, or delete it.`), { code: 'cohort_orphaned' });
+      batches = own; popText = `${pop.replace(':', ' ')} (cohort population)`;
+      criteria = (r.rows[0].criteria_sql || '').trim(); cohortText = `cohort "${r.rows[0].name}"`;
+    }
   } else if (mode === 'custom' || mode === 'snomed') {
     criteria = txt(b.criteriaSql, 'criteriaSql').trim(); cohortText = mode === 'snomed' ? 'SNOMED builder cohort' : 'custom cohort criteria';
     if (!criteria) cohortText = 'all patients (no cohort)';
@@ -2203,7 +2212,7 @@ module.exports.selftest = () => {
   const assert = require('assert');
   const { spawnSync } = require('child_process');
   return (async () => {
-    const fakePool = rows => ({ query: async sql => (/information_schema/.test(sql) ? { rows } : /FROM cohorts WHERE id/.test(sql) ? { rows: [{ id: 3, name: 'Diabetics', criteria_sql: "gender = 'female'" }] } : /FROM cohorts/.test(sql) ? { rows: [] } : { rows: [] }) });
+    const fakePool = rows => ({ query: async sql => (/information_schema/.test(sql) ? { rows } : /FROM cohorts WHERE id/.test(sql) ? { rows: [{ id: 3, name: 'Diabetics', criteria_sql: "gender = 'female'", population_scope: 'batch:b' }] } : /FROM cohorts/.test(sql) ? { rows: [] } : { rows: [] }) });
     const tn = ['fhir_patient_a_1', 'fhir_patient_a_2', 'fhir_patient_b'].map(table_name => ({ table_name }));
     const san = s => String(s).replace(/[^a-zA-Z0-9]/g, '_');
     // scope resolution
@@ -2211,6 +2220,8 @@ module.exports.selftest = () => {
     assert.deepStrictEqual(s.batches, ['a_1', 'a_2', 'b']);
     s = await resolve(fakePool(tn), san, { batchGroup: 'a_' }); assert.deepStrictEqual(s.batches, ['a_1', 'a_2']);
     s = await resolve(fakePool(tn), san, { batchId: 'b', cohortMode: 'id', cohortId: 3 }); assert.strictEqual(s.criteria, "gender = 'female'");
+    s = await resolve(fakePool(tn), san, { batchGroup: 'a', cohortMode: 'id', cohortId: 3 }); assert.deepStrictEqual(s.batches, ['b'], 'the cohort population wins over the requested group');
+    await assert.rejects(() => resolve({ query: async sql => (/information_schema/.test(sql) ? { rows: tn } : { rows: [{ id: 4, name: 'Lost', criteria_sql: '', population_scope: 'group:gone' }] }) }, san, { cohortMode: 'id', cohortId: 4 }), /not bound to an existing population/);
     await assert.rejects(() => resolve(fakePool(tn), san, { batchId: 'zz' }), /Batch not found/);
     await assert.rejects(() => resolve(fakePool([]), san, {}), /No imported FHIR data/);
     await assert.rejects(() => resolve(fakePool(tn), san, { cohortMode: 'bogus' }), /Unknown cohortMode/);

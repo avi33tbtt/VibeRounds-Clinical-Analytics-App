@@ -955,7 +955,7 @@ function register(app, pool, engine, { fail }) {
       nodes.forEach(n => { if (n.abnPct !== null) labThr[n.id] = { dir: T.LABS[n.id].dir, thr: T.LABS[n.id].thr }; });
       const patients = sample.map(r => ({ id: r.patient_id, gender: r.gender, age: r.age, items: r.items.map(s => { const [k, c] = s.split('|'); return nodeId(k, c); }) }));
 
-      res.json({ success: true, scope: { patients: ctx.patients, cohort: ctx.cohort, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf },
+      res.json({ success: true, scope: { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(x => x || '(legacy tables)'), asOf: ctx.asOf },
         lens: { gender: gender || null, ageMin, ageMax }, totals: { patients: total, withConcepts, sampled: patients.length },
         params: { pool: poolN, maxPatients }, nodes, edges, labThr, patients });
     } catch (err) {
