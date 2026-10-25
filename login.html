@@ -24,6 +24,8 @@
   button { width:100%; margin-top:20px; padding:11px; font:inherit; font-size:15px; font-weight:600; color:#fff; background:var(--accent); border:0; border-radius:8px; cursor:pointer; }
   button:hover:not(:disabled) { background:var(--accent-d); }
   button:disabled { opacity:.65; cursor:default; }
+  .about-link { display:block; margin-top:16px; text-align:center; font-size:13.5px; color:var(--accent); text-decoration:none; }
+  .about-link:hover { text-decoration:underline; }
   #err { display:none; margin-top:14px; padding:9px 12px; font-size:13.5px; color:var(--err); background:var(--errbg); border-radius:8px; }
 </style>
 </head>
@@ -42,6 +44,7 @@
     <div id="err" role="alert"></div>
     <button id="go" type="submit">Sign in</button>
   </form>
+  <a class="about-link" href="/about">About Vibe Rounds</a>
 </main>
 <script>
 (function () {

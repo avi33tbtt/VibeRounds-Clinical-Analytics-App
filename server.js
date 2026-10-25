@@ -1370,6 +1370,8 @@ require('./knowledge').fhirConnect(app, pool, { port, importToken: IMPORT_TOKEN 
 // Serve static files from the current directory (for the web interface) - after API routes
 const path = require('path');
 app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// Public About page: no sign-in needed (the auth gate only guards /, /index.html and /api/*), so it is open to signed-in and signed-out visitors alike.
+app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
 
 // Initialize database schema on server start (creates tables if they don't exist)
 async function initializeDatabaseSchema() {

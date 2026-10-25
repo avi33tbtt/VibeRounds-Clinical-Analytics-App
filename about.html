@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d6b50">
+<title>About · Vibe Rounds</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a7a54'/%3E%3Cpath d='M4 17h6l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+a{color:var(--accent)}
+h2,h3{color:var(--ink)}
+table{border-collapse:collapse;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+th{background:var(--tint);font-weight:600}
+.site-bar{background:var(--surface);border-bottom:1px solid var(--line);height:56px;padding:0 28px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40}
+.site-bar .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.site-bar .mark svg{width:20px;height:20px}
+.site-bar strong{font-size:16px;font-weight:600}
+.site-bar .sp{flex:1}
+.site-bar a.btn{padding:7px 14px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:13.5px}
+.site-bar a.btn:hover{background:var(--accent-hover)}
+main.wrap{max-width:1180px;margin:0 auto;padding:28px}
+@media(max-width:600px){.site-bar{padding:0 14px}main.wrap{padding:18px 14px}}
+:root{--ink:#18232b;--ink-2:#3b4a54;--muted:#66747d;--canvas:#f5f6f7;--surface:#fff;--tint:#f8f9fa;--line:#e1e6e9;--line-strong:#c9d1d6;
+--accent:#0d6b50;--accent-hover:#0a553f;--accent-l:#e7f3ee;--danger:#b42318;--r-sm:6px;--r-md:8px;--r-lg:10px;
+--green:#0d6b50;--green-d:#0d6b50;--green-hover:#0a553f;--green-l:#e7f3ee;--blue:#0d6b50;--blue-hover:#0a553f;--amber:#0d6b50;--amber-hover:#0a553f;--red:#b42318;--red-hover:#8f1c12;
+--font-display:"IBM Plex Sans",system-ui,sans-serif}
+.page-head { margin: 0 0 18px; }
+.page-head .eyebrow {
+    display: inline-block; margin-bottom: 6px; font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--green);
+}
+.page-head h1, .page-head h2 { margin: 0 0 6px; }
+.page-head p { margin: 0; max-width: 70ch; color: var(--muted); font-size: 15px; }
+.about{display:grid;grid-template-columns:200px minmax(0,1fr);gap:40px;align-items:start}
+.about-toc{position:sticky;top:120px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.about-toc a{padding:5px 10px;border-left:2px solid var(--line);color:var(--muted);text-decoration:none}
+.about-toc a:hover{color:var(--ink);border-left-color:var(--accent)}
+.about-body section{padding:0 0 28px;margin:0 0 28px;border-bottom:1px solid var(--line);scroll-margin-top:120px}
+.about-body section:last-child{border:0}
+.about-body h3{margin-top:0!important}
+.about-body p,.about-body li{max-width:74ch;line-height:1.65}
+.about-body p.about-callout{background:var(--tint);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-md);padding:12px 16px;font-size:15px;max-width:none}
+.about-flow{margin:0 0 28px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.about-flow figcaption{font-size:15px;line-height:1.5;margin:0 0 14px;color:var(--ink)}
+.about-flow figcaption strong{color:var(--accent)}
+.about-flow .flow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px 18px;align-items:center}
+.about-flow .flow-src{padding:14px 18px;border:2px solid var(--ink-2);border-radius:var(--r-md);font-weight:600;text-align:center;background:var(--tint)}
+.about-flow .flow-src small,.about-flow .flow-node small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.about-flow .flow-rows{display:flex;flex-direction:column;gap:12px}
+.about-flow .flow-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:stretch}
+.about-flow .flow-node{padding:10px 14px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--tint);font-weight:600;display:flex;flex-direction:column;justify-content:center}
+.about-flow .flow-arr{align-self:center;font-size:20px;color:var(--muted)}
+.about-flow .is-light .flow-node{border:2px solid var(--accent);background:var(--accent-l)}
+.about-flow .is-light .flow-arr{color:var(--accent)}
+.about-flow .is-heavy .flow-node{border-style:dashed}
+.about-flow .flow-tag{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.about-flow .is-light .flow-tag{color:var(--accent)}
+.about-flow .flow-note{margin:12px 0 0;font-size:13px;color:var(--ink-2)}
+@media(max-width:700px){.about-flow .flow{grid-template-columns:1fr}.about-flow .flow-row{grid-template-columns:1fr}.about-flow .flow-rows{gap:18px}.about-flow .is-light{padding-top:18px;border-top:2px solid var(--line)}.about-flow .flow-arr{transform:rotate(90deg);justify-self:center}}
+.about-body code{font:12.5px "IBM Plex Mono",monospace;background:var(--tint);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.about-body table{width:100%;margin:10px 0 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+.about-body td{vertical-align:top}.about-cols{columns:2;column-gap:32px}
+@media(max-width:860px){.about{grid-template-columns:1fr}.about-toc{display:none}.about-cols{columns:1}}
+@media (prefers-color-scheme: dark){
+  :root{--ink:#e6efe9;--ink-2:#c3d1c9;--muted:#9db0a6;--canvas:#101815;--surface:#18231e;--tint:#1d2b25;--line:#2c3d35;--line-strong:#3a4f45;--accent:#3fb98a;--accent-hover:#5fcfa1;--accent-l:#163a2c}
+  .site-bar a.btn{color:#08130e}
+}
+</style>
+</head>
+<body>
+<header class="site-bar">
+  <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 17h6l3-7 5 13 3-6h8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  <strong>Vibe Rounds</strong>
+  <span class="sp"></span>
+  <a class="btn" id="cta" href="/login">Sign in</a>
+</header>
+<main class="wrap">
+<div class="page-head"><h2>About Vibe Rounds</h2><p>Ask better questions of clinical data, and know how far to trust the answers. An AI research assistant for FHIR data that shows its working.</p></div>
+<div class="about">
+<nav class="about-toc" aria-label="On this page">
+<a href="#ab-why">Why it exists</a><a href="#ab-what">What it does</a><a href="#ab-loop">How a research session works</a><a href="#ab-who">Who it benefits</a><a href="#ab-use">Use cases</a><a href="#ab-fit">Where it fits</a><a href="#ab-notfor">When not to use it</a><a href="#ab-purpose">Scope and intent</a>
+</nav>
+<div class="about-body">
+<figure class="about-flow" aria-label="Two ways to get from FHIR data to analytics">
+<figcaption>FHIR data plus heavy tools gets you analytics. But FHIR data plus a <strong>lightweight tool for quick, AI-assisted scientific exploration</strong>? That is <strong>Vibe Rounds</strong>.</figcaption>
+<div class="flow">
+<div class="flow-src">FHIR data<small>your files or synthetic</small></div>
+<div class="flow-rows">
+<div class="flow-row is-heavy">
+<div class="flow-node"><span class="flow-tag">Heavy tools</span>Convert, load, configure<small>Common data model, warehouse, specialist setup</small></div>
+<span class="flow-arr" aria-hidden="true">&rarr;</span>
+<div class="flow-node"><span class="flow-tag">Result</span>Analytics available<small>Established and powerful, once set up</small></div>
+</div>
+<div class="flow-row is-light">
+<div class="flow-node"><span class="flow-tag">Lightweight + AI</span>Vibe Rounds<small>Works on the FHIR data as it is, with an AI research assistant</small></div>
+<span class="flow-arr" aria-hidden="true">&rarr;</span>
+<div class="flow-node"><span class="flow-tag">Result</span>Quick scientific exploration<small>Questions, cohorts, results and next steps in one place</small></div>
+</div>
+</div>
+</div>
+<p class="flow-note">Already running a heavy platform? Keep using it. Vibe Rounds is for the exploratory step before it: fast, low-setup, and not a replacement.</p>
+</figure>
+
+
+<section id="ab-why"><h3>Why it exists</h3>
+<p>Hospitals and health systems now hold large amounts of patient data in FHIR, but getting a trustworthy answer from it is still slow, specialist work. Four problems come up again and again:</p>
+<table><thead><tr><th>The problem</th><th>What Vibe Rounds gives you</th></tr></thead><tbody>
+<tr><td><strong>The answer depends on how you read the record.</strong> Ask "how many patients have diabetes?" of the notes, of the codes, or of the codes with dates, and you often get three different numbers. Most tools show you one, without saying so.</td><td><strong>Three answers side by side.</strong> Every analytic runs from the clinical notes, the codes, and the codes with dates on the same patients, so you can see how much a result depends on the method and where the data is weak.</td></tr>
+<tr><td><strong>You do not know if the data is any good.</strong> Missing codes, local code systems, duplicates and impossible dates only surface after weeks of work, if at all.</td><td><strong>A data check up front.</strong> Coding coverage, unrecognised code systems and date problems are measured first, so you know what the data can support before you build on it. <em>Analytics readiness</em> goes one step further: it runs every analytic in each method once and tells you which ones this data can support, and why not for the rest.</td></tr>
+<tr><td><strong>Turning a clinical question into a study takes skill and time.</strong> You need to know the code sets, write cohort SQL, pick an analysis and decide what to look at next.</td><td><strong>A faster path from question to result.</strong> Type the question in plain English or ask for suggested studies, and the form is filled in for you. A query builder writes the cohort SQL from clinical concepts, including descendants in the SNOMED CT hierarchy.</td></tr>
+<tr><td><strong>General AI chat tools can invent numbers.</strong> A model that writes its own queries and quotes its own figures is hard to trust or to check in a clinical setting.</td><td><strong>An assistant that guides but does not calculate.</strong> The model reads results, flags what stands out, and proposes the next analysis from a fixed catalog. Every number comes from a tested analytic (or a query you reviewed), and you decide each step. The one exception to click-by-click is the optional <em>AI researcher</em>, which runs a number of rounds you set (below).</td></tr></tbody></table>
+<p><strong>The value, in short:</strong> you get to a defensible first answer sooner, you know how much the method and the data quality matter, and you leave with something reusable, the SQL, instead of a one-off number. It does this on synthetic or de-identified data, with no need to convert your data to another model first.</p></section>
+
+<section id="ab-what"><h3>What it does</h3>
+<p class="about-callout">You bring FHIR patient data, from your own files, the open HAPI FHIR test server or a built-in synthetic generator, and work through it in PostgreSQL: define a cohort, run a catalog of clinical analytics (prevalence, medication use, lab control, readmissions, care gaps, drug safety, data quality and more), and let the AI assistant read the results with you.</p>
+<p><strong>The assistant is analyst-led.</strong> After each run it reads every result so far, together with the choices you have already made. It summarizes where the analysis stands, flags what it noticed (important, unusual, caution, data quality), and proposes up to four next analytics with a short reason each. You run a suggestion, skip it, mark a finding important or dismiss it, and those decisions shape the next round.</p>
+<p><strong>Or let it run several rounds for you: the AI researcher.</strong> Set a number of rounds (1 to 20) and start from either the analytic you selected or a plain-English question. Each round runs an analytic on the chosen population and active cohort, asks the model for an insight on the result, asks for suggested next analytics, writes a short summary, and runs the top suggestion as the next round. You can stop after any step, continue from where it ended, and optionally pause to review and edit any AI-written query before it runs. It can only choose catalog analytics or plain-English questions, so the same limits apply as for the assistant, but it does chain steps without a click from you, so check the log before trusting the trail it followed.</p>
+<p><strong>You can look at the data itself, not only at results.</strong> The <em>Patient data explorer</em> lists the patients of the current scope and opens any one of them with their conditions, medications, lab series, procedures, encounters, allergies and raw FHIR resource. The <em>Cohort knowledge graph</em> is built from the active cohort: conditions, drugs, labs and procedures as nodes, and links where they occur in the same patients, with lift, which one usually comes first and the typical gap in days. Links that terminology.js already knows (for example a condition and its usual drug) are tagged, including known links that never appear in this cohort. These are co-occurrence counts, not clinical claims.</p>
+<p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers. It never runs SQL and never touches the database. The one place it writes a query is the <em>custom analytic</em>: it drafts a single read-only SELECT, you review and can edit it, and only then does it run as fixed SQL. Every figure comes from a deterministic analytic or a query you approved, not from the model.</p></section>
+
+<section id="ab-loop"><h3>How a research session works</h3>
+<ol>
+<li><strong>Bring data and check it.</strong> Import your own FHIR files, fetch a sample from the HAPI test server, or generate a synthetic batch. Then run <em>Analytics readiness</em> to see how much of the data is coded, dated and narrative, and which analytics can run in which method.</li>
+<li><strong>Ask, get ideas, or define.</strong> Type a question in plain English and the assistant fills in the PICO or PECO study form for you to review. Not sure what to ask? Press <em>Suggest a few studies</em> (optionally after typing a topic such as kidney or blood pressure) and pick one of up to four suggested questions, each checked against the known conditions, drugs and outcomes before it is shown. Or build a cohort yourself, including with the SNOMED CT query builder. A cohort is saved against one population (a batch or a batch group) and always runs on it.</li>
+<li><strong>Run an analytic.</strong> Pick one from the catalog, or run the dashboard to cover everything for the cohort.</li>
+<li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
+<li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions. Or start the <em>AI researcher</em> to chain a few rounds automatically and read the log afterwards.</li>
+<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph.</li></ol>
+<p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
+
+<section id="ab-who"><h3>Who it benefits</h3>
+<table><thead><tr><th>Who</th><th>What they get</th></tr></thead><tbody>
+<tr><td>Clinical researchers and epidemiologists</td><td>A research partner for the exploratory stage: prototype a cohort, see how many patients each rule catches, get flagged findings and suggested follow-ups, then export the SQL or a notebook.</td></tr>
+<tr><td>Health informatics students and educators</td><td>A hands-on environment for phenotyping, terminology hierarchies and data quality, with an assistant that models good analytic habits such as checking data quality first and warning about small counts. Deterministic synthetic data gives every class the same results.</td></tr>
+<tr><td>Quality and population health analysts</td><td>Ready-made views of chronic disease control, screening gaps, polypharmacy, utilization and equity, with plain-language summaries of what stands out.</td></tr>
+<tr><td>Data engineers and FHIR integration teams</td><td>A quick check of what an export actually contains, such as coding coverage, unrecognised code systems and impossible dates, before investing in mapping.</td></tr>
+<tr><td>Developers and vendors</td><td>A realistic, reproducible dataset, including deliberately messy variants, for testing pipelines and analytics code.</td></tr></tbody></table></section>
+
+<section id="ab-use"><h3>Use cases</h3>
+<ul>
+<li><strong>Explore an unfamiliar dataset with a guide.</strong> Run a first analytic, ask the assistant what stands out, and follow its suggestions, skipping what is not useful.</li>
+<li><strong>Let it explore a cohort for a few rounds.</strong> Start the AI researcher from an analytic or a plain-English question, set three to five rounds, then read the insight, suggestions and summary of each round to see where it went and why.</li>
+<li><strong>Turn a question into a study.</strong> Write the question in plain English, or ask for a few suggested studies on a topic, review the PICO or PECO form it fills in, run it, and have the result explained.</li>
+<li><strong>Assess a FHIR export before an ETL project.</strong> Run Analytics readiness and the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
+<li><strong>See what a cohort looks like.</strong> Open the cohort knowledge graph to see which conditions, drugs and labs travel together, then open individual patients in the explorer to check a pattern against the record.</li>
+<li><strong>Try it on a public FHIR server.</strong> Fetch a few dozen patients from the HAPI test server and use Analytics readiness to see how much, or how little, their data supports. Test data only, never real patients.</li>
+<li><strong>Compare phenotype definitions.</strong> Build a diabetes cohort by exact code, by code plus descendants, and by text, then compare how many patients each captures.</li>
+<li><strong>Explore care gaps and safety signals.</strong> Overdue screening, risky drug pairs, and prescribing after an allergy was recorded, on synthetic data you can share freely.</li>
+<li><strong>Teach clinical analytics.</strong> Generate a batch, assign students different cohorts, and have them explain why the text, code and time methods disagree.</li>
+<li><strong>Stress-test analytics code.</strong> Generate messy data with other code systems, local codes, mixed units and duplicates, and see what breaks.</li></ul></section>
+
+<section id="ab-fit"><h3>Where it fits among current tools</h3>
+<p>Vibe Rounds is a small, single-purpose workbench, not a replacement for the established platforms. This is how it compares by category. It is a general comparison, so check the current features of any tool you are evaluating.</p>
+<table><thead><tr><th>Category (examples)</th><th>What these tools are strong at</th><th>How Vibe Rounds differs</th></tr></thead><tbody>
+<tr><td>General AI chat and "talk to your data" tools</td><td>Free-form questions on almost anything, and flexible code or SQL generation</td><td>The model does not run SQL or produce numbers. It reads results from fixed, tested analytics and picks the next one from the catalog; the one query it can draft is shown to you for review before it runs. Every figure is reproducible and checkable. It is less flexible by design.</td></tr>
+<tr><td>OMOP and OHDSI stack (OMOP CDM, ATLAS, HADES)</td><td>A standard data model, validated community phenotypes and a large research network</td><td>Works on FHIR-derived tables directly, with no ETL to a common model. It has no network, no shared phenotype library and no validation record behind it.</td></tr>
+<tr><td>Cohort discovery platforms (i2b2, SHRINE and commercial federated networks)</td><td>Cohort counts across institutions, governance and production deployments</td><td>Single database with simple sign-in and an audit log, but no federation and no institution-level access governance. It adds the text-versus-codes-versus-time comparison, SQL output and an assistant that suggests next steps.</td></tr>
+<tr><td>Synthetic patient generators (Synthea and similar)</td><td>Broad, disease-module-based synthetic populations in FHIR</td><td>The generator is built into the analysis loop, with controlled data defects and correlated outcomes so analytic methods can be tested. It is narrower in scope.</td></tr>
+<tr><td>Clinical NLP (cTAKES, MedCAT and similar)</td><td>Real concept extraction and negation from free text</td><td>The text method is deliberately simple matching with synonyms and basic negation. It is a baseline to compare against codes, not an NLP engine.</td></tr>
+<tr><td>General BI and notebooks (Metabase, Superset, Jupyter)</td><td>Flexible dashboards and unlimited analysis</td><td>Clinical content comes ready-made: terminologies, a hierarchy-aware query builder and analytics with clinical definitions. For anything beyond that, the custom analytic turns a plain-English question into a reviewed, read-only query that runs as fixed SQL.</td></tr></tbody></table>
+<p><strong>In short:</strong> its niche is the early, exploratory stage between "I have FHIR data" and "I have a validated study". It is useful for learning, prototyping, checking data quality and generating well-founded leads, and not for production research networks or regulated use.</p></section>
+
+<section id="ab-notfor"><h3>When not to use it</h3>
+<ul>
+<li>Clinical decision-making or anything regulated. It is not a medical device, and the assistant gives no treatment advice.</li>
+<li>Treating the assistant's output as findings. Its flags and suggestions, and the path the AI researcher follows across rounds, are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
+<li>Real patient data without your organization's approval. The app has sign-in, an audit log and a SELECT-only database role, but it has one role (admin), no federation and no regulatory certification, and it is not a validated clinical system. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy.</li>
+<li>Multi-site studies, formal phenotype validation or publication-grade inference. Counts are descriptive, the bundled terminology is demo content, and there is no peer-reviewed validation of the methods.</li>
+<li>Very large datasets. Import is chunked and bulk-loaded, but it is still a single PostgreSQL instance, some analytics take minutes at thousands of patients, and the knowledge graph shows only the top concepts per type.</li></ul></section>
+
+<section id="ab-purpose"><h3>Scope and intent</h3>
+<p>Vibe Rounds is a research and teaching workbench with an AI assistant on top. It loads FHIR R4 data into PostgreSQL, lets you define cohorts, and runs a catalog of clinical analytics in three ways that differ in what evidence they use: narrative text, codes, or codes plus time. The assistant helps you read the results and decide what to ask next. Its central question is practical: how much do results change depending on whether you read the notes, trust the codes, or reason over dates?</p>
+<p><strong>It is not</strong> a medical device, a clinical decision support system, or a certified terminology service. It is not an OMOP CDM implementation and does not transform data into one. Outputs are descriptive counts and associations for exploration, method comparison and education, and the human analyst stays in charge of every step.</p></section>
+</div></div>
+</main>
+<script>
+// Public page: works signed in or out. Only the button changes.
+fetch('/api/auth/me').then(function (r) { if (r.ok) { var a = document.getElementById('cta'); a.textContent = 'Open app'; a.href = '/'; } }).catch(function () {});
+</script>
+</body>
+</html>

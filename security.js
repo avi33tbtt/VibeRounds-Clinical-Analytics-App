@@ -520,6 +520,7 @@ module.exports.selftest = () => {
     try {
       let r = await call('GET', '/api/ping'); assert.strictEqual(r.status, 401); assert.strictEqual(r.json.code, 'AUTH_REQUIRED');
       r = await call('GET', '/'); assert.strictEqual(r.status, 302); assert.strictEqual(r.headers.location, '/login');
+      r = await call('GET', '/about'); assert.notStrictEqual(r.status, 401, '/about is public'); assert.notStrictEqual(r.status, 302, '/about does not redirect to sign-in');
       r = await call('POST', '/api/import-fhir'); assert.strictEqual(r.status, 401);
       r = await call('POST', '/api/import-fhir', { headers: { 'X-Import-Token': TOKEN } }); assert.strictEqual(r.status, 200, 'loopback token passes the gate for import only');
       r = await call('GET', '/api/ping', { headers: { 'X-Import-Token': TOKEN } }); assert.strictEqual(r.status, 401);
