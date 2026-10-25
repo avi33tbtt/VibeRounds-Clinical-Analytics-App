@@ -429,7 +429,9 @@ function combineGrouped(items) {
 }
 
 function predicate(domainKey, op, codes, comment) {
-  const d = DOMAINS[domainKey], note = comment ? ` /* ${commentSafe(comment)} */` : '';
+  // No inline /* ... */ note: cohort criteria may not contain SQL comments (security.js refuses them, so a cohort saved with one
+  // could never run). The rule labels are already written as -- comments in the full query header.
+  const d = DOMAINS[domainKey], note = '';
   if (!codes.length) return (op === 'exclude' ? 'TRUE' : 'FALSE') + note;
   const list = codes.map(lit).join(', ');
   const sub = `SELECT patient_id FROM fhir_${d.table} WHERE ${d.code} IN (${list})`;
@@ -759,7 +761,7 @@ module.exports.selftest = () => {
   assert.strictEqual(t.lit("O'Neil"), "'O''Neil'");
   assert.strictEqual(t.commentSafe('a /* b */ c\nd'), 'a b c d');
   assert.deepStrictEqual(t.parseCsvLine('1,"Heart, failure",2'), ['1', 'Heart, failure', '2']);
-  assert.strictEqual(t.predicate('dx', 'include', [], 'x'), 'FALSE /* x */');
+  assert.strictEqual(t.predicate('dx', 'include', [], 'x'), 'FALSE');
   assert.strictEqual(t.predicate('dx', 'exclude', [], ''), 'TRUE');
   assert.ok(/^patient_id IN \(SELECT patient_id FROM fhir_diagnosis WHERE code IN \('1', '2'\)\)$/.test(t.predicate('dx', 'include', ['1', '2'], '')));
   assert.ok(t.predicate('dx', 'exclude', ['1'], '').includes('NOT IN (') && t.predicate('dx', 'exclude', ['1'], '').includes('patient_id IS NOT NULL'));

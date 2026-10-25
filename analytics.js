@@ -23,10 +23,9 @@ const module = { exports: {} };
 //        The LLM (OpenRouter, same settings as the other AI features) turns the question into ONE read-only SELECT over the
 //        scoped views p / dx / ob / rx / pr / en / al / im / ref. Only the question, the mode and the view layout are sent:
 //        no patient data. The query is checked (below) before it is returned; one automatic repair attempt if it is refused.
-//   POST /api/analytics/custom/run       { sql, mode, [title], [question], batchId|batchGroup, [cohortId],
-//                                          [multiCohort], [cohortIds] }  -> the same body as /api/analytics/catalog/run
+//   POST /api/analytics/custom/run       { sql, mode, [title], [question], batchId|batchGroup, [cohortId] }  -> the same body as /api/analytics/catalog/run
 //        Re-checks the query (the browser may have edited it), runs it inside a READ ONLY transaction with a timeout and a row
-//        cap, on the selected population and active cohort(s). With multiCohort: true it runs once per active cohort.
+//        cap, on the selected population and the active cohort.
 //
 // The mode is enforced, not just requested:
 //   V1  text matching     no code columns, no event dates, no birth date / as-of date, no code-like numbers, no ->>'code' / ->>'system'
@@ -133,7 +132,7 @@ const cleanQuestion = q => {
 };
 
 // ---- Express wiring ----------------------------------------------------------------------------------------------
-function register(app, { engine, pool, readPool, fail, runMultiCohort, multiCohortOn, scopeMulti, methodInfo, askModel, getConfig, fetchImpl }) {
+function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askModel, getConfig, fetchImpl }) {
   const clean = v => (typeof v === 'bigint' ? Number(v) : v instanceof Date ? v.toISOString().slice(0, 10) : v);
 
   app.post('/api/analytics/custom/generate', async (req, res) => {
@@ -161,7 +160,7 @@ function register(app, { engine, pool, readPool, fail, runMultiCohort, multiCoho
   async function runOne(x) {
     const mode = String(x.mode || '').toLowerCase(), c = checkQuery(x.sql, mode);
     if (!c.ok) throw bad(c.error);
-    const ctx = await engine.resolveScope(scopeMulti(x));
+    const ctx = await engine.resolveScope(scopeOf(x));
     const client = await readPool.connect();
     let rows, fields;
     try {
@@ -183,7 +182,7 @@ function register(app, { engine, pool, readPool, fail, runMultiCohort, multiCoho
     try {
       res.set('Cache-Control', 'no-store');
       const b = req.body || {};
-      res.json(multiCohortOn(b) ? await runMultiCohort(b, runOne) : await runOne(b));
+      res.json(await runOne(b));
     } catch (e) { fail(res, 'Custom analytic', e); }
   });
 }
@@ -238,9 +237,8 @@ module.exports.selftest = () => {
     const express = require('express'), app = express(); app.use(express.json());
     const seen = { sqls: [], asked: 0 };
     const mkPool = () => ({ connect: async () => ({ query: async sql => { seen.sqls.push(sql); if (/custom_q/.test(sql)) return { rows: [{ n: 3n, d: new Date('2024-01-02') }], fields: [{ name: 'n' }] }; return { rows: [] }; }, release() {} }) });
-    const runMultiCohort = async (b, one) => ({ success: true, multiCohort: true, cohorts: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }], runs: await Promise.all([1, 2].map(async id => ({ cohort: { id }, response: await one({ ...b, cohortId: id }).catch(e => ({ success: false, error: e.message })) }))) });
     register(app, { engine: { resolveScope: async () => ({ with: 'WITH p AS (SELECT 1)', patients: 5, cohort: null, suffixes: ['b'], asOf: '2024-01-01' }) }, pool: {}, readPool: mkPool(),
-      fail: (res, l, e) => res.status(e.status || 500).json({ success: false, error: e.message }), runMultiCohort, multiCohortOn: b => b.multiCohort === true, scopeMulti: x => x,
+      fail: (res, l, e) => res.status(e.status || 500).json({ success: false, error: e.message }), scopeOf: x => x,
       methodInfo: { v1: 'i1', v3: 'i3', v4: 'i4' }, getConfig: async () => ({ apiKey: 'k', model: 'm' }),
       askModel: async (cfg, msgs) => { seen.asked++; return seen.asked === 1 ? JSON.stringify({ title: 'T', explanation: 'E', sql: "SELECT count(*) FROM dx WHERE code = '1'" }) : JSON.stringify({ title: 'T', explanation: 'E', sql: "SELECT count(*)::int AS n FROM dx WHERE j->'code'->>'text' ILIKE '%dm%'" }); } });
     const srv = app.listen(0); const base = `http://127.0.0.1:${srv.address().port}`;
@@ -251,7 +249,6 @@ module.exports.selftest = () => {
     assert.strictEqual(r.code, 200); assert.deepStrictEqual(r.body.sections[0].rows, [{ n: 3, d: '2024-01-02' }]); assert.strictEqual(r.body.id, 'custom_query');
     assert.ok(seen.sqls[0] === 'BEGIN READ ONLY' && /statement_timeout/.test(seen.sqls[1]) && /LIMIT 1001/.test(seen.sqls[2]) && seen.sqls.at(-1) === 'ROLLBACK', 'read-only transaction with timeout and row cap');
     r = await post('/api/analytics/custom/run', { sql: 'SELECT count(*) FROM dx WHERE code = 1', mode: 'v1' }); assert.strictEqual(r.code, 400);
-    r = await post('/api/analytics/custom/run', { sql: 'SELECT 1 AS n', mode: 'v4', multiCohort: true }); assert.strictEqual(r.body.runs.length, 2); assert.ok(r.body.runs.every(x => x.response.success));
     r = await post('/api/analytics/custom/generate', { question: 'hi', mode: 'v1' }); assert.strictEqual(r.code, 400);
     r = await post('/api/analytics/custom/generate', { question: 'a fine question', mode: 'v2' }); assert.strictEqual(r.code, 400);
     srv.close();
@@ -3020,7 +3017,7 @@ function register(app, pool, helpers = {}) {
   const engine = createEngine(readPool, helpers);
   const { generateBundle } = require('./synthetic');
   const fail = (res, label, err) => { console.error(`${label}:`, err); res.status(err.status || 500).json({ success: false, error: err.status ? err.message : `${label} failed`, details: err.message }); };
-  const scopeOf = b => ({ batchId: b.batchId, batchGroup: b.batchGroup, cohortId: b.cohortId, useCohort: true }); // analytics run on cohortId, else the most recently updated active cohort; multi-cohort runs send one cohortId per cohort
+  const scopeOf = b => ({ batchId: b.batchId, batchGroup: b.batchGroup, cohortId: b.cohortId, useCohort: true }); // analytics run on cohortId, else the most recently updated active cohort
 
   app.locals.clearConceptCache = engine.clearConceptCache; // server.js calls this after data-changing requests (Step D.2c)
   app.get('/api/analytics/catalog', async (req, res) => {
@@ -3050,43 +3047,10 @@ function register(app, pool, helpers = {}) {
     }
   });
 
-  // ---- Multi-cohort runs: several cohorts can be active at once. With `multiCohort: true` the SAME analytic (same mode, same
-  // parameters) is run once per cohort and the answer comes back per cohort:
-  //   { success, multiCohort: true, cohorts: [{id, name}|null], runs: [{ cohort, response }] }   response = the normal single-run body
-  // Cohorts = body.cohortIds (explicit, max MULTI_MAX) or else every active cohort; with none active it is one run on the whole
-  // population (cohort: null). One cohort failing never stops the others: its response is { success: false, error }.
-  const MULTI_MAX = 8;
-  async function multiCohortList(b) {
-    let rows;
-    if (b.cohortIds !== undefined && b.cohortIds !== null) {
-      const ids = [...new Set([].concat(b.cohortIds).map(x => String(x).trim()))];
-      if (!ids.length || ids.length > MULTI_MAX || ids.some(x => !/^\d{1,9}$/.test(x))) throw Object.assign(new Error(`cohortIds must be 1 to ${MULTI_MAX} whole numbers`), { status: 400 });
-      rows = (await readPool.query('SELECT id, name FROM cohorts WHERE id = ANY($1::int[]) ORDER BY name, id', [ids.map(Number)])).rows;
-      if (rows.length !== ids.length) throw Object.assign(new Error('Cohort not found'), { status: 404 });
-    } else {
-      rows = (await readPool.query('SELECT id, name FROM cohorts WHERE is_active = TRUE ORDER BY name, id')).rows;
-      if (rows.length > MULTI_MAX) throw Object.assign(new Error(`${rows.length} cohorts are active; multi-cohort runs are limited to ${MULTI_MAX}. Deactivate some or send cohortIds.`), { status: 400 });
-    }
-    return rows.length ? rows.map(r => ({ id: r.id, name: r.name })) : [null];
-  }
-  async function runMultiCohort(b, runOne) {
-    const cohorts = await multiCohortList(b), runs = [];
-    for (const c of cohorts) {                                                     // sequential on purpose: one query at a time per request
-      let response;
-      try { response = await runOne(c ? { ...b, cohortId: c.id } : { ...b, cohortId: undefined, noCohort: true }); }
-      catch (err) { console.error('Multi-cohort run:', err); response = { success: false, error: err.status ? err.message : 'Analytics run failed', details: err.message }; }
-      runs.push({ cohort: c, response });
-    }
-    return { success: true, multiCohort: true, cohorts, runs };
-  }
-  const multiCohortOn = b => b.multiCohort === true || b.multiCohort === 'true';
-  const scopeMulti = x => ({ ...scopeOf(x), ...(x.noCohort ? { useCohort: false } : {}) });   // noCohort: nothing is active, so cover the whole population
-
   app.post('/api/analytics/catalog/run', async (req, res) => {
     try {
       const b = req.body || {};
-      const one = x => engine.run({ id: x.id, mode: x.mode, args: x.args || {}, ...scopeMulti(x) });
-      res.json(multiCohortOn(b) ? await runMultiCohort(b, one) : await one(b));
+      res.json(await engine.run({ id: b.id, mode: b.mode, args: b.args || {}, ...scopeOf(b) }));
     }
     catch (err) { fail(res, 'Analytics run', err); }
   });
@@ -3105,12 +3069,12 @@ function register(app, pool, helpers = {}) {
       const results = [];
       for (const a of CATALOG) {
         if (typeof a[x.mode] !== 'function') continue;
-        try { results.push(await engine.run({ id: a.id, mode: x.mode, args: {}, ...scopeMulti(x) })); }
+        try { results.push(await engine.run({ id: a.id, mode: x.mode, args: {}, ...scopeOf(x) })); }
         catch (err) { results.push({ success: false, id: a.id, title: a.title, mode: x.mode, error: err.message }); }
       }
       return { success: true, mode: x.mode, results };
     };
-    try { res.json(multiCohortOn(b) ? await runMultiCohort(b, all) : await all(b)); }
+    try { res.json(await all(b)); }
     catch (err) { fail(res, 'Analytics run-all', err); }
   });
 
@@ -3119,7 +3083,7 @@ function register(app, pool, helpers = {}) {
     catch (err) { fail(res, 'Demographic analysis', err); }
   });
 
-  __s.customAnalytic(app, { engine, pool, readPool, fail, runMultiCohort, multiCohortOn, scopeMulti, methodInfo: METHOD_INFO, askModel: require('./evidence').askModel, getConfig: require('./evidence').getConfig });   // plain-English custom analytic: /api/analytics/custom/*
+  __s.customAnalytic(app, { engine, pool, readPool, fail, scopeOf, methodInfo: METHOD_INFO, askModel: require('./evidence').askModel, getConfig: require('./evidence').getConfig });   // plain-English custom analytic: /api/analytics/custom/*
   require('./evidence').registerStudies(app, pool, engine, { catalog: () => CATALOG, fail, scopeOf });
   require('./knowledge').kgCohort(app, readPool, engine, { fail });                         // cohort knowledge graph: GET /api/kg/cohort
   __s.readiness(app, readPool, engine, { CATALOG, scopeOf, fail });                  // analytics readiness: POST /api/readiness/*

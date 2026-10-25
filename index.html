@@ -2138,7 +2138,7 @@ conn.close()
             
             
 <nav class="sub-nav" aria-label="Analytics sections">
-                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anEhr">Connect to FHIR</a><a href="#anExplorer">Patient explorer</a><a href="#anReady">Readiness</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#outputSection">Output</a>
+                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anEhr">Connect to FHIR</a><a href="#anExplorer">Patient explorer</a><a href="#anReady">Readiness</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#anResearcher">AI researcher</a><a href="#outputSection">Output</a>
             </nav>
 <!-- Population and cohorts Section -->
             <div class="analytics-section" id="anCohorts">
@@ -2983,7 +2983,7 @@ conn.close()
                                     <button class="btn-primary" onclick="customRun()">Run this query</button>
                                     <label for="anCustomView">Show as</label>
                                     <select id="anCustomView" onchange="customApplyView()" style="padding:6px; border-radius:4px; font-size:13px;"><option value="both">Table and chart</option><option value="table">Table only</option><option value="chart">Chart only</option></select>
-                                    <span class="an-muted">You can edit the query; it is checked again before it runs. With several active cohorts it runs on each.</span>
+                                    <span class="an-muted">You can edit the query; it is checked again before it runs. It runs on the active cohort.</span>
                                 </div>
                             </div>
                             <div id="anCustomStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
@@ -3098,6 +3098,265 @@ conn.close()
                         </div>
                     </div>
                 </details>
+
+                <!-- AI researcher: automated loop = analytic -> AI insight -> suggested next analytics -> summary -> run one -> repeat N times -->
+                <style>
+                    .air-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:10px; font-size:13px; }
+                    .air-row input[type=number] { width:70px; padding:7px; border-radius:4px; font-size:13px; }
+                    .air-iter { border:1px solid #d5dfd9; border-left:3px solid #1a7a54; border-radius:6px; padding:10px 14px; margin-top:12px; }
+                    .air-iter h5 { margin:10px 0 4px; font-size:13px; }
+                    .air-iter .air-txt { white-space:pre-wrap; font-size:13.5px; line-height:1.5; }
+                    .air-iter.is-fail { border-left-color:#c62828; }
+                    .air-final { border:1px solid #1a7a54; border-radius:6px; padding:10px 14px; margin-top:14px; }
+                    .air-warn { color:#c62828; font-size:13px; }
+                    .air-sug { margin:4px 0; padding:6px 8px; border:1px solid #d5dfd9; border-radius:4px; font-size:13px; }
+                    .air-start { margin-top:10px; padding:8px 12px; border:1px solid #d5dfd9; border-radius:6px; font-size:13px; }
+                    .air-start label { margin-right:14px; }
+                    .air-sql { width:100%; box-sizing:border-box; margin-top:6px; padding:8px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,Consolas,monospace; }
+                    .air-sug.is-picked { border-color:#1a7a54; background:rgba(26,122,84,.08); }
+                </style>
+                <details class="an-collapse analytics-section" id="anResearcher" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">AI researcher</h3></summary>
+                    <div class="an-muted" style="margin-bottom:6px;">Enter how many rounds, choose how to start, then activate. Round 1 runs either the analytic currently selected in <em>Run analytics</em> or a custom analytic you describe in plain English (the AI writes a read-only query for the mode selected in <em>Run analytics</em>; you can review it before it runs), on the selected <em>Population / Batch</em> and the <em>active cohort</em>. Each round then asks the AI for insight on the result, asks for suggested next analytics, writes a summary, and runs the top suggestion as the next round. A suggestion can be a catalog analytic or a <em>plain-English question</em> (the AI writes the read-only query for the selected mode and it runs as fixed SQL); if one cannot run, the next suggestion is tried. After the last round you get an overall summary. Every analytic lands in the Output section. If a model call fails or errors it is retried automatically. Needs the AI settings above; only result tables (no patient ids) are sent.</div>
+                    <div class="air-start">
+                        <strong>Start with</strong>
+                        <label><input type="radio" name="airStart" value="analytic" checked onchange="AIR.startUi()"> The analytic selected in Run analytics</label>
+                        <label><input type="radio" name="airStart" value="question" onchange="AIR.startUi()"> A plain-English question about the cohort</label>
+                        <div id="airQBox" style="display:none; margin-top:8px;">
+                            <textarea id="airQ" rows="2" maxlength="600" placeholder="e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" style="width:100%; box-sizing:border-box; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
+                            <label style="display:block; margin-top:6px;"><input type="checkbox" id="airReview" checked> Pause to review (and edit) the query before it runs</label>
+                            <div class="an-muted" style="margin-top:4px;">Follows the mode chosen in Run analytics (V1 text only, V3 codes, V4 codes and dates). Only your question is sent to the model to write the query; later rounds continue from its result.</div>
+                        </div>
+                    </div>
+                    <div class="air-start">
+                        <label style="display:block;"><input type="checkbox" id="airReviewLater"> Pause to review (and edit) the query when the AI suggests a plain-English question as a later round</label>
+                    </div>
+                    <div class="air-row">
+                        <label for="airRounds"><strong>Rounds</strong></label>
+                        <input type="number" id="airRounds" min="1" max="20" value="3" step="1">
+                        <button class="btn-primary" id="airGo" onclick="AIR.start()" title="Clears this log and begins again with the analytic selected in Run analytics">Activate (start from beginning)</button>
+                        <button class="btn-secondary" id="airCont" onclick="AIR.cont()" disabled title="Runs the entered number of further rounds, starting from the AI's last suggestion and keeping everything done so far">Continue from where it ended</button>
+                        <button class="btn-secondary" id="airStop" onclick="AIR.stop()" disabled>Stop after this step</button>
+                    </div>
+                    <div id="airStatus" class="status-output" style="margin-top:8px; min-height:20px;"></div>
+                    <div id="airLog"></div>
+                </details>
+                <script>
+                const AIR = (function () {
+                    const e = s => escapeHtml(String(s == null ? '' : s));
+                    const S = { running: false, stopFlag: false, tried: new Set(), pending: null, alts: [], round: 0, cancelReview: null };
+                    const $ = id => document.getElementById(id);
+                    const sleep = ms => new Promise(r => setTimeout(r, ms));
+                    const sigOf = sg => sg.kind === 'custom' ? 'custom|' + sg.mode + '|' + String(sg.question).toLowerCase().replace(/\s+/g, ' ').trim()
+                        : [sg.analytic, sg.mode, JSON.stringify(sg.args || {})].join('|');
+                    const PRI = { high: 0, medium: 1, low: 2 };
+                    const say = (t, cls) => { const s = $('airStatus'); s.className = 'status-output' + (cls ? ' ' + cls : ''); s.textContent = t; };
+
+                    // Retry a model call when it throws or answers success:false. Config problems (missing key / model) are not retried.
+                    async function withRetry(label, fn, tries) {
+                        tries = tries || 4;
+                        let last;
+                        for (let a = 1; a <= tries; a++) {
+                            if (S.stopFlag) throw new Error('Stopped');
+                            try {
+                                const d = await fn();
+                                if (d && d.success === false) throw new Error(d.error || 'The model call failed');
+                                return d;
+                            } catch (err) {
+                                last = err;
+                                if (/No API key|No model saved/i.test(err.message)) throw err;
+                                if (a < tries) {
+                                    const wait = 2000 * Math.pow(2, a - 1);
+                                    say(`${label} failed (${err.message}). Retry ${a} of ${tries - 1} in ${wait / 1000}s...`, 'info');
+                                    await sleep(wait);
+                                }
+                            }
+                        }
+                        throw new Error(`${label} failed after ${tries} attempts: ${last && last.message}`);
+                    }
+
+                    async function runAnalytic(sg) {
+                        await ensureCatalog();
+                        if (sg) {
+                            $('anSelect').value = sg.analytic;
+                            const radio = document.querySelector(`input[name="analyticsMode"][value="${sg.mode}"]`); if (radio) radio.checked = true;
+                            refreshModeUI();
+                            Object.entries(sg.args || {}).forEach(([k, v]) => { const el = $('anParams__' + k); if (el) el.value = v; });
+                        }
+                        const before = CAT.runSeq;
+                        await runCatalogAnalytic([sg ? sg.mode : demoMode()]);
+                        if (CAT.runSeq === before) throw new Error('The analytic did not run (see the status line in Run analytics)');
+                        return CAT.history[0];
+                    }
+                    const runOk = run => run && run.results.some(r => r && r.success);
+                    async function runCatalogTwice(sg) {
+                        let run;
+                        for (let a = 1; a <= 2; a++) { run = await runAnalytic(sg); if (runOk(run)) return run; }
+                        throw new Error('The analytic returned an error (see its Output block)');
+                    }
+                    // A plain-English question (the starting question, or one the AI suggested as a next step): the AI writes the query, optional review, then it
+                    // runs as fixed read-only SQL like the Custom analytic box, and lands in Output.
+                    async function runCustom(card, q, review, round, mode) {
+                        mode = mode || demoMode();
+                        const slot = card.querySelector('.air-a');
+                        say(`Round ${round}: asking the AI to write the query...`, 'info');
+                        const g = await withRetry('Query', () => anPost('/api/analytics/custom/generate', { question: q, mode }));
+                        let sql = g.sql;
+                        if (review) {
+                            slot.className = 'air-a';
+                            slot.innerHTML = `<div class="an-muted">Question: ${e(q)}</div><div><strong>${e(g.title)}</strong> <span class="an-badge an-${e(mode)}">${e(mode.toUpperCase())}</span> <span class="an-ai-tag">AI-generated, please review</span></div><div class="an-muted">${e(g.explanation)}</div><textarea class="air-sql" rows="9" spellcheck="false"></textarea><div class="air-row"><button class="btn-primary air-ok">Run this query</button><button class="btn-secondary air-no">Cancel</button></div>`;
+                            const ta = slot.querySelector('.air-sql'); ta.value = sql;
+                            say(`Round ${round}: review the query, then press "Run this query".`, 'info');
+                            sql = await new Promise((resolve, reject) => {
+                                S.cancelReview = () => reject(new Error('Stopped'));
+                                slot.querySelector('.air-ok').onclick = () => resolve(ta.value.trim());
+                                slot.querySelector('.air-no').onclick = () => reject(new Error('Cancelled at the query review'));
+                            });
+                            S.cancelReview = null;
+                            slot.className = 'air-a an-muted'; slot.textContent = 'Running...';
+                        }
+                        say(`Round ${round}: running the query...`, 'info');
+                        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode, title: g.title, question: q }, anScope()));
+                        r.mode = r.mode || mode; r.args = { question: q };
+                        const run = anStartRun(`Custom: ${g.title} (${mode.toUpperCase()})`, { modes: [mode] });
+                        run.add(r);
+                        if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated${review ? ', reviewed by you' : ''})${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
+                        if (!r.success) throw new Error(r.error || 'The query failed (see its Output block)');
+                        asDecide({ kind: 'question', text: q, decision: 'ran' });
+                        return run;
+                    }
+                    // One suggestion (or, for round 1 from the selected analytic, null) -> an Output run
+                    async function runSuggestion(card, sg, round) {
+                        if (!sg) return runCatalogTwice(null);
+                        if (sg.kind === 'custom') return runCustom(card, sg.question, $('airReviewLater').checked, round, sg.mode);
+                        const run = await runCatalogTwice(sg);
+                        asDecide({ kind: 'suggestion', analytic: sg.analytic, mode: sg.mode, decision: 'ran' });
+                        return run;
+                    }
+                    function renderSuggestions(list, picked) {
+                        if (!list.length) return '<div class="an-muted">No further analytics suggested.</div>';
+                        return list.map(sg => {
+                            const tag = sg.kind === 'custom' ? `<span class="an-badge an-${e(sg.mode)}">${e(String(sg.mode).toUpperCase())}</span> <span class="an-ai-tag">plain-English question</span>`
+                                : `<span class="an-badge an-${e(sg.mode)}">${e(String(sg.mode).toUpperCase())}</span>`;
+                            return `<div class="air-sug${sg === picked ? ' is-picked' : ''}"><strong>${e(sg.title)}</strong> ${tag} <span class="an-muted">${e(sg.priority)} priority${sg === picked ? ' · chosen to run next' : ''}</span>${sg.kind === 'custom' ? `<div><em>${e(sg.question)}</em></div>` : ''}<div>${e(sg.why)}</div></div>`;
+                        }).join('');
+                    }
+                    const nextSteps = (cohort, pop, runs) => withRetry('Next steps', () => anPost('/api/ai/next-steps', { runs: anInsPayload(runs, 'all').runs, catalog: anCatalogForAi(), decisions: CAT.research.decisions, cohort, population: pop,
+                        allow_custom: true, custom_mode: demoMode() }));
+                    const ranked = ns => (ns.suggestions || []).slice().sort((a, b) => (PRI[a.priority] ?? 3) - (PRI[b.priority] ?? 3));
+
+                    async function go(mode) {
+                        if (S.running) return;
+                        const n = Math.max(1, Math.min(20, parseInt($('airRounds').value, 10) || 0));
+                        if (!n) { say('Enter a number of rounds between 1 and 20.', 'error'); return; }
+                        $('airRounds').value = n;
+                        const fromQ = mode === 'new' && (document.querySelector('input[name="airStart"]:checked') || {}).value === 'question';
+                        const question = fromQ ? $('airQ').value.replace(/\s+/g, ' ').trim() : '';
+                        if (fromQ && question.length < 5) { say('Write your question in a few words, or start with the selected analytic.', 'error'); return; }
+                        S.running = true; S.stopFlag = false;
+                        $('airGo').disabled = true; $('airCont').disabled = true; $('airStop').disabled = false;
+                        const log = $('airLog'), isNew = mode === 'new';
+                        if (isNew) { log.innerHTML = ''; S.tried = new Set(); S.pending = null; S.alts = []; S.round = 0; }
+                        log.querySelectorAll('.air-final').forEach(x => x.remove());
+                        const cohort = anActiveCohortName() || 'none (all patients)', pop = anPopulationLabel();
+                        let next = isNew ? null : S.pending, alts = isNew ? [] : S.alts, done = 0, stopped = false;
+                        try {
+                            await ensureCatalog();
+                            if (!isNew && !next) {   // continuing but no suggestion was kept: ask the AI what to run next, from everything done so far
+                                if (!CAT.history.length) throw new Error('Nothing to continue from: run an analytic first.');
+                                say('Asking the AI what to run next...', 'info');
+                                const ns0 = await nextSteps(cohort, pop, CAT.history.slice().reverse());
+                                const c0 = ranked(ns0).filter(sg => !S.tried.has(sigOf(sg)));
+                                next = c0[0] || null; alts = c0.slice(1);
+                                if (!next) throw new Error('The AI had no new analytic to suggest.');
+                            }
+                            for (let j = 1; j <= n && !S.stopFlag; j++) {
+                                const i = S.round + 1;
+                                const card = document.createElement('article'); card.className = 'air-iter';
+                                card.innerHTML = `<div><strong>Round ${i}</strong> <span class="an-muted">· ${j} of ${n} in this batch · cohort: ${e(cohort)} · population: ${e(pop)}</span> <span class="an-ai-tag">AI-generated, please review</span></div>
+                                    <h5>1. Analytic</h5><div class="air-a an-muted">${fromQ && j === 1 ? 'Writing the query...' : 'Running...'}</div>
+                                    <h5>2. AI insight</h5><div class="air-i an-muted">Waiting...</div>
+                                    <h5>3. Suggested next analytics</h5><div class="air-s an-muted">Waiting...</div>
+                                    <h5>4. Summary</h5><div class="air-m an-muted">Waiting...</div>`;
+                                log.appendChild(card);
+                                const q = sel => card.querySelector(sel);
+                                // 1. run the analytic. Round 1: the selected analytic or the typed question. Later rounds: the suggestion chosen last round
+                                // (a catalog analytic, a plain-English question or a knowledge graph); if it fails, the next best suggestion is tried.
+                                say(`Round ${i}: running the analytic...`, 'info');
+                                const options = j === 1 && !next ? [null] : [next].concat(alts);
+                                let run = null, lastErr = null;
+                                for (const opt of options) {
+                                    try {
+                                        run = (opt === null && fromQ && j === 1) ? await runCustom(card, question, $('airReview').checked, i, demoMode()) : await runSuggestion(card, opt, i);
+                                        next = opt; break;
+                                    } catch (err) {
+                                        lastErr = err;
+                                        if (opt) S.tried.add(sigOf(opt));
+                                        if (S.stopFlag || /^(Stopped|Cancelled)/.test(err.message)) break;      // the analyst stopped it: do not try another
+                                        if (opt === null) break;                                                // round 1 cannot continue without a result
+                                        q('.air-a').innerHTML = `<span class="air-warn">${e(opt.title)}: ${e(err.message)}</span>`;
+                                        q('.air-a').className = 'air-a';
+                                        if (opt !== options[options.length - 1]) say(`Round ${i}: that step failed; trying the next suggestion.`, 'info');
+                                    }
+                                }
+                                if (!run) {
+                                    q('.air-a').innerHTML = `<span class="air-warn">${e(lastErr ? lastErr.message : 'Nothing could be run')}</span>`; card.classList.add('is-fail');
+                                    S.pending = null; S.alts = [];
+                                    if (!options[0] || S.stopFlag) throw (lastErr || new Error('Stopped'));
+                                    say(`Round ${i}: no suggested analytic could be run; stopping the loop.`, 'error'); break;
+                                }
+                                if (next) { S.tried.add(sigOf(next)); }
+                                S.pending = null; S.alts = [];
+                                done++; S.round = i;
+                                q('.air-a').textContent = `${run.label} (Output run #${run.n})`; q('.air-a').classList.remove('an-muted');
+                                // 2. AI insight on this run
+                                say(`Round ${i}: asking the AI for insight...`, 'info');
+                                const ins = await withRetry('Insight', () => anPost('/api/ai/insights', anInsPayload([run], 'run')));
+                                q('.air-i').className = 'air-i air-txt'; q('.air-i').textContent = ins.text;
+                                const outRec = { round: i, model: ins.model, insight: ins.text };
+                                // 3 + 4. suggested next analytics and summary
+                                say(`Round ${i}: asking the AI for next steps...`, 'info');
+                                const ns = await nextSteps(cohort, pop, CAT.history.slice().reverse());
+                                (ns.findings || []).forEach(f => { if (f.flag === 'important') asDecide({ kind: 'finding', text: f.text, decision: 'important' }); });
+                                const cands = ranked(ns);
+                                const freshAll = cands.filter(sg => !S.tried.has(sigOf(sg))), fresh = freshAll[0];
+                                const last = j === n;
+                                q('.air-s').className = 'air-s'; q('.air-s').innerHTML = renderSuggestions(cands, last ? null : fresh);
+                                q('.air-m').className = 'air-m air-txt';
+                                q('.air-m').textContent = (ns.summary || '(no summary returned)') + (last ? '' : fresh ? `\n\nNext: ${fresh.title}.` : '\n\nNo new analytic left to run; stopping.');
+                                next = fresh || null; alts = freshAll.slice(1); S.pending = next; S.alts = alts;
+                                // the same insight, suggestions and summary go into this run's block in the Output section (and its download)
+                                outRec.suggestions = cands.map(sg => ({ title: sg.title, kind: sg.kind, mode: sg.mode, question: sg.question, priority: sg.priority, why: sg.why, chosen: !last && sg === fresh }));
+                                outRec.summary = q('.air-m').textContent;
+                                run.addItem('air', outRec);
+                                if (!last && !next) { say('The AI had no new analytic to suggest, so the loop ended early.', 'info'); break; }
+                            }
+                            stopped = S.stopFlag;
+                            // overall summary of everything that ran
+                            if (done) {
+                                say('Writing the overall summary...', 'info');
+                                const fin = document.createElement('div'); fin.className = 'air-final';
+                                fin.innerHTML = '<strong>Overall summary</strong> <span class="an-ai-tag">AI-generated, please review</span><div class="air-txt an-muted" style="margin-top:6px;">Writing...</div>';
+                                log.appendChild(fin);
+                                try {
+                                    const runs = CAT.history.slice().reverse();
+                                    const all = await withRetry('Overall summary', () => anPost('/api/ai/insights', anInsPayload(runs, 'all')));
+                                    const t = fin.querySelector('.air-txt'); t.className = 'air-txt'; t.textContent = all.text;
+                                    const ao = document.getElementById('anInsAllOut'); if (ao) anInsShow(ao, all, `AI researcher: overall summary (${runs.length} run${runs.length === 1 ? '' : 's'})`);
+                                    fin.insertAdjacentHTML('beforeend', '<div class="an-muted" style="margin-top:6px;">Descriptive and unadjusted: patterns in the tables, not causes or treatment advice.</div>');
+                                } catch (err) { fin.querySelector('.air-txt').innerHTML = `<span class="air-warn">${e(err.message)}</span>`; }
+                            }
+                            say(`AI researcher finished: ${done} analytic${done === 1 ? '' : 's'} run${stopped ? ' (stopped by you)' : ''}.`, 'success');
+                        } catch (err) {
+                            say('AI researcher stopped: ' + err.message, 'error');
+                        } finally {
+                            S.running = false; $('airGo').disabled = false; $('airStop').disabled = true; $('airCont').disabled = !S.round;
+                        }
+                    }
+                    return { startUi() { const q = (document.querySelector('input[name="airStart"]:checked') || {}).value === 'question'; $('airQBox').style.display = q ? 'block' : 'none'; },
+                        start: () => go('new'), cont: () => go('continue'), stop() { S.stopFlag = true; if (S.cancelReview) S.cancelReview(); say('Stopping after the current step...', 'info'); } };
+                })();
+                </script>
+
 
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
                 <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
@@ -6223,10 +6482,9 @@ function renderCohortsList(cohorts) {
     const bar = document.getElementById('activeCohortBar'), cnt = document.getElementById('cohortsCount');
     const paintBar = list => {
         if (!bar) return;
-        const c = list && list.length === 1 ? list[0] : null, many = list && list.length > 1;
+        const c = list && list.length ? list[0] : null;
         bar.style.background = list && list.length ? '#e8f5e9' : '#fff8e1'; bar.style.borderColor = list && list.length ? '#c8e6c9' : '#ffe082';
         bar.innerHTML = c ? '✅ <strong>Active cohort:</strong> ' + escapeHtml(c.name) + ' <span style="color:#555;">&mdash; ' + (c.criteria_sql ? escapeHtml(c.criteria_sql) : 'All patients') + '</span>'
-                          : many ? '✅ <strong>' + list.length + ' active cohorts (multi-cohort):</strong> ' + list.map(x => escapeHtml(x.name)).join(', ') + ' <span style="color:#555;">&mdash; every analytic runs on each of them separately and the output shows one result per cohort.</span>'
                           : 'No active cohort &mdash; analytics cover all patients in the selected population.';
     };
     if (!cohorts || cohorts.length === 0) {
@@ -6236,19 +6494,18 @@ function renderCohortsList(cohorts) {
     }
     
     cohortState.cohorts = cohorts;
-    // Several cohorts can be active at once; every analytic then runs on each of them (multi-cohort).
+    // One cohort is active at a time; every analytic runs on it.
     const activeCohorts = cohorts.filter(c => c.is_active).sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.id - b.id);
     paintBar(activeCohorts);
     if (cnt) cnt.textContent = '(' + cohorts.length + ')';
     const badge = document.getElementById('anActiveCohort');
-    if (badge) badge.textContent = activeCohorts.length > 1 ? `Multi-cohort: every run is repeated on each of ${activeCohorts.length} active cohorts (${activeCohorts.map(c => c.name).join(', ')})`
-        : activeCohorts.length ? `Active cohort applied to every run: ${activeCohorts[0].name}` : 'No active cohort - runs cover all patients in the selected population.';
+    if (badge) badge.textContent = activeCohorts.length ? `Active cohort applied to every run: ${activeCohorts[0].name}` : 'No active cohort - runs cover all patients in the selected population.';
     
     // Active first, then newest first
     const sorted = cohorts.slice().sort((a, b) => (b.is_active - a.is_active) || (new Date(b.created_at) - new Date(a.created_at)));
     const btn = (bg, label, fn) => `<button onclick="${fn}" style="background:${bg}; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-size:12px;">${label}</button>`;
     
-    let html = `<p style="color:#666; font-size:13px; margin:0 0 10px;">${cohorts.length} cohort${cohorts.length !== 1 ? 's' : ''} (${activeCohorts.length} active)</p>`;
+    let html = `<p style="color:#666; font-size:13px; margin:0 0 10px;">${cohorts.length} cohort${cohorts.length !== 1 ? 's' : ''} ${activeCohorts.length ? '(1 active)' : '(none active)'}</p>`;
     sorted.forEach(cohort => {
         const createdDate = new Date(cohort.created_at).toLocaleString();
         const active = !!cohort.is_active;
@@ -6258,7 +6515,7 @@ function renderCohortsList(cohorts) {
                 <div style="flex:1; min-width:220px;">
                     <div style="font-weight:bold; color:#333; margin-bottom:4px;">
                         ${escapeHtml(cohort.name)}
-                        ${active ? `<span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Active - in use${activeCohorts.length > 1 ? ' (multi-cohort)' : ''}</span>` : '<span style="background:#9e9e9e; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Inactive</span>'}
+                        ${active ? `<span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Active - in use</span>` : '<span style="background:#9e9e9e; color:white; padding:2px 10px; border-radius:12px; font-size:11px; margin-left:8px;">Inactive</span>'}
                     </div>
                     ${cohort.description ? `<p style="margin:4px 0; color:#666; font-size:13px;">${escapeHtml(cohort.description)}</p>` : ''}
                     <p style="margin:4px 0; font-size:12px; color:#555;"><strong>Criteria:</strong> ${cohort.criteria_sql ? escapeHtml(cohort.criteria_sql) : '<em>All patients</em>'}</p>
@@ -6345,17 +6602,6 @@ function anScope() {
     return scope;
 }
 
-// Several active cohorts = multi-cohort runs: the same analytic is run once per active cohort, the output has one run block per cohort.
-function anActiveCohorts() { return ((typeof cohortState !== 'undefined' && cohortState.cohorts) || []).filter(c => c.is_active); }
-function anMultiCohort() { return anActiveCohorts().length > 1; }
-// -> [{ cohort: {id, name} | undefined, response }]; response is the usual single-run body (success may be false for one cohort only)
-async function anPostMulti(url, body) {
-    if (!anMultiCohort()) return [{ cohort: undefined, response: await anPost(url, body) }];
-    const r = await anPost(url, Object.assign({ multiCohort: true }, body));
-    if (!r.multiCohort) throw new Error(r.error || r.details || 'Multi-cohort run failed');
-    return r.runs;
-}
-const anMultiLabel = (label, c) => c ? `${label} · cohort: ${c.name}` : label;
 
 function renderParamForm(elId, params, mode) {
     const el = document.getElementById(elId);
@@ -7116,6 +7362,13 @@ function anRenderItem(run, t, d) {
         else if (t === 'compare') run.body.insertAdjacentHTML('beforeend', renderCompare(d));
         else if (t === 'all') run.body.insertAdjacentHTML('beforeend', d.results.map(r => `<details ${r.success ? '' : 'open'} style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:bold;">${escapeHtml(r.title || r.id)} ${r.success ? '' : '⚠️'}</summary>${renderRun(Object.assign({ mode: d.mode }, r))}</details>`).join(''));
         else if (t === 'ckg') run.body.appendChild(KGC.renderOutput(d));
+        else if (t === 'air') {   // AI researcher: insight, suggested next analytics and summary of one round (text only)
+            const sug = (Array.isArray(d.suggestions) ? d.suggestions : []).map(x => `<li><strong>${escapeHtml(x.title)}</strong> <span class="an-muted">${x.kind === 'custom' ? 'plain-English question' : escapeHtml(String(x.mode || '').toUpperCase())} · ${escapeHtml(x.priority)} priority${x.chosen ? ' · chosen to run next' : ''}</span>${x.kind === 'custom' ? `<div><em>${escapeHtml(x.question)}</em></div>` : ''}<div>${escapeHtml(x.why)}</div></li>`).join('');
+            run.body.insertAdjacentHTML('beforeend', `<div class="air-out" style="margin-top:10px; padding:10px 12px; border:1px solid #1a7a54; border-radius:6px;"><div><strong>AI researcher${d.round ? ' · round ' + escapeHtml(String(d.round)) : ''}</strong> <span class="an-ai-tag">AI-generated, please review</span>${d.model ? ` <span class="an-muted">model: ${escapeHtml(d.model)}</span>` : ''}</div>`
+                + (d.insight ? `<h5 style="margin:8px 0 2px;">AI insight</h5><div style="white-space:pre-wrap; font-size:13.5px; line-height:1.5;">${escapeHtml(d.insight)}</div>` : '')
+                + (sug ? `<h5 style="margin:8px 0 2px;">Suggested next analytics</h5><ul style="margin:0; padding-left:18px; font-size:13px;">${sug}</ul>` : '')
+                + (d.summary ? `<h5 style="margin:8px 0 2px;">Summary</h5><div style="white-space:pre-wrap; font-size:13.5px; line-height:1.5;">${escapeHtml(d.summary)}</div>` : '') + '</div>');
+        }
         else if (t === 'kg') {
             const rows = d.rows || [], viaName = k => KG_LABEL[k] || k, g = document.createElement('div');
             g.innerHTML = (rows.length ? '<table class="an-table kg-table"><thead><tr><th>Concept</th><th>Kind</th><th>Relation</th><th>Direction</th><th>Depth</th><th>Via</th></tr></thead><tbody>' +
@@ -7166,7 +7419,7 @@ function anStartRun(label, opts) {
 // Sends the result tables of the run(s) to POST /api/ai/insights. The server removes patient-id style columns, cuts large tables and
 // builds the model prompt; the API key never leaves the server.
 function anInsPayload(runs, scope) {
-    return { scope, runs: runs.map(r => ({ n: r.n, label: r.label, cohort: r.cohort, population: r.population, items: r.items.filter(it => it && it.t !== 'kg') })) };
+    return { scope, runs: runs.map(r => ({ n: r.n, label: r.label, cohort: r.cohort, population: r.population, items: r.items.filter(it => it && it.t !== 'kg' && it.t !== 'air') })) };
 }
 function anInsShow(out, d, what) {
     const sent = d.sent || {};
@@ -7307,7 +7560,7 @@ async function anUploadOutput(input) {
             if (!r || !Array.isArray(r.items)) { bad++; return; }
             const run = anStartRun(String(r.label || 'Run'), { imported: true, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
                 cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
             n++;
         });
         anReorder(); anSyncLast(); anUpdateHistoryBar();
@@ -7329,24 +7582,19 @@ async function runCatalogAnalytic(modes) {
         await ensureCatalog();
         const a = currentAnalytic();
         status.className = 'status-output info';
-        const nMulti = anMultiCohort() ? anActiveCohorts().length : 0;
-        status.textContent = `Running "${a.title}" (${modes.map(m => m.toUpperCase()).join(', ')})${nMulti ? ` on each of ${nMulti} active cohorts` : ''}...`;
-        const runs = new Map();                                   // one run block per cohort (a single block when only one cohort / none is active)
-        let failed = 0;
+        status.textContent = `Running "${a.title}" (${modes.map(m => m.toUpperCase()).join(', ')})...`;
+        let run = null, failed = 0;                              // one run block, on the active cohort (or all patients when none is active)
         for (const mode of modes) {
             const args = readParams('anParams', a.params, mode);
-            for (const p of await anPostMulti('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, anScope()))) {
-                const r = p.response;
-                r.mode = r.mode || mode;
-                r.args = args; // the form values used (context for the plain-language explanation, Step 4.10)
-                if (!r.success) failed++;
-                const key = p.cohort ? p.cohort.id : 'all';
-                if (!runs.has(key)) runs.set(key, anStartRun(anMultiLabel(`${a.title} (${modes.map(m => m.toUpperCase()).join(', ')})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}));
-                runs.get(key).add(r);
-            }
+            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, anScope()));
+            r.mode = r.mode || mode;
+            r.args = args; // the form values used (context for the plain-language explanation, Step 4.10)
+            if (!r.success) failed++;
+            if (!run) run = anStartRun(`${a.title} (${modes.map(m => m.toUpperCase()).join(', ')})`);
+            run.add(r);
         }
         status.className = 'status-output ' + (failed ? 'error' : 'success');
-        status.textContent = `Done: ${a.title}${nMulti ? ` on ${runs.size} cohorts` : ''}${failed ? ` (${failed} failed)` : ''}`;
+        status.textContent = `Done: ${a.title}${failed ? ` (${failed} failed)` : ''}`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -7476,19 +7724,15 @@ async function customRun() {
     if (!CUSTOM.mode || !sql) { customStatus('Generate a query first.', true); return; }
     if (demoMode() !== CUSTOM.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this ${CUSTOM.mode.toUpperCase()} query was written: press "Generate query" again so the query follows the selected mode.`, true); return; }
     try {
-        const nMulti = anMultiCohort() ? anActiveCohorts().length : 0;
-        customStatus(`Running${nMulti ? ` on each of ${nMulti} active cohorts` : ''}...`);
+        customStatus('Running...');
         const view = document.getElementById('anCustomView').value, label = `Custom: ${CUSTOM.title} (${CUSTOM.mode.toUpperCase()})`;
-        let failed = 0, n = 0;
-        for (const p of await anPostMulti('/api/analytics/custom/run', Object.assign({ sql, mode: CUSTOM.mode, title: CUSTOM.title, question: CUSTOM.question }, anScope()))) {
-            const r = p.response; r.mode = r.mode || CUSTOM.mode; r.args = { question: CUSTOM.question };
-            if (!r.success) failed++;
-            const run = anStartRun(anMultiLabel(label, p.cohort), Object.assign({ modes: [CUSTOM.mode] }, p.cohort ? { cohort: p.cohort.name } : {}));
-            run.add(r); n++;
-            if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
-            customView(run.wrap, view); CUSTOM.wraps.push(run.wrap);
-        }
-        customStatus(failed ? `Done with ${failed} failure${failed === 1 ? '' : 's'} (see the Output).` : `Done${n > 1 ? `: ${n} cohorts` : ''}. Result added to the Output; change "Show as" to switch between table and chart.`, !!failed);
+        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode: CUSTOM.mode, title: CUSTOM.title, question: CUSTOM.question }, anScope()));
+        r.mode = r.mode || CUSTOM.mode; r.args = { question: CUSTOM.question };
+        const run = anStartRun(label, { modes: [CUSTOM.mode] });
+        run.add(r);
+        if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
+        customView(run.wrap, view); CUSTOM.wraps.push(run.wrap);
+        customStatus(r.success ? 'Done. Result added to the Output; change "Show as" to switch between table and chart.' : 'The query failed (see the Output).', !r.success);
     } catch (e) { customStatus('Error: ' + e.message, true); }
 }
 
@@ -7498,19 +7742,20 @@ async function runCatalogAll() {
     try {
         status.className = 'status-output info';
         status.textContent = `Running every analytic in ${mode.toUpperCase()} (default parameters)...`;
-        let total = 0, failed = 0, blocks = 0;
-        for (const p of await anPostMulti('/api/analytics/catalog/run-all', Object.assign({ mode }, anScope()))) {
-            const res = p.response;
-            if (!res.success || !Array.isArray(res.results)) { failed++; blocks++; anStartRun(anMultiLabel(`All analytics (${mode.toUpperCase()})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}).addItem('all', { mode, results: [{ success: false, id: 'run-all', title: 'All analytics', mode, error: res.error || 'Run failed' }] }); continue; }
-            const allRun = anStartRun(anMultiLabel(`All analytics (${mode.toUpperCase()})`, p.cohort), Object.assign({ modes: [mode] }, p.cohort ? { cohort: p.cohort.name } : {}));
-            allRun.addItem('all', { mode, results: res.results });
-            res.results.forEach(r => allRun.results.push(Object.assign({ mode }, r)));
-            const sc0 = (res.results.find(r => r.scope) || {}).scope; if (sc0) { allRun.cohort = sc0.cohort ? sc0.cohort.name : null; allRun.patients = Number(sc0.patients) || null; allRun.scoped = true; anRunMeta(allRun); }
-            anSyncLast();
-            total += res.results.length; failed += res.results.filter(r => !r.success).length; blocks++;
+        const res = await anPost('/api/analytics/catalog/run-all', Object.assign({ mode }, anScope()));
+        const label = `All analytics (${mode.toUpperCase()})`;
+        if (!res.success || !Array.isArray(res.results)) {
+            anStartRun(label).addItem('all', { mode, results: [{ success: false, id: 'run-all', title: 'All analytics', mode, error: res.error || 'Run failed' }] });
+            status.className = 'status-output error'; status.textContent = 'Error: ' + (res.error || 'Run failed'); return;
         }
+        const allRun = anStartRun(label, { modes: [mode] });
+        allRun.addItem('all', { mode, results: res.results });
+        res.results.forEach(r => allRun.results.push(Object.assign({ mode }, r)));
+        const sc0 = (res.results.find(r => r.scope) || {}).scope; if (sc0) { allRun.cohort = sc0.cohort ? sc0.cohort.name : null; allRun.patients = Number(sc0.patients) || null; allRun.scoped = true; anRunMeta(allRun); }
+        anSyncLast();
+        const failed = res.results.filter(r => !r.success).length;
         status.className = 'status-output ' + (failed ? 'error' : 'success');
-        status.textContent = `Ran ${total} analytics in ${mode.toUpperCase()}${blocks > 1 ? ` on ${blocks} cohorts` : ''}${failed ? `, ${failed} failed` : ''}.`;
+        status.textContent = `Ran ${res.results.length} analytics in ${mode.toUpperCase()}${failed ? `, ${failed} failed` : ''}.`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -7764,22 +8009,18 @@ async function runPopulationHealth() {
         await ensureCatalog();
         status.className = 'status-output info';
         status.textContent = `Running Population Health in ${mode.toUpperCase()}${picked === 'v1' ? ' (V1 has no text version of these, using V3)' : ''}...`;
-        const runs = new Map();                                   // one run block per cohort when several cohorts are active
-        let failed = 0, skipped = [], done = 0;
+        let run = null, failed = 0, skipped = [], done = 0;
         for (const id of POP_HEALTH_IDS) {
             const a = CAT.list.find(x => x.id === id);
             if (!a || (a.modes && !a.modes.includes(mode))) { skipped.push(id); continue; }
-            for (const p of await anPostMulti('/api/analytics/catalog/run', Object.assign({ id, mode, args: {} }, anScope()))) {
-                const r = p.response;
-                r.mode = r.mode || mode;
-                if (!r.success) failed++;
-                const key = p.cohort ? p.cohort.id : 'all';
-                if (!runs.has(key)) runs.set(key, anStartRun(anMultiLabel(`Population Health (${mode.toUpperCase()})`, p.cohort), p.cohort ? { cohort: p.cohort.name } : {}));
-                runs.get(key).add(r); done++;
-            }
+            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id, mode, args: {} }, anScope()));
+            r.mode = r.mode || mode;
+            if (!r.success) failed++;
+            if (!run) run = anStartRun(`Population Health (${mode.toUpperCase()})`);
+            run.add(r); done++;
         }
         status.className = 'status-output ' + (failed ? 'error' : 'success');
-        status.textContent = `Population Health: ${done} analytics in ${mode.toUpperCase()}${runs.size > 1 ? ` across ${runs.size} cohorts` : ''}${failed ? `, ${failed} failed` : ''}${skipped.length ? `; skipped (not available): ${skipped.join(', ')}` : ''}.`;
+        status.textContent = `Population Health: ${done} analytics in ${mode.toUpperCase()}${failed ? `, ${failed} failed` : ''}${skipped.length ? `; skipped (not available): ${skipped.join(', ')}` : ''}.`;
     } catch (err) {
         status.className = 'status-output error';
         status.textContent = 'Error: ' + err.message;
@@ -9280,9 +9521,11 @@ const KGC = (function () {
             st.textContent = `${N} patients` + (d.lens.gender || d.lens.ageMin != null || d.lens.ageMax != null ? ' (sex / age filter on)' : '') + `, cohort: ${d.scope.cohort ? d.scope.cohort.name : 'none active (everyone in the population)'}` + (pop ? `, population: ${pop}` : '') +
                 `. ${d.nodes.length} concepts, ${d.edges.filter(e => e.n > 0).length} observed links.` + (N < 30 ? ' Small cohort: percentages and lift are unstable.' : '');
             refresh(true, true);
+            return true;
         } catch (err) {
-            if (my !== S.seq) return;
+            if (my !== S.seq) return false;
             st.className = 'status-output error'; st.textContent = 'Error: ' + err.message;
+            return false;
         } finally { if (my === S.seq) btn.disabled = false; }
     }
     function setView(v) { S.view = v; S.selEdge = null; S.selPatient = null; S.cview = null; refresh(false, false); }

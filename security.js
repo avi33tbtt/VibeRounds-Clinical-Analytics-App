@@ -610,7 +610,7 @@ const RULES = [
   // noise: analytics runs, previews and polling are not audited one by one (use AUDIT_LEVEL=verbose to see them)
   ['POST',   /^\/api\/(?:analytics\/(?:catalog\/(?:run|run-all|compare)|custom\/run)|readiness\/.*|notebook\/preview|snomed\/(?:expand|query\/.*)|ehr\/(?:test|jobs\/.*))$/, null, null]
 ];
-const BODY_KEYS = ['batchId', 'batchGroup', 'name', 'cohortId', 'cohortIds', 'multiCohort', 'maxPatients', 'count'];     // the only body fields that are ever stored
+const BODY_KEYS = ['batchId', 'batchGroup', 'name', 'cohortId', 'maxPatients', 'count'];     // the only body fields that are ever stored
 
 function classify(method, p) {
   for (const [m, re, action, category, opts] of RULES) {

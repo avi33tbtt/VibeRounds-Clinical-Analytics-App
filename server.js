@@ -784,6 +784,8 @@ app.post('/api/import-fhir', express.json({ limit: '10gb' }), async (req, res) =
 // Get all cohorts
 app.get('/api/cohorts', async (req, res) => {
   try {
+    // Older data may still have several active cohorts: keep only the most recently updated one.
+    await pool.query('UPDATE cohorts SET is_active = FALSE WHERE is_active AND id <> (SELECT id FROM cohorts WHERE is_active ORDER BY updated_at DESC, id DESC LIMIT 1)');
     const result = await pool.query('SELECT * FROM cohorts ORDER BY created_at DESC');
     res.json({ success: true, cohorts: result.rows });
   } catch (err) {
@@ -816,11 +818,18 @@ app.post('/api/cohorts', express.json(), async (req, res) => {
     if (!name) {
       return res.status(400).json({ error: 'Cohort name is required' });
     }
-    // Several cohorts can be active at once (analytics run on each of them): the new cohort is added as active, the others are left as they are.
-    const result = await pool.query(
-      `INSERT INTO cohorts (name, description, criteria_sql, is_active) VALUES ($1, $2, $3, TRUE) RETURNING *`,
-      [name, description || null, criteria_sql || null]
-    );
+    // Only one cohort is active at a time: the new cohort becomes the active one and every other cohort is switched off.
+    const client = await pool.connect();
+    let result;
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE cohorts SET is_active = FALSE WHERE is_active');
+      result = await client.query(
+        `INSERT INTO cohorts (name, description, criteria_sql, is_active) VALUES ($1, $2, $3, TRUE) RETURNING *`,
+        [name, description || null, criteria_sql || null]
+      );
+      await client.query('COMMIT');
+    } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
     res.json({ success: true, cohort: result.rows[0] });
   } catch (err) {
     console.error('Error creating cohort:', err);
@@ -864,14 +873,16 @@ app.delete('/api/cohorts/:id', async (req, res) => {
   }
 });
 
-// Activate a cohort (several cohorts can be active at the same time; analytics run on each of them)
+// Activate a cohort. Only one cohort is active at a time: activating one switches the others off.
 app.post('/api/cohorts/:id/activate', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      'UPDATE cohorts SET is_active = TRUE, updated_at = NOW() WHERE id = $1 RETURNING *',
+    // one statement, so there is never a moment with two active cohorts
+    const all = await pool.query(
+      'UPDATE cohorts SET is_active = (id = $1), updated_at = CASE WHEN id = $1 THEN NOW() ELSE updated_at END WHERE is_active OR id = $1 RETURNING *',
       [id]
     );
+    const result = { rows: all.rows.filter(r => String(r.id) === String(id)) };
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Cohort not found' });
     }
