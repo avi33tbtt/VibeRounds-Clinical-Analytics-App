@@ -351,6 +351,53 @@ const SCHEMA_SQL = `
         UNIQUE (kind, key, key2)
       );
 
+      -- Code enrichment (V3 / V5): one decision per (domain, text_key), global across batches. Strings and codes only, no patient data.
+      -- A code is optional while a row is only proposed; an approved or edited row must carry a code.
+      CREATE TABLE IF NOT EXISTS code_enrichment (
+        id SERIAL PRIMARY KEY,
+        domain VARCHAR(2) NOT NULL CHECK (domain IN ('dx','rx','ob','pr','al','im')),
+        text_key VARCHAR(500) NOT NULL,
+        system VARCHAR(200),
+        code VARCHAR(100),
+        display VARCHAR(500),
+        assertion VARCHAR(10) NOT NULL DEFAULT 'confirmed' CHECK (assertion IN ('confirmed','suspected','negated')),
+        status VARCHAR(10) NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','edited','rejected')),
+        confidence NUMERIC(4,3) CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+        model VARCHAR(100),
+        prompt_version VARCHAR(40),
+        reviewed_by VARCHAR(60),
+        reviewed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (domain, text_key),
+        CHECK (status NOT IN ('approved','edited') OR (code IS NOT NULL AND system IS NOT NULL AND reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL))
+      );
+      CREATE INDEX IF NOT EXISTS idx_code_enrichment_status ON code_enrichment(status);
+
+      -- Disease profiles (Diseases tab, generator, Disease module): one row per disease, the profile itself is JSON validated by diseases.js. No patient data.
+      -- builtin = shipped with the app: cannot be edited or deleted, only switched on or off. Written with the owner connection only.
+      CREATE TABLE IF NOT EXISTS disease_profiles (
+        key VARCHAR(40) PRIMARY KEY,
+        profile JSONB NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        builtin BOOLEAN NOT NULL DEFAULT FALSE,
+        updated_by VARCHAR(254),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      -- Department profiles (Diseases tab, department pages): one row per department, the profile itself is JSON validated by diseases.js (diseases, measure set, scores, analytics bundle,
+      -- episode model, scope filters). Same rules as disease_profiles: builtin rows cannot be edited or deleted, written with the owner connection only. No patient data.
+      CREATE TABLE IF NOT EXISTS department_profiles (
+        key VARCHAR(40) PRIMARY KEY,
+        profile JSONB NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        builtin BOOLEAN NOT NULL DEFAULT FALSE,
+        updated_by VARCHAR(254),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
       -- Create indexes for common queries
       CREATE INDEX IF NOT EXISTS idx_fhir_patient_patient_id ON fhir_patient(patient_id);
       CREATE INDEX IF NOT EXISTS idx_fhir_patient_batch ON fhir_patient(ingestion_batch_id);
@@ -1352,7 +1399,7 @@ app.get('/api/demographics/population-details', async (req, res) => {
   }
 });
 
-// Clinical analytics catalog (V1 text / V3 codes / V4 codes+time) and synthetic FHIR generator
+// Clinical analytics catalog (five modes: V1 text / V2 codes / V3 enriched codes / V4 codes+time / V5 enriched codes+time) and synthetic FHIR generator
 require('./analytics')(app, pool, { sanitizeBatchId, readPool });
 
 // OpenRouter settings (key stays on the server)
@@ -1360,6 +1407,12 @@ require('./evidence').registerAi(app, pool);
 
 // SNOMED CT query builder (dictionary from the data, is-a hierarchy, SQL generator)
 require('./knowledge').snomedQuery(app, pool, { sanitizeBatchId });
+
+// Enrichment candidates (V3 / V5): real codes from the reference tables for strings that have no source code (read-only, strings in, codes out)
+require('./knowledge').enrichCandidates(app, pool);
+
+// Disease profiles: list / read through the read-only connection, create / edit / delete through the owner connection (audited as disease.write)
+require('./diseases').register(app, pool, { readPool, onChange: () => { if (app.locals.clearDiseaseCache) app.locals.clearDiseaseCache(); } });
 
 // Jupyter notebook generator for the Extended Analytics tab
 if (String(process.env.ENABLE_NOTEBOOK || '').toLowerCase() === 'true') require('./evidence').notebook(app, pool, { sanitizeBatchId });   // Notebook feature is hidden: its tab is hidden in index.html and its routes are off unless ENABLE_NOTEBOOK=true
@@ -1380,6 +1433,10 @@ async function initializeDatabaseSchema() {
     // A cohort is bound to the Population / Batch it was made for (canonical key batch:<suffix> or group:<base>, see population.js).
     try { await pool.query('ALTER TABLE IF EXISTS cohorts ADD COLUMN IF NOT EXISTS population_scope VARCHAR(255)'); }
     catch (err) { console.error('Could not add cohorts.population_scope (cohorts will not remember their population):', err.message); }
+    // Agreement report (V3 / V5 chunk 13): the model's own pick is kept when a reviewer acts on a proposal (llm_pick), and bulk approvals are flagged
+    // so they do not count as individual reviews. Plain ADD COLUMN IF NOT EXISTS: existing rows keep working (llm_pick NULL = pick not recorded).
+    try { await pool.query('ALTER TABLE IF EXISTS code_enrichment ADD COLUMN IF NOT EXISTS llm_pick JSONB, ADD COLUMN IF NOT EXISTS bulk_approved BOOLEAN NOT NULL DEFAULT FALSE'); }
+    catch (err) { console.error('Could not add code_enrichment.llm_pick / bulk_approved (the agreement report will be empty):', err.message); }
     // Binding migration: store canonical keys (batch:<suffix> / group:<base>). Cohorts without a usable population are NOT deleted;
     // they show up as `orphaned` (cannot be activated until a population is assigned or the cohort is deleted).
     try {
@@ -1394,6 +1451,7 @@ async function initializeDatabaseSchema() {
       if (orphans) console.warn(`${orphans} cohort(s) are not bound to an existing population (flagged "orphaned" in the Cohorts tab).`);
     } catch (err) { console.error('Cohort population migration failed:', err.message); }
     console.log('Database schema initialized successfully');
+    try { const n = await require('./diseases').seedBuiltins(pool); if (n) console.log(`Built-in disease profiles added: ${n}`); } catch (err) { console.error('Built-in disease profiles could not be added:', err.message); }
   } catch (err) {
     console.error('Error initializing database schema:', err);
   }

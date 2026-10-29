@@ -484,6 +484,29 @@ const DEMO_EDGES = [
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Code picker helpers (pure; GET /api/codes/search below, disease form, plan chunk 1.10a)
+const CODE_SYSTEMS = { snomed: ['CONDITIONS', 'PROCEDURES', 'ALLERGENS', 'REACTIONS'], loinc: ['LABS'], rxnorm: ['MEDICATIONS'], cvx: ['IMMUNIZATIONS'] };
+function bundledCodes(system) {
+  const T = __s.terminology, out = [];
+  for (const name of CODE_SYSTEMS[system] || []) for (const e of Object.values(T[name] || {})) if (e && e.code) out.push({ code: String(e.code), display: e.display || '', terms: e.terms || [] });
+  return out;
+}
+// rank: exact code, name starts with the text, name contains it, a synonym contains it; then shorter names first. Same code from several sources is one row.
+function rankCodes(rows, term, limit) {
+  const t = String(term || '').trim().toLowerCase(), by = new Map();
+  for (const r of rows) {
+    const name = String(r.display || '').toLowerCase(), syn = (r.terms || []).map(x => String(x).toLowerCase());
+    let rank = r.sources.includes('bundled') ? 9 : 3;   // database rows were already matched by the query
+    if (!t) rank = 5; else if (r.code === t) rank = 0; else if (r.code.startsWith(t)) rank = 1; else if (name.startsWith(t)) rank = 2; else if (name.includes(t)) rank = 3; else if (syn.some(x => x.includes(t))) rank = 4;
+    if (rank === 9) continue;
+    const have = by.get(r.code);
+    if (have) { have.sources = [...new Set([...have.sources, ...r.sources])]; if (!have.display && r.display) have.display = r.display; if (r.patients != null) have.patients = r.patients; have.rank = Math.min(have.rank, rank); }
+    else by.set(r.code, { code: r.code, display: r.display || '', sources: r.sources.slice(), patients: r.patients == null ? null : r.patients, rank });
+  }
+  return [...by.values()].sort((a, b) => a.rank - b.rank || (b.patients || 0) - (a.patients || 0) || (a.display || '~').length - (b.display || '~').length || a.code.localeCompare(b.code)).slice(0, limit)
+    .map(({ rank, ...x }) => x);
+}
+
 function register(app, pool, opts = {}) {
   const sanitize = opts.sanitizeBatchId || (b => String(b).replace(/[^a-zA-Z0-9]/g, '_').replace(/^_+|_+$/g, ''));
 
@@ -608,6 +631,23 @@ function register(app, pool, opts = {}) {
       WHERE domain = $1 AND ($2 = '' OR display ILIKE $3 OR code LIKE $4)
       ORDER BY (code = $2) DESC, patients_rollup DESC, display NULLS LAST, code LIMIT $5`, [domain, term, `%${esc}%`, `${esc}%`, lim]);
     return { domain, concepts: r.rows.map(x => ({ code: x.code, display: x.display, system: x.code_system, patients: x.patients, patientsRollup: x.patients_rollup, inData: x.in_data })) };
+  }
+
+  // ---- code picker: GET /api/codes/search?system=snomed|loinc|rxnorm|cvx&q=&limit= (disease form, plan chunk 1.10a) -----------
+  // Looks in the bundled demo dictionary, and for SNOMED also in the loaded concepts (snomed_concept) and the codes seen in imported data
+  // (snomed_dictionary). Returns the code, its display, the system key and where it was found, so the form can show how well it is backed.
+  async function codeSearch(q) {
+    const system = String(q.system || 'snomed').toLowerCase(); if (!CODE_SYSTEMS[system]) throw httpError(400, 'Unknown code system.');
+    const term = String(q.q || '').trim().slice(0, 100), lim = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), 50);
+    const rows = bundledCodes(system).map(r => ({ ...r, sources: ['bundled'] }));
+    if (system === 'snomed' && term.length >= 2) {
+      const esc = term.replace(/[\\%_]/g, '\\$&'), like = `%${esc}%`, pre = `${esc}%`;
+      const c = await pool.query(`SELECT code, display FROM snomed_concept WHERE display ILIKE $1 OR code LIKE $2 ORDER BY (code = $3) DESC, length(display) LIMIT $4`, [like, pre, term, lim * 3]);
+      c.rows.forEach(r => rows.push({ code: String(r.code), display: r.display || '', terms: [], sources: ['concepts'] }));
+      const d = await pool.query(`SELECT code, max(display) AS display, max(patients) AS patients FROM snomed_dictionary WHERE domain = 'dx' AND (display ILIKE $1 OR code LIKE $2) GROUP BY code ORDER BY max(patients) DESC LIMIT $3`, [like, pre, lim * 3]);
+      d.rows.forEach(r => rows.push({ code: String(r.code), display: r.display || '', terms: [], sources: ['data'], patients: r.patients }));
+    }
+    return { system, query: term, codes: rankCodes(rows, term, lim) };
   }
 
   // ---- expansion: selected codes -> codes that exist in the data -------------------------------------------------
@@ -744,6 +784,7 @@ function register(app, pool, opts = {}) {
   app.get('/api/snomed/status', wrap(() => status()));
   app.post('/api/snomed/dictionary/build', wrap(req => buildDictionary(req.body || {})));
   app.get('/api/snomed/search', wrap(req => search(req.query || {})));
+  app.get('/api/codes/search', wrap(req => codeSearch(req.query || {})));
   app.post('/api/snomed/expand', wrap(req => expand(req.body || {})));
   app.post('/api/snomed/query/build', wrap(req => buildQuery(req.body || {})));
   app.post('/api/snomed/hierarchy/load', wrap(req => loadHierarchy(req.body || {})));
@@ -752,7 +793,7 @@ function register(app, pool, opts = {}) {
 
 module.exports = register;
 module.exports.DOMAINS = DOMAINS;
-module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, parseCsvLine, DEMO_EDGES, DEMO_NAMES };
+module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, parseCsvLine, DEMO_EDGES, DEMO_NAMES, rankCodes, bundledCodes };
 
 // ---------------------------------------------------------------------------------------------------------------------
 module.exports.selftest = () => {
@@ -779,6 +820,14 @@ module.exports.selftest = () => {
   // demo hierarchy: every link endpoint has a name, no self links, no duplicates
   const seen = new Set();
   for (const [c, p] of t.DEMO_EDGES) { assert.ok(t.DEMO_NAMES[c] && t.DEMO_NAMES[p], `unnamed concept in ${c}->${p}`); assert.notStrictEqual(c, p); assert.ok(!seen.has(c + p)); seen.add(c + p); }
+  // code picker: bundled codes found by name, synonym and code; one row per code; unknown system rejected; route answers without a database for loinc
+  const T0 = __s.terminology, dm = T0.CONDITIONS.diabetes.code;
+  let cr = t.rankCodes(t.bundledCodes('snomed').map(x => ({ ...x, sources: ['bundled'] })), 'sugar diabetes', 5); assert.strictEqual(cr[0].code, dm, 'synonym finds diabetes');
+  cr = t.rankCodes(t.bundledCodes('snomed').map(x => ({ ...x, sources: ['bundled'] })), dm, 5); assert.strictEqual(cr[0].code, dm);
+  cr = t.rankCodes([{ code: '1', display: 'Gout', terms: [], sources: ['bundled'] }, { code: '1', display: '', terms: [], sources: ['data'], patients: 4 }], 'gout', 5);
+  assert.deepStrictEqual([cr.length, cr[0].sources, cr[0].patients], [1, ['bundled', 'data'], 4], 'same code from two sources is one row');
+  assert.deepStrictEqual(t.rankCodes([{ code: '2', display: 'Asthma', terms: [], sources: ['bundled'] }], 'zzz', 5), []);
+  assert.ok(t.bundledCodes('loinc').length && t.bundledCodes('rxnorm').length && t.bundledCodes('cvx').length && !t.bundledCodes('nope').length);
   console.log('snomed-query selftest: ok');
 };
 return module.exports;
@@ -1563,13 +1612,206 @@ return module.exports;
 __s.fhirConnect = fhirConnect;
 
 // ======================================================================
+// SECTION: Enrichment candidates  (V3 / V5 chunk 10)
+// ======================================================================
+// POST /api/enrichment/candidates  { domain: 'dx'|'rx'|'ob'|'pr'|'al'|'im', strings: [ ... up to 100 ... ] }
+//   -> { domain, results: [ { text_key, status: 'candidates'|'unverified', candidates: [ { system, code, display, score, source, in_data? } ] } ], counts, sources }
+// Gives the LLM (and the reviewer) REAL codes to choose from; nothing here invents a code. Only strings come in, only reference data is read.
+//   dx, pr   the bundled demo dictionary (terminology), the domain's snomed_dictionary (codes seen in the data) and snomed_concept (loaded hierarchy names)
+//   rx, ob, al, im   the bundled demo dictionary (terminology): medications, labs, allergens, immunizations
+// A string with no candidate is 'unverified': the proposal step must not pick a code for it.
+// snomed_concept has no semantic tag (the "(disorder)" suffix is stripped on load), so a dx / pr string can also match a concept of the other kind; those
+// rows are marked source 'snomed_concept' and ranked a little below codes seen in the data.
+// Reads only (parameterized queries, no writes). A missing snomed table just means no database candidates.
+// Self-test (no database): node knowledge.js --selftest
+const enrichCandidates = (() => {
+const T = __s.terminology;
+const MAX_STRINGS = 100, MAX_LEN = 200, MAX_CANDIDATES = 8, MIN_SCORE = 0.3;
+const STOP = new Set(['a', 'an', 'and', 'of', 'the', 'with', 'for', 'in', 'to', 'on', 'at', 'by']);
+// words that say little about WHICH concept is meant: dropped from matching unless nothing else is left (so "high bp" is matched on "bp", not on "high")
+const GENERIC = new Set(['high', 'low', 'disease', 'disorder', 'chronic', 'acute', 'syndrome', 'unspecified', 'other', 'left', 'right', 'history', 'screening']);
+const SOURCES = {   // domain -> bundled dictionary, code system, and whether the SNOMED reference tables apply
+  dx: { dict: T.CONDITIONS,     system: T.SYSTEMS.snomed, snomed: true },
+  pr: { dict: T.PROCEDURES,     system: T.SYSTEMS.snomed, snomed: true },
+  rx: { dict: T.MEDICATIONS,    system: T.SYSTEMS.rxnorm, snomed: false },
+  ob: { dict: T.LABS,           system: T.SYSTEMS.loinc,  snomed: false },
+  al: { dict: T.ALLERGENS,      system: T.SYSTEMS.snomed, snomed: false },
+  im: { dict: T.IMMUNIZATIONS,  system: T.SYSTEMS.cvx,    snomed: false }
+};
+const httpErr = (status, message) => Object.assign(new Error(message), { status });
+// same normalization as the coverage endpoint and the join in analytics.js (lower case, trimmed, white space collapsed, 500 characters at most)
+const normKey = v => { const t = String(v == null ? '' : v).replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 500); return t || null; };
+const tokens = s => {
+  const all = String(s).toLowerCase().replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').replace(/[^a-z0-9]+/g, ' ').split(' ').filter(t => t && !STOP.has(t));
+  const core = all.filter(t => !GENERIC.has(t)); return core.length ? core : all;
+};
+const tokMatch = (a, b) => a === b || (a.length >= 3 && b.length >= 3 && !/^\d/.test(a) && !/^\d/.test(b) && (a.startsWith(b) || b.startsWith(a)));
+// 0..1 similarity of the string's tokens to one candidate text. Prefix matches stand in for abbreviations ("amox" ~ "amoxicillin"); numbers must be equal.
+function similarity(sTok, text) {
+  const cTok = tokens(text); if (!sTok.length || !cTok.length) return 0;
+  if (sTok.join(' ') === cTok.join(' ')) return 1;
+  const used = new Set(); let m = 0;
+  for (const s of sTok) {
+    let at = cTok.findIndex((c, i) => !used.has(i) && c === s); if (at < 0) at = cTok.findIndex((c, i) => !used.has(i) && tokMatch(s, c));
+    if (at >= 0) { used.add(at); m++; }
+  }
+  let score = 2 * m / (sTok.length + cTok.length);
+  if (m === cTok.length) score = Math.max(score, cTok.length >= 2 ? 0.85 : 0.7);   // the whole candidate name appears in the string ("sugar diabetes type 2")
+  return score;
+}
+const bestOf = (sTok, texts) => texts.reduce((b, t) => Math.max(b, similarity(sTok, t)), 0);
+
+// candidates from the bundled dictionary
+function fromTerminology(domain, sTok) {
+  const cfg = SOURCES[domain], out = [];
+  for (const e of Object.values(cfg.dict)) {
+    const score = bestOf(sTok, [e.display, ...(e.terms || [])]);
+    if (score >= MIN_SCORE) out.push({ system: cfg.system, code: String(e.code), display: e.display, score, source: 'terminology' });
+  }
+  return out;
+}
+
+// candidates from the SNOMED reference tables (dx, pr): one round trip per string, parameterized
+const likeEsc = t => t.replace(/[\\%_]/g, '\\$&');
+async function fromSnomed(pool, domain, sTok) {
+  const keys = [...new Set(sTok.filter(t => t.length >= 3 && !/^\d+$/.test(t)))].sort((a, b) => b.length - a.length).slice(0, 5);
+  if (!keys.length) return [];
+  const pats = keys.map(k => `%${likeEsc(k)}%`);
+  const r = await pool.query(`
+    SELECT * FROM (SELECT code, display, code_system, patients, in_data, 'dictionary' AS src FROM snomed_dictionary
+                   WHERE domain = $2 AND display ILIKE ANY($1::text[]) ORDER BY patients DESC, length(display) LIMIT 200) a
+    UNION ALL
+    SELECT * FROM (SELECT code, display, NULL::text, 0, FALSE, 'snomed_concept' FROM snomed_concept
+                   WHERE display ILIKE ANY($1::text[]) ORDER BY length(display) LIMIT 200) b`, [pats, domain]);
+  const out = [];
+  for (const x of r.rows) {
+    if (!x.code || !x.display) continue;
+    let score = similarity(sTok, x.display);
+    if (x.src === 'snomed_concept') score *= 0.9;                                   // kind of concept is unknown: rank below codes seen in this domain's data
+    else if (x.in_data) score = Math.min(1, score + 0.02);
+    if (score >= MIN_SCORE) out.push({ system: x.code_system || T.SYSTEMS.snomed, code: String(x.code), display: x.display, score, source: x.src, in_data: !!x.in_data });
+  }
+  return out;
+}
+
+// one string -> up to MAX_CANDIDATES distinct codes, best first
+async function candidatesFor(pool, domain, key, state) {
+  const sTok = tokens(key);
+  if (!sTok.length) return [];
+  let all = fromTerminology(domain, sTok);
+  if (SOURCES[domain].snomed && !state.snomedOff) {
+    try { all = all.concat(await fromSnomed(pool, domain, sTok)); state.snomedUsed = true; }
+    catch (e) { if (e && e.code === '42P01') state.snomedOff = true; else throw e; }   // reference tables not created yet: terminology only
+  }
+  const byCode = new Map();
+  for (const c of all) { const k = c.system + '|' + c.code, o = byCode.get(k); if (!o || c.score > o.score || (c.score === o.score && c.source === 'terminology')) byCode.set(k, c); }
+  return [...byCode.values()].sort((a, b) => b.score - a.score || (b.in_data ? 1 : 0) - (a.in_data ? 1 : 0) || a.code.localeCompare(b.code)).slice(0, MAX_CANDIDATES)
+    .map(c => { const o = { system: c.system, code: c.code, display: c.display, score: Math.round(c.score * 1000) / 1000, source: c.source }; if (c.in_data !== undefined) o.in_data = c.in_data; return o; });
+}
+
+async function lookup(pool, { domain, strings } = {}) {
+  if (typeof domain !== 'string' || !Object.hasOwn(SOURCES, domain)) throw httpErr(400, `domain must be one of ${Object.keys(SOURCES).join(', ')}`);
+  if (!Array.isArray(strings) || !strings.length) throw httpErr(400, 'strings must be a non-empty list');
+  if (strings.length > MAX_STRINGS) throw httpErr(400, `at most ${MAX_STRINGS} strings per request (got ${strings.length})`);
+  const keys = [], seen = new Set();
+  for (const s of strings) {
+    if (typeof s !== 'string') throw httpErr(400, 'every string must be text');
+    if (s.length > 500) throw httpErr(400, 'a string is longer than 500 characters');
+    const k = normKey(s); if (!k || seen.has(k)) continue; seen.add(k); keys.push(k);
+  }
+  if (!keys.length) throw httpErr(400, 'strings has no usable text');
+  const state = { snomedOff: false, snomedUsed: false }, results = [];
+  for (const key of keys) {
+    const cands = key.length > MAX_LEN ? [] : await candidatesFor(pool, domain, key, state);   // too long to be a name: nothing to match
+    results.push({ text_key: key, status: cands.length ? 'candidates' : 'unverified', candidates: cands });
+  }
+  const withC = results.filter(r => r.candidates.length).length;
+  return { domain, results, counts: { strings: results.length, with_candidates: withC, unverified: results.length - withC },
+    sources: { terminology: true, snomed: SOURCES[domain].snomed && state.snomedUsed } };
+}
+
+function register(app, pool) {
+  app.post('/api/enrichment/candidates', async (req, res) => {
+    try { res.json({ success: true, ...(await lookup(pool, req.body || {})) }); }
+    catch (err) {
+      if (!err.status) console.error('Enrichment candidates:', err);
+      res.status(err.status || 500).json({ success: false, error: err.status ? err.message : 'Candidate lookup failed' });
+    }
+  });
+}
+
+module.exports = register;
+module.exports._test = { tokens, similarity, lookup, normKey, MAX_STRINGS };
+module.exports.lookup = lookup;   // used by evidence.js (enrichment proposals)
+
+module.exports.selftest = async () => {
+  const assert = require('assert'), t = register._test;
+  // tokens / similarity
+  assert.deepStrictEqual(t.tokens('Amox 500mg'), ['amox', '500', 'mg']);
+  assert.strictEqual(t.similarity(t.tokens('colonoscopy'), 'Colonoscopy'), 1);
+  assert.ok(t.similarity(t.tokens('amox 500mg'), 'Amoxicillin 500 MG Oral Capsule') >= 0.7, 'abbreviation by prefix');
+  assert.ok(t.similarity(t.tokens('amox 250mg'), 'Amoxicillin 500 MG Oral Capsule') < t.similarity(t.tokens('amox 500mg'), 'Amoxicillin 500 MG Oral Capsule'), 'numbers must match');
+  assert.ok(t.similarity(t.tokens('sugar diabetes type 2'), 'sugar diabetes') >= 0.85);
+  assert.strictEqual(t.similarity(t.tokens('mystery pill'), 'Amoxicillin'), 0);
+  assert.deepStrictEqual(t.tokens('High BP'), ['bp']); assert.deepStrictEqual(t.tokens('chronic disease'), ['chronic', 'disease'], 'all-generic text keeps its words');
+  // a mock pool: records the SQL, answers the snomed query, can simulate missing tables
+  const mk = (rows, missing) => { const seen = []; return { seen, query: async (sql, p) => { seen.push({ sql, p }); if (missing) throw Object.assign(new Error('relation "snomed_dictionary" does not exist'), { code: '42P01' }); return { rows }; } }; };
+  const dict = [{ code: '44054006', display: 'Diabetes mellitus type 2', code_system: T.SYSTEMS.snomed, patients: 40, in_data: true, src: 'dictionary' },
+                { code: '99999999', display: 'Gestational diabetes mellitus', code_system: null, patients: 0, in_data: false, src: 'snomed_concept' }];
+  let pool = mk(dict), r = await t.lookup(pool, { domain: 'dx', strings: ['  Sugar   DIABETES ', 'sugar diabetes', 'xyzzy'] });
+  assert.deepStrictEqual([r.counts.strings, r.counts.with_candidates, r.counts.unverified], [2, 1, 1], 'normalized duplicates collapse');
+  assert.strictEqual(r.results[0].text_key, 'sugar diabetes'); assert.strictEqual(r.results[0].candidates[0].code, '44054006');
+  assert.strictEqual(r.results[0].candidates.filter(c => c.code === '44054006').length, 1, 'same code from two sources appears once');
+  assert.strictEqual(r.results[1].status, 'unverified'); assert.deepStrictEqual(r.results[1].candidates, []);
+  assert.strictEqual(r.sources.snomed, true);
+  assert.ok(pool.seen.every(q => Array.isArray(q.p) && !/sugar|xyzzy/i.test(q.sql)), 'the string is a bound parameter, never SQL text');
+  assert.ok(r.results[0].candidates.every(c => c.system && c.code && c.display && typeof c.score === 'number'));
+  // other domains use only the bundled dictionary (no database call)
+  pool = mk([]); r = await t.lookup(pool, { domain: 'rx', strings: ['Amox 500mg', 'Lipitor'] });
+  assert.strictEqual(r.results[0].candidates[0].code, T.MEDICATIONS.amoxicillin.code); assert.strictEqual(r.results[0].candidates[0].system, T.SYSTEMS.rxnorm);
+  assert.strictEqual(r.results[1].candidates[0].code, T.MEDICATIONS.atorvastatin.code); assert.strictEqual(pool.seen.length, 0); assert.strictEqual(r.sources.snomed, false);
+  assert.strictEqual((await t.lookup(pool, { domain: 'ob', strings: ['glycated hemoglobin'] })).results[0].candidates[0].code, T.LABS.hba1c.code);
+  assert.strictEqual((await t.lookup(pool, { domain: 'al', strings: ['PCN allergy', 'penicillin allergy'] })).results[1].candidates[0].code, T.ALLERGENS.penicillin.code);
+  assert.strictEqual((await t.lookup(pool, { domain: 'im', strings: ['flu shot'] })).results[0].candidates[0].code, T.IMMUNIZATIONS.influenza.code);
+  assert.strictEqual((await t.lookup(pool, { domain: 'pr', strings: ['colonoscopy (screening)'] })).results[0].candidates[0].code, T.PROCEDURES.colonoscopy.code);
+  assert.strictEqual((await t.lookup(mk([]), { domain: 'pr', strings: ['scope of the colon'] })).results[0].candidates[0].code, T.PROCEDURES.colonoscopy.code, 'a lay description still finds its procedure');
+  assert.strictEqual((await t.lookup(mk([]), { domain: 'pr', strings: ['zzz unknown thing'] })).results[0].status, 'unverified', 'no match is unverified, never a guess');
+  // limits and bad input are 400s and run nothing
+  for (const bad of [{}, { domain: 'zz', strings: ['a'] }, { domain: 'dx' }, { domain: 'dx', strings: [] }, { domain: 'dx', strings: [1] }, { domain: 'dx', strings: ['   '] },
+    { domain: 'dx', strings: Array.from({ length: t.MAX_STRINGS + 1 }, (_, i) => 's' + i) }, { domain: 'dx', strings: ['x'.repeat(501)] }, { domain: 'constructor', strings: ['a'] }]) {
+    const p = mk([]); await assert.rejects(() => t.lookup(p, bad), e => e.status === 400, 'refused: ' + JSON.stringify(bad).slice(0, 60)); assert.strictEqual(p.seen.length, 0);
+  }
+  // a string longer than 200 characters is not a name: unverified, no query
+  pool = mk(dict); r = await t.lookup(pool, { domain: 'dx', strings: ['diabetes '.repeat(30)] }); assert.strictEqual(r.results[0].status, 'unverified'); assert.strictEqual(pool.seen.length, 0);
+  // at most 8 candidates, best first
+  const many = Array.from({ length: 30 }, (_, i) => ({ code: String(1000 + i), display: 'Chest pain variant ' + i, code_system: null, patients: i, in_data: true, src: 'dictionary' }));
+  r = await t.lookup(mk(many), { domain: 'dx', strings: ['chest pain'] }); assert.strictEqual(r.results[0].candidates.length, 8);
+  assert.ok(r.results[0].candidates.every((c, i, a) => !i || a[i - 1].score >= c.score));
+  r = await t.lookup(mk([]), { domain: 'dx', strings: ['high bp'] }); assert.deepStrictEqual(r.results[0].candidates.map(c => c.code), [T.CONDITIONS.hypertension.code], 'a generic word alone does not pull other conditions');
+  // snomed tables missing: terminology candidates still come back, and the table is not asked again
+  pool = mk([], true); r = await t.lookup(pool, { domain: 'dx', strings: ['sugar diabetes', 'high bp'] });
+  assert.strictEqual(r.results[0].candidates[0].code, T.CONDITIONS.diabetes.code); assert.strictEqual(r.sources.snomed, false); assert.strictEqual(pool.seen.length, 1);
+  // any other database error is not swallowed
+  await assert.rejects(() => t.lookup({ query: async () => { throw new Error('boom'); } }, { domain: 'dx', strings: ['diabetes'] }), /boom/);
+  // route: bad input -> 400 JSON, good input -> success
+  const routes = {}, app = { post: (p, h) => { routes[p] = h; } }; register(app, mk(dict));
+  const call = async body => { let code = 200, out; await routes['/api/enrichment/candidates']({ body }, { status(c) { code = c; return this; }, json(o) { out = o; } }); return [code, out]; };
+  let [c1, o1] = await call({ domain: 'dx', strings: ['sugar diabetes'] }); assert.strictEqual(c1, 200); assert.strictEqual(o1.success, true);
+  [c1, o1] = await call({ domain: 'nope', strings: ['x'] }); assert.strictEqual(c1, 400); assert.strictEqual(o1.success, false);
+  console.log('knowledge.js enrichment-candidates self-test: all checks passed');
+};
+return module.exports;
+})();
+__s.enrichCandidates = enrichCandidates;
+
+// ======================================================================
 // EXPORTS AND SELF-TEST RUNNER
 // ======================================================================
-module.exports = { terminology, snomedQuery, kgCohort, fhirConnect };
+module.exports = { terminology, snomedQuery, kgCohort, enrichCandidates, fhirConnect };
 
 if (require.main === module && process.argv.includes('--selftest')) {
   (async () => {
-    for (const m of [terminology, snomedQuery, kgCohort, fhirConnect]) await m.selftest();
+    for (const m of [terminology, snomedQuery, kgCohort, enrichCandidates, fhirConnect]) await m.selftest();
     console.log('knowledge.js: all self-tests passed');
   })().catch(e => { console.error(e); process.exit(1); });
 }

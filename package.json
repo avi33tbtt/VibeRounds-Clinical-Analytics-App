@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node population.js --selftest && node security.js --selftest && node knowledge.js --selftest && node analytics.js --selftest && node evidence.js --selftest",
+    "test": "node population.js --selftest && node security.js --selftest && node knowledge.js --selftest && node analytics.js --selftest && node evidence.js --selftest && node diseases.js --selftest && node synthetic.js --selftest",
     "smoke": "node evidence.js --smoke"
   },
   "engines": {
