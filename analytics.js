@@ -3204,6 +3204,7 @@ function register(app, pool, helpers = {}) {
   const fail = (res, label, err) => { console.error(`${label}:`, err); res.status(err.status || 500).json({ success: false, error: err.status ? err.message : `${label} failed`, details: err.message }); };
   const scopeOf = b => ({ batchId: b.batchId, batchGroup: b.batchGroup, cohortId: b.cohortId, useCohort: true }); // analytics run on cohortId, else the most recently updated active cohort
 
+  app.locals.analyticsEngine = engine;                    // the Research tab (research.js) runs study steps and reads concept inventories through it
   app.locals.clearConceptCache = engine.clearConceptCache; // server.js calls this after data-changing requests (Step D.2c)
   app.get('/api/analytics/catalog', async (req, res) => {
     try {

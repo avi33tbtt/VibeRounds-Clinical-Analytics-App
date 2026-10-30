@@ -1378,6 +1378,9 @@ app.get('/api/demographics/population-details', async (req, res) => {
 // Clinical analytics catalog (five modes: V1 text / V2 codes / V3 enriched codes / V4 codes+time / V5 enriched codes+time) and synthetic FHIR generator
 require('./analytics')(app, pool, { sanitizeBatchId, readPool });
 
+// Research tab: AI study plans (checked against the templates and the codes in the active cohort) and a step runner
+require('./research')(app, pool);
+
 // OpenRouter settings (key stays on the server)
 require('./evidence').registerAi(app, pool);
 
@@ -1386,9 +1389,6 @@ require('./knowledge').snomedQuery(app, pool, { sanitizeBatchId });
 
 // Enrichment candidates (V3 / V5): real codes from the reference tables for strings that have no source code (read-only, strings in, codes out)
 require('./knowledge').enrichCandidates(app, pool);
-
-// Jupyter notebook generator for the Extended Analytics tab
-if (String(process.env.ENABLE_NOTEBOOK || '').toLowerCase() === 'true') require('./evidence').notebook(app, pool, { sanitizeBatchId });   // Notebook feature is hidden: its tab is hidden in index.html and its routes are off unless ENABLE_NOTEBOOK=true
 
 // Fetch patients from Epic / Oracle Health / any FHIR server into a batch (Analytics tab)
 require('./knowledge').fhirConnect(app, pool, { port, importToken: IMPORT_TOKEN });

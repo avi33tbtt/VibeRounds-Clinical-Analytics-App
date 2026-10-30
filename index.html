@@ -544,17 +544,6 @@
             display: block;
         }
     
-/* ---------- Extended Analytics (Python placeholders) ---------- */
-.ext-group { margin: 14px 0; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; }
-.ext-group > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
-.ext-group > summary .an-muted { font-weight: 400; margin-left: 8px; }
-.ext-item { padding: 14px 16px; border-top: 1px solid #eee; }
-.ext-item h4 { margin: 0 0 4px 0; }
-.ext-item p { margin: 4px 0; font-size: 13px; }
-.ext-meta { font-size: 12px; color: #777; margin: 4px 0 8px 0; }
-.ext-item .code-block { font-size: 12.5px; padding: 14px 16px; overflow-x: auto; white-space: pre; }
-.ext-item .copy-btn { margin-top: 8px; }
-
 /* ---------- Dashboard tab ---------- */
 .db-controls { border:1px solid var(--line); background:var(--tint); border-radius:10px; padding:14px 16px; margin:14px 0 16px; }
 .db-scope { font-size:13px; color:var(--ink-2); margin-bottom:10px; line-height:1.6; }
@@ -597,24 +586,6 @@
 .db-card details > summary { cursor:pointer; font-size:12px; color:var(--blue); }
 .db-skipped { margin-top:22px; }
 .db-empty { padding:24px 0; }
-/* ---------- Extended Analytics: notebook builder ---------- */
-.nb-grid { display:grid; grid-template-columns:minmax(220px,1fr) 2fr; gap:18px; align-items:start; }
-.nb-grid > label, .nb-lab { font-size:13px; font-weight:600; }
-.nb-grid select { width:100%; padding:9px 10px; margin-top:4px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; font-weight:400; }
-.nb-radio { display:block; font-size:13px; font-weight:400; margin:5px 0; }
-.nb-radio select { width:auto; min-width:160px; padding:4px 6px; }
-.nb-recipes { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:6px 18px; margin-top:6px; }
-.nb-recipes label { font-size:13px; }
-.nb-recipes .an-muted { display:block; margin-left:22px; font-size:11.5px; }
-.nb-cell { border:1px solid var(--line); border-radius:8px; margin:8px 0; background:#fff; }
-.nb-cell > summary { cursor:pointer; padding:8px 12px; font-size:13px; font-weight:600; }
-.nb-cell .nb-body { padding:0 12px 12px; }
-.nb-cell pre { background:#14261f; color:#e6f2ec; padding:12px 14px; border-radius:6px; overflow-x:auto; font-size:12.5px; margin:0 0 8px; white-space:pre; }
-.nb-cell .nb-md { white-space:pre-wrap; font-size:13px; line-height:1.5; margin:0 0 8px; }
-.nb-badge { display:inline-block; font-size:10.5px; padding:1px 7px; border-radius:10px; margin-right:6px; background:#e3f2ea; color:#0f5a3f; }
-.nb-badge.code { background:#e6effa; color:#1b4c85; }
-@media (max-width:760px) { .nb-grid { grid-template-columns:1fr; } }
-
 /* ---------- Dashboard: clinical intelligence layout ---------- */
 .db-score-h { margin:18px 0 8px; font-size:16px; color:var(--green-d); }
 .db-score { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; margin-bottom:6px; }
@@ -1376,7 +1347,7 @@ body{background:var(--canvas);color:var(--ink);font:14px/1.55 "IBM Plex Sans",sy
 .page-head{margin:0 0 20px}.page-head p{color:var(--muted);font-size:14px;margin:0}
 .tab-panel>p{color:var(--muted);margin:0 0 18px}
 /* Sections: the only bordered surface. Nested sections are plain, separated by a rule */
-.analytics-section,.plan-section,.an-card,.conn-card,.ext-group{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-lg)!important;box-shadow:none!important;padding:20px 22px!important;margin:0 0 16px!important}
+.analytics-section,.plan-section,.an-card,.conn-card{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--r-lg)!important;box-shadow:none!important;padding:20px 22px!important;margin:0 0 16px!important}
 .analytics-section .analytics-section{background:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;padding:20px 0 0!important;margin:20px 0 0!important}
 #tab6>.analytics-section{background:none!important;border:0!important;padding:0!important}
 #tab6>.analytics-section>h3{display:none}
@@ -1412,10 +1383,6 @@ label{color:var(--ink-2)}
 .an-params label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
 .an-params{gap:14px 16px}
 /* Tool panels inside the catalog share one quiet look instead of one colour each */
-/* The Python/Jupyter rating column of the capabilities table is hidden with the Notebook feature. */
-.analytics-capabilities-table th:nth-child(3), .analytics-capabilities-table td:nth-child(3) { display: none; }
-/* Notebook feature is hidden (tab, panel, "Use in Python" shortcut). Remove this rule and the hidden guide lines to bring it back. */
-.tab[data-tab="tab5"], #tab5, #sqPython { display: none !important; }
 #anLlmBox,#anAskBox,#anTemplateBox,#anCompareBox,#anCustomBox,#anModeInfo,#activeCohortBar,#batchDetailView{background:var(--tint)!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;padding:12px 14px!important;margin:12px 0!important;font-size:13px;color:var(--ink-2)}
 #anRun>div{border-left:0!important;padding-left:0!important}
 #activeCohortBar{background:var(--accent-l)!important;border-color:#c5e1d6!important;color:var(--ink)}
@@ -1532,7 +1499,7 @@ label{color:var(--ink-2)}
         <button class="tab" data-tab="tab4">Import data</button>
         <button class="tab" data-tab="tab6">Analytics</button>
         <button class="tab" data-tab="tab7">Dashboard</button>
-        <button class="tab" data-tab="tab5">Notebook</button>
+        <button class="tab" data-tab="tab10">Research</button>
         <button class="tab" data-tab="tab9" id="auditTab" style="display:none">Audit log</button>
         <span class="tab-sep" aria-hidden="true"></span>
         <button class="tab is-guide" data-tab="tab2">Architecture</button>
@@ -1810,7 +1777,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                     <li><strong>Backend API:</strong> Node.js (18+) / Express</li>
                     <li><strong>Database:</strong> PostgreSQL (read/write connection for imports and bookkeeping, separate SELECT-only connection for queries)</li>
                     <li><strong>FHIR Import:</strong> built-in Node.js parser and bulk loader (pg-copy-streams); optional connector to the public HAPI FHIR test server</li>
-                    <li><strong>Analytics:</strong> SQL run by Node.js (the catalog); optional OpenRouter LLM for the assistant; a pandas/Jupyter notebook generator exists but is switched off unless <code>ENABLE_NOTEBOOK=true</code></li>
+                    <li><strong>Analytics:</strong> SQL run by Node.js (the catalog); optional OpenRouter LLM for the assistant</li>
                     <li><strong>Visualization:</strong> plain SVG charts drawn in the browser, plus a canvas-based knowledge graph</li>
                 </ul>
 
@@ -2039,106 +2006,6 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 
         </div>
         
-        <!-- Tab 5: Jupyter Python Notebook -->
-        <div class="tab-panel" id="tab5">
-            <div class="page-head"><h2>Notebook</h2></div>
-            <p>Generate a ready-to-run <strong>Jupyter notebook</strong> for exactly the data you are looking at: any population or batch, any cohort (including one made with <em>Build SNOMED CT Query</em>), plus recipes for analyses the app does not offer. Everything is also shown as cells you can copy one by one.</p>
-
-            <details class="ext-group" open>
-                <summary>Instructions: from here to results in five steps</summary>
-                <div class="ext-item">
-                    <ol style="line-height:1.7; font-size:14px;">
-                        <li><strong>Choose what to analyse</strong> below: population / batch, cohort, and which recipes to include. To use a SNOMED CT query, build it in <em>Analytics &gt; Create Custom Cohort &gt; Build SNOMED CT Query</em> and press <strong>Use in Python</strong>; it arrives here ready.</li>
-                        <li><strong>Download notebook (.ipynb)</strong>, or <strong>Preview cells</strong> to copy individual cells into your own notebook or script.</li>
-                        <li><strong>Install the packages</strong> once: <code>pip install pandas sqlalchemy psycopg2-binary matplotlib jupyterlab</code>. For the recipes also: <code>pip install lifelines scikit-learn networkx</code>.</li>
-                        <li><strong>Set the database password</strong> in your terminal, then start Jupyter in the folder with the notebook:<br>
-                            macOS / Linux: <code>export DB_PASSWORD=your-password</code> then <code>jupyter lab</code><br>
-                            Windows PowerShell: <code>$env:DB_PASSWORD="your-password"</code> then <code>jupyter lab</code><br>
-                            If you skip this, the notebook asks for the password when it connects. Host, port, database and user default to this app's settings; override with <code>DB_HOST</code>, <code>DB_PORT</code>, <code>DB_NAME</code>, <code>DB_USER</code>.</li>
-                        <li><strong>Open the notebook and choose Run &gt; Run All Cells.</strong> The first cells connect and load the data, the orientation section shows what is in it, the recipes are independent: run, edit the parameters at the top of the cell, run again.</li>
-                    </ol>
-                    <p><strong>Changing cohort later:</strong> edit <code>CRITERIA_SQL</code> in the <em>Scope</em> cell (a SQL <code>WHERE</code> clause on <code>fhir_patient</code>, for example the cohort criteria from the SNOMED builder) and re-run from that cell down. Or generate a new notebook here.</p>
-                    <p><strong>If something goes wrong:</strong></p>
-                    <ul style="font-size:13px; line-height:1.6;">
-                        <li><em>Connection refused / timeout:</em> Jupyter must reach the database host and port. Run it on the same machine as the app, or set <code>DB_HOST</code> / <code>DB_PORT</code>.</li>
-                        <li><em>password authentication failed:</em> wrong <code>DB_PASSWORD</code> or <code>DB_USER</code>.</li>
-                        <li><em>relation "fhir_patient_..." does not exist:</em> the batch was deleted or renamed after the notebook was made. Generate it again.</li>
-                        <li><em>ModuleNotFoundError:</em> install the missing package with pip in the same Python that runs Jupyter.</li>
-                        <li><em>Empty DataFrames:</em> the cohort matches nobody in that population. Clear <code>CRITERIA_SQL</code> to test.</li>
-                        <li><em>Recipe says "too few":</em> it needs more data (events or discharges). Generate a larger synthetic batch with the inpatient and readmission options, or use real data.</li>
-                    </ul>
-                    <p style="background:#fff4e5; border:1px solid #ffd59e; border-radius:6px; padding:8px 12px; font-size:13px;"><strong>Privacy:</strong> notebooks read patient-level data and saved outputs can contain it. The notebook opens a read-only session and never stores your password, but do not share it or commit it with outputs (use <em>Kernel &gt; Restart &amp; Clear Outputs</em>). Cohort criteria run as raw SQL, so keep the database behind authentication.</p>
-                </div>
-            </details>
-
-            <div class="ext-group" style="padding:16px;">
-                <h3 style="margin-top:0;">Choose what to analyse</h3>
-                <div class="nb-grid">
-                    <label>Population / batch
-                        <select id="nbPop"></select>
-                    </label>
-                    <div>
-                        <div class="nb-lab">Cohort</div>
-                        <label class="nb-radio"><input type="radio" name="nbCohort" value="active" checked> <span id="nbActiveLabel">Active cohort</span></label>
-                        <label class="nb-radio"><input type="radio" name="nbCohort" value="none"> No cohort (all patients in the population)</label>
-                        <label class="nb-radio"><input type="radio" name="nbCohort" value="id"> A saved cohort:
-                            <select id="nbCohortId"></select></label>
-                        <label class="nb-radio"><input type="radio" name="nbCohort" value="snomed" id="nbSnomedRadio" disabled> From the SNOMED builder <span class="an-muted" id="nbSnomedNote">(none yet: press <em>Use in Python</em> in the builder)</span></label>
-                        <label class="nb-radio"><input type="radio" name="nbCohort" value="custom"> Custom criteria (SQL WHERE clause on <code>fhir_patient</code>)</label>
-                        <textarea id="nbCustom" rows="3" placeholder="gender = 'female' AND birth_date &gt; '1980-01-01'" style="width:100%; display:none; font-family:monospace; font-size:12.5px;"></textarea>
-                    </div>
-                </div>
-                <div class="nb-lab" style="margin-top:12px;">Recipes to include <span class="an-muted">(analyses beyond the app's catalog; the orientation section is always included)</span></div>
-                <div id="nbRecipes" class="nb-recipes"></div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
-                    <button class="btn-primary" id="nbDownloadBtn" onclick="nbDownload()">Download notebook (.ipynb)</button>
-                    <button class="btn-secondary" id="nbPreviewBtn" onclick="nbPreview()">Preview cells to copy</button>
-                </div>
-                <div id="nbStatus" class="status-output" style="margin-top:10px; min-height:20px;"></div>
-            </div>
-
-            <div id="nbCells"></div>
-
-            <details class="ext-group">
-                <summary>Minimal connection test <span class="an-muted">(no scope; just checks that Python can reach the database)</span></summary>
-                <div class="ext-item">
-<div class="code-section">
-                <h2>Python Code for Jupyter Notebook</h2>
-                <p>Copy the code below and paste it into your Jupyter Notebook to connect to the PostgreSQL database:</p>
-                <div class="code-block" id="pythonCode">
-import psycopg2
-
-# Database connection parameters
-conn_params = {
-    'host': 'localhost',
-    'port': 5433,
-    'database': 'testdb',
-    'user': 'user',
-    'password': 'password'
-}
-
-# Establish connection
-conn = psycopg2.connect(**conn_params)
-print("Connected to PostgreSQL!")
-
-# Fetch your message
-cursor = conn.cursor()
-cursor.execute("SELECT content FROM messages GROUP BY content ORDER BY MIN(id);")
-results = cursor.fetchall()
-for row in results:
-    print(row[0])
-
-# Close connections
-cursor.close()
-conn.close()
-                </div>
-                <button class="copy-btn" id="copyCodeBtn">Copy Python Code</button>
-            </div>
-        
-                </div>
-            </details>
-        </div>
-
         <!-- Tab 6: Analytics -->
         <div class="tab-panel" id="tab6">
             <div class="page-head"><h2>Analytics workspace</h2></div>
@@ -3652,6 +3519,47 @@ conn.close()
             </div>
         </div>
         </div><!-- /#tab4 -->
+        <!-- Tab 10: Research (data profile + study templates that open the existing analytics) -->
+        <div class="tab-panel" id="tab10">
+            <div class="page-head"><h2>Research</h2></div>
+            <p>See what your loaded data can support, then pick a standard study design. Each template opens an analytic that already exists in <strong>Analytics</strong>, set up for that kind of study. The data profile and the figures come from the active cohort and its batches; the AI model (optional, set under AI settings) only proposes plans from the templates.</p>
+            <details class="an-card an-collapse" id="rsProfileCard" open>
+                <summary class="an-sum" style="cursor:pointer"><h3 style="display:inline;margin:0">1. Your data</h3></summary>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-end;margin-top:8px">
+                    <span><span id="rsProfileStatus" class="an-muted" role="status" aria-live="polite"></span> <button type="button" id="rsReload" class="download-btn" style="margin-top:0">Reload</button></span>
+                </div>
+                <div id="rsProfile" style="margin-top:10px"></div>
+            </details>
+            <details class="an-card an-collapse" id="rsTemplatesCard" open>
+                <summary class="an-sum" style="cursor:pointer"><h3 style="display:inline;margin:0">2. Study templates</h3></summary>
+                <p class="an-muted" style="margin:8px 0 10px">Choose a design. The button opens Analytics with that analytic selected; set the codes (drug, condition, outcome) there and run it.</p>
+                <div id="rsStatus" class="an-muted" role="status" aria-live="polite" style="min-height:18px"></div>
+                <div id="rsTemplates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+            </details>
+            <details class="an-card an-collapse" id="rsPlanCard" open>
+                <summary class="an-sum" style="cursor:pointer"><h3 style="display:inline;margin:0">3. AI study plans</h3></summary>
+                <p class="an-muted" style="margin:8px 0 10px">An AI model reads the data profile above (codes and patient counts only, never patient rows) and proposes plans made of the templates in step 2. The server rebuilds every step from the templates and drops any step whose condition, drug or outcome code is not in your active cohort. Nothing runs until you press <em>Run this plan</em>. Results are exploratory and unadjusted.</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+                    <label class="an-muted" style="flex:1 1 320px">Research goal (optional)<br><input type="text" id="rsGoal" maxlength="300" placeholder="e.g. does metformin lower hospital admissions in diabetes?" style="width:100%"></label>
+                    <button type="button" id="rsPlanBtn" class="download-btn" style="margin-top:0">Propose plans</button>
+                </div>
+                <div id="rsPlanStatus" class="an-muted" role="status" aria-live="polite" style="min-height:18px;margin-top:6px"></div>
+                <div id="rsPlans" style="display:grid;gap:12px;margin-top:6px"></div>
+                <details id="rsRejected" style="display:none;margin-top:10px"><summary class="an-muted">Steps the server dropped</summary><ul id="rsRejectedList" class="an-muted" style="margin:6px 0 0 18px"></ul></details>
+            </details>
+            <details class="an-card an-collapse" id="rsResultCard" open style="display:none">
+                <summary class="an-sum" style="cursor:pointer"><h3 style="display:inline;margin:0" id="rsResultTitle">4. Results</h3></summary>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
+                    <button type="button" id="rsStop" class="download-btn" style="margin-top:0;display:none">Stop</button>
+                    <button type="button" id="rsInsAll" class="download-btn" style="margin-top:0;display:none">Insights on all output (AI)</button>
+                    <button type="button" id="rsDownload" class="download-btn" style="margin-top:0;display:none">Download results JSON</button>
+                </div>
+                <div id="rsInsAllOut"></div>
+                <div id="rsRunStatus" class="an-muted" role="status" aria-live="polite" style="min-height:18px;margin:6px 0"></div>
+                <div id="rsResults"></div>
+            </details>
+        </div>
+
         <!-- Tab 9: Audit log (admin only) -->
         <div class="tab-panel" id="tab9">
             <div class="page-head"><h2>Audit log</h2></div>
@@ -3709,7 +3617,6 @@ conn.close()
 document.addEventListener('DOMContentLoaded', () => {
     let savedTab = localStorage.getItem('activeTab');
     if (savedTab === 'tab8') { try { localStorage.removeItem('activeTab'); } catch (e) {} savedTab = null; }   // About is a separate public page now
-    if (savedTab === 'tab5') { try { localStorage.removeItem('activeTab'); } catch (e) {} savedTab = null; }   // the Notebook tab is hidden
     if (savedTab) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(p => {
@@ -3867,16 +3774,6 @@ document.getElementById('infoBtn').addEventListener('click', async () => {
 
 
 
-document.getElementById('copyCodeBtn').addEventListener('click', () => {
-    const code = document.getElementById('pythonCode').textContent;
-    navigator.clipboard.writeText(code).then(() => {
-        const btn = document.getElementById('copyCodeBtn');
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-            btn.textContent = 'Copy Python Code';
-        }, 2000);
-    });
-});
 
 // File selection tracking
 document.getElementById('fileInput').addEventListener('change', (e) => {
@@ -5946,11 +5843,6 @@ document.addEventListener('DOMContentLoaded', function () {
         catch (err) { ta.focus(); ta.select(); try { document.execCommand('copy'); } catch (x) { /* user can copy by hand */ } }
         const old = b.textContent; b.textContent = 'Copied'; setTimeout(() => { b.textContent = old; }, 1200);
     });
-    $('sqPython').addEventListener('click', () => {
-        if (!S.out) return;
-        nbUseSnomed(S.out.criteriaSql, S.out.fullSql, S.out.scope);
-        close();
-    });
     $('sqApply').addEventListener('click', () => {
         if (!S.out) return;
         const ta = $('cohortCriteria'), cur = ta.value.trim();
@@ -6063,7 +5955,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         <textarea id="sqFull" class="sq-sql" rows="12" readonly wrap="off"></textarea>
                         <div class="sq-row">
                             <button type="button" id="sqApply" class="btn-primary">Apply to cohort criteria</button>
-                            <button type="button" id="sqPython" class="btn-secondary" title="Open Extended Analytics with this query ready for a Jupyter notebook">🐍 Use in Python</button>
                             <span class="an-muted" style="font-size:12px;">For free-hand analysis, describe it in Analytics &gt; Run analytics &gt; Custom analytic (an LLM writes the query; it runs as fixed SQL).</span>
                             <button type="button" id="sqCloseBtn" class="btn-secondary">Close</button>
                         </div>
@@ -8705,88 +8596,6 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<script>
-/* ===== Extended Analytics: scope-aware Jupyter notebook generator ===== */
-const NB = { snomed: null, ready: false };
-const nbEl = id => document.getElementById(id);
-
-async function nbRefresh() {
-    // population list mirrors the one on the Analytics tab (and keeps its current choice)
-    const src = nbEl('cohortBatchSelector'), sel = nbEl('nbPop'), keep = sel.value;
-    sel.innerHTML = src && src.options.length ? [...src.options].map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.value === '' ? 'All imported data (every batch)' : o.textContent.replace(/^[\s└─]+/, '').trim())}</option>`).join('') : '<option value="">All imported data</option>';
-    sel.value = keep && [...sel.options].some(o => o.value === keep) ? keep : (src ? src.value : '');
-    try {
-        const d = await (await fetch('/api/cohorts')).json(), list = d.cohorts || (Array.isArray(d) ? d : []);
-        const act = list.find(c => c.is_active);
-        nbEl('nbActiveLabel').textContent = act ? `Active cohort: ${act.name}` : 'Active cohort (none active: all patients)';
-        const ids = nbEl('nbCohortId'), cur = ids.value;
-        ids.innerHTML = list.length ? list.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('') : '<option value="">(no saved cohorts)</option>';
-        if (cur) ids.value = cur;
-    } catch (e) { /* keep what is shown */ }
-    if (!NB.ready) {
-        NB.ready = true;
-        try {
-            const r = await (await fetch('/api/notebook/recipes')).json();
-            nbEl('nbRecipes').innerHTML = (r.recipes || []).map(x => `<label><input type="checkbox" class="nb-rec" value="${x.id}" checked> ${escapeHtml(x.title)}<span class="an-muted">extends: ${escapeHtml(x.extends)}</span></label>`).join('');
-        } catch (e) { nbEl('nbRecipes').textContent = 'Could not load the recipe list: ' + e.message; }
-    }
-}
-function nbBody() {
-    const pop = nbEl('nbPop').value, mode = (document.querySelector('input[name="nbCohort"]:checked') || {}).value || 'active';
-    const b = { cohortMode: mode, recipes: [...document.querySelectorAll('.nb-rec:checked')].map(x => x.value), snomedQuery: NB.snomed ? NB.snomed.full : '' };
-    if (pop.startsWith('group:')) b.batchGroup = pop.slice(6); else if (pop) b.batchId = pop;
-    if (mode === 'id') b.cohortId = nbEl('nbCohortId').value;
-    if (mode === 'snomed') b.criteriaSql = NB.snomed ? NB.snomed.criteria : '';
-    if (mode === 'custom') b.criteriaSql = nbEl('nbCustom').value;
-    return b;
-}
-function nbStatus(msg, bad) { const el = nbEl('nbStatus'); el.textContent = msg; el.className = 'status-output' + (bad ? ' error' : ''); }
-async function nbCall(path) {
-    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nbBody()) });
-    if (!res.ok) { let m = res.statusText; try { m = (await res.json()).error || m; } catch (e) { /* not json */ } throw new Error(m); }
-    return res;
-}
-async function nbDownload() {
-    const btn = nbEl('nbDownloadBtn'); btn.disabled = true; nbStatus('Building notebook...');
-    try {
-        const res = await nbCall('/api/notebook/download'), blob = await res.blob();
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'vibe-rounds-analysis.ipynb';
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        nbStatus('Downloaded. Next: set DB_PASSWORD in your terminal, start jupyter lab in that folder, open the notebook and Run All Cells (see the instructions above).');
-    } catch (e) { nbStatus('Could not build the notebook: ' + e.message, true); }
-    btn.disabled = false;
-}
-async function nbPreview() {
-    const btn = nbEl('nbPreviewBtn'); btn.disabled = true; nbStatus('Building cells...');
-    try {
-        const d = await (await nbCall('/api/notebook/preview')).json();
-        nbStatus(`Scope: ${d.scope.text}. ${d.cells.length} cells. Copy a cell, or download the whole notebook.`);
-        nbEl('nbCells').innerHTML = d.cells.map((c, i) => `<details class="nb-cell"><summary><span class="nb-badge ${c.type === 'code' ? 'code' : ''}">${c.type === 'code' ? 'code' : 'text'}</span>${escapeHtml(c.title || '')}</summary><div class="nb-body">` +
-            (c.type === 'code' ? `<pre>${escapeHtml(c.source)}</pre><button class="copy-btn" onclick="nbCopy(this, ${i})">Copy cell</button>` : `<div class="nb-md">${escapeHtml(c.source)}</div>`) + '</div></details>').join('');
-        NB.cells = d.cells;
-    } catch (e) { nbStatus('Could not build the cells: ' + e.message, true); }
-    btn.disabled = false;
-}
-async function nbCopy(btn, i) {
-    const t = NB.cells[i].source;
-    try { await navigator.clipboard.writeText(t); } catch (e) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (x) { /* manual copy */ } ta.remove(); }
-    const old = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = old; }, 1200);
-}
-function nbUseSnomed(criteria, full, scopeText) {
-    NB.snomed = { criteria: criteria || '', full: full || '' };
-    const r = nbEl('nbSnomedRadio'); r.disabled = false; r.checked = true;
-    nbEl('nbSnomedNote').textContent = '(ready' + (scopeText ? '; the builder counted matches in ' + scopeText : '') + '. Pick the population above; the query is also added to the notebook as SNOMED_FULL_QUERY)';
-    nbEl('nbCustom').style.display = 'none';
-    const tab = document.querySelector('.tab[data-tab="tab5"]'); if (tab) tab.click();
-    nbRefresh().then(() => { nbEl('nbStatus').className = 'status-output'; nbStatus('SNOMED query received. Choose the options below, then download the notebook.'); });
-}
-document.addEventListener('DOMContentLoaded', () => {
-    const tab = document.querySelector('.tab[data-tab="tab5"]'); if (tab) tab.addEventListener('click', nbRefresh);
-    document.querySelectorAll('input[name="nbCohort"]').forEach(r => r.addEventListener('change', () => { nbEl('nbCustom').style.display = (document.querySelector('input[name="nbCohort"]:checked') || {}).value === 'custom' ? '' : 'none'; }));
-    if (localStorage.getItem('activeTab') === 'tab5') setTimeout(nbRefresh, 500);
-});
-</script>
 
 <script>
 /* Connection badge in the header, and the section nav of the Analytics page */
@@ -8880,7 +8689,7 @@ document.addEventListener('DOMContentLoaded', () => {
       + '<td style="text-align:left;color:' + col + ';font-weight:600">' + esc(r.outcome) + (r.status ? ' <span class="an-muted">' + r.status + '</span>' : '') + '</td>'
       + '<td style="text-align:left;white-space:nowrap">' + esc(r.method || '') + ' ' + esc(r.path || '') + '</td>'
       + '<td style="text-align:left">' + esc(r.ip || '') + '</td>'
-      + '<td style="text-align:left;max-width:420px;overflow-wrap:anywhere" title="' + esc(det) + '">' + esc(det.length > 160 ? det.slice(0, 160) + '…' : det) + '</td></tr>';
+      + '<td style="text-align:left;max-width:420px;overflow-wrap:anywhere">' + (det.length > 160 ? '<details><summary style="cursor:pointer">' + esc(det.slice(0, 120)) + '…</summary>' + esc(det) + '</details>' : esc(det)) + '</td></tr>';
   }
   async function load(more) {
     const tb = $('audTable').tBodies[0], st = $('audStatus');
@@ -8904,7 +8713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
   function refresh() { loadFacets(); load(false); }
-  $('audApply').onclick = () => load(false);
+  $('audApply').onclick = () => { loadFacets(); load(false); };
   $('audReset').onclick = () => { ['audFrom', 'audTo', 'audActor', 'audAction', 'audOutcome', 'audQ'].forEach(i => { $(i).value = ''; }); load(false); };
   $('audMore').onclick = () => load(true);
   $('audExport').onclick = () => { location.href = '/api/audit/export.csv?' + qs(); };
@@ -10090,6 +9899,146 @@ async function enBulk() {
         updateGuide(); setInterval(updateGuide, 2000);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initGuide); else initGuide();
+})();
+</script>
+<script>
+/* ===== Research tab: data profile (GET /api/demographics/population-details), study templates that open an existing analytic, AI study plans and a plan runner ===== */
+(function () {
+  const $ = id => document.getElementById(id), esc = t => escapeHtml(String(t == null ? '' : t));
+  const TEMPLATES = [
+    { id: 'pico_study', mode: 'v4', title: 'Treatment comparison (PICO)', ask: 'Do patients on drug A do better or worse than patients on drug B (or no drug) for a chosen outcome?', note: 'Cohort study: odds or risk comparison between exposed and comparison groups.' },
+    { id: 'peco_study', mode: 'v4', title: 'Exposure and outcome (PECO)', ask: 'Is a diagnosis (for example obesity) followed by a later diagnosis (for example kidney disease) more often than expected?', note: 'Cohort study with a diagnosis as the exposure.' },
+    { id: 'kaplan_meier', mode: 'v4', title: 'Time to event (survival)', ask: 'How long until an event happens after a starting point, and how do groups differ?', note: 'Kaplan-Meier curves.' },
+    { id: 'pathway_frequencies', mode: 'v4', title: 'Disease and care pathways', ask: 'Which sequences of diagnoses, tests and drugs are most common, and how many days pass between steps?', note: 'Progression and treatment pathways.' },
+    { id: 'readmission_drivers', mode: '', title: 'Readmission risk factors', ask: 'Which patient and stay characteristics go with 30-day readmission?', note: 'Hospital utilisation.' },
+    { id: 'guideline_adherence', mode: '', title: 'Control of chronic disease', ask: 'What share of patients with a condition are at goal, and where are the care gaps?', note: 'Quality of care against control targets.' },
+    { id: null, title: 'Drug safety signals', ask: 'Which new diagnoses appear more often than expected after a drug is started?', note: 'Needs a disproportionality measure (such as PRR) that the app does not have yet.' },
+    { id: null, title: 'Test accuracy', ask: 'How well does a lab result predict a diagnosis (sensitivity, specificity, predictive values)?', note: 'Needs a test-accuracy analytic that the app does not have yet.' }
+  ];
+  const tr = (a, b) => '<tr><td>' + esc(a) + '</td><td style="text-align:right">' + esc(b) + '</td></tr>';
+  const num = n => (n == null || isNaN(n)) ? '' : Number(n).toLocaleString();
+  let seq = 0;
+  async function loadProfile() {
+    const my = ++seq, st = $('rsProfileStatus'), box = $('rsProfile'); st.textContent = 'Loading…';
+    try {
+      const r = await fetch('/api/demographics/population-details'), d = await r.json().catch(() => ({}));
+      if (my !== seq) return;
+      if (!r.ok || !d.success) { box.innerHTML = '<p class="an-muted">' + esc(d.error || 'No data profile yet. Import data and activate a cohort first (Analytics > Cohorts).') + '</p>'; st.textContent = ''; return; }
+      const c = d.counts || {}, rows = Object.entries(c).filter(([, v]) => v).map(([k, v]) => tr(k, num(v.records) + ' records, ' + num(v.patients) + ' patients')).join('');
+      const g = (d.gender || []).map(x => esc(x.value) + ' ' + num(x.count)).join(' · ');
+      const top = list => (list || []).length ? list.map(x => '<code>' + esc(x.code) + '</code> (' + num(x.count) + ')').join(', ') : '<span class="an-muted">none</span>';
+      const a = d.age || {};
+      box.innerHTML = '<p style="margin:0 0 8px"><strong>' + num(d.total_patients) + ' patients</strong> in cohort <em>' + esc(d.cohort && d.cohort.name) + '</em>'
+        + (a.median_age != null ? ' · median age ' + esc(a.median_age) : '') + (g ? ' · ' + g : '') + '</p>'
+        + '<div style="overflow-x:auto"><table class="data-table" style="font-size:12.5px"><thead><tr><th>Resource</th><th style="text-align:right">Amount</th></tr></thead><tbody>' + (rows || '<tr><td colspan="2" class="an-muted">No resource counts.</td></tr>') + '</tbody></table></div>'
+        + '<p style="margin:10px 0 4px"><strong>Most common diagnosis codes:</strong> ' + top(d.top_conditions) + '</p>'
+        + '<p style="margin:0"><strong>Most common observation codes:</strong> ' + top(d.top_observations) + '</p>';
+      st.textContent = '';
+    } catch (e) { if (my === seq) { box.innerHTML = ''; st.textContent = 'Could not load the data profile: ' + e.message; } }
+  }
+  function drawTemplates() {
+    $('rsTemplates').innerHTML = TEMPLATES.map((t, i) => '<div style="border:1px solid var(--line,#ddd);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">'
+      + '<strong>' + esc(t.title) + '</strong><span style="font-size:13px">' + esc(t.ask) + '</span><span class="an-muted">' + esc(t.note) + '</span>'
+      + (t.id ? '<button type="button" class="download-btn rsOpen" data-i="' + i + '" style="align-self:flex-start;margin-top:6px">Open in Analytics</button>'
+              : '<span class="an-muted" style="margin-top:6px"><em>Not available yet</em></span>') + '</div>').join('');
+    document.querySelectorAll('#rsTemplates .rsOpen').forEach(b => { b.onclick = () => openTemplate(TEMPLATES[Number(b.dataset.i)]); });
+  }
+  async function openTemplate(t) {
+    const st = $('rsStatus'), tab = document.querySelector('.tab[data-tab="tab6"]'); st.textContent = 'Opening ' + t.title + '…';
+    if (tab) tab.click();
+    let sel = null;
+    for (let i = 0; i < 40; i++) { sel = $('anSelect'); if (sel && [...sel.options].some(o => o.value === t.id)) break; sel = null; await new Promise(r => setTimeout(r, 100)); }
+    if (!sel) { st.textContent = t.title + ' is not in the analytics catalog of this server, so it cannot be opened.'; return; }
+    sel.value = t.id;
+    if (t.mode) { const m = document.querySelector('input[name="analyticsMode"][value="' + t.mode + '"]'); if (m) m.checked = true; }
+    if (typeof refreshModeUI === 'function') refreshModeUI();
+    sel.scrollIntoView({ block: 'center' }); st.textContent = '';
+  }
+  /* ---- 3. AI study plans (POST /api/research/plan) and 4. results (POST /api/research/run-step, one request per step) ---- */
+  const RS = { plans: [], running: false, ctl: null, collected: null };
+  const post = async (url, body, signal) => {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    const t = await r.text(); let d; try { d = JSON.parse(t); } catch { throw new Error('HTTP ' + r.status + ': ' + t.slice(0, 160)); }
+    if (!r.ok || !d.success) throw new Error(d.error || 'HTTP ' + r.status);
+    return d;
+  };
+  function drawPlans() {
+    const box = $('rsPlans');
+    box.innerHTML = RS.plans.map((p, i) => '<div style="border:1px solid var(--line,#ddd);border-radius:8px;padding:12px 14px">'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center"><strong>' + esc(p.title) + '</strong><span class="an-ai-tag">AI-generated, please review</span></div>'
+      + (p.question ? '<p style="margin:4px 0 8px;font-size:13px">' + esc(p.question) + '</p>' : '')
+      + '<ol style="margin:0 0 10px 18px;padding:0">' + p.steps.map(s => '<li style="margin:4px 0"><span class="an-muted">' + esc(s.template_title) + '</span><br>' + esc(s.title)
+        + (s.why ? '<br><span class="an-muted">' + esc(s.why) + '</span>' : '')
+        + (s.warnings.concat(s.notes || []).length ? '<br><span style="color:#a15c00;font-size:12.5px">' + esc(s.warnings.concat(s.notes || []).join(' · ')) + '</span>' : '') + '</li>').join('') + '</ol>'
+      + '<button type="button" class="download-btn rsRunPlan" data-i="' + i + '" style="margin-top:0">Run this plan (' + p.steps.length + ' step' + (p.steps.length === 1 ? '' : 's') + ')</button></div>').join('');
+    box.querySelectorAll('.rsRunPlan').forEach(b => { b.disabled = RS.running; b.onclick = () => runPlan(RS.plans[Number(b.dataset.i)]); });
+  }
+  async function proposePlans() {
+    const st = $('rsPlanStatus'), btn = $('rsPlanBtn'); btn.disabled = true; st.textContent = 'Asking the AI model for plans…';
+    try {
+      const d = await post('/api/research/plan', { goal: $('rsGoal').value.trim(), avoid: RS.plans.map(p => p.title) });
+      RS.plans = d.plans; drawPlans();
+      $('rsRejected').style.display = d.rejected.length ? '' : 'none';
+      $('rsRejectedList').innerHTML = d.rejected.map(x => '<li>' + esc(x.plan) + ' / ' + esc(x.step) + ': ' + esc(x.reason) + '</li>').join('');
+      st.textContent = d.plans.length + ' plan' + (d.plans.length === 1 ? '' : 's') + ' from ' + (d.model || 'the model') + (d.rejected.length ? ' · ' + d.rejected.length + ' step' + (d.rejected.length === 1 ? '' : 's') + ' dropped by the server' : '') + '.';
+    } catch (e) { st.textContent = 'Could not get plans: ' + e.message; }
+    btn.disabled = false;
+  }
+  async function runPlan(plan) {
+    if (RS.running || !plan) return;
+    RS.running = true; RS.ctl = new AbortController(); drawPlans();
+    const card = $('rsResultCard'), out = $('rsResults'), st = $('rsRunStatus'), stop = $('rsStop'), dl = $('rsDownload');
+    card.style.display = ''; card.open = true; out.innerHTML = ''; $('rsInsAllOut').innerHTML = ''; dl.style.display = 'none'; $('rsInsAll').style.display = 'none'; stop.style.display = ''; stop.disabled = false;
+    $('rsResultTitle').textContent = '4. Results: ' + plan.title; card.scrollIntoView({ block: 'start' });
+    const collected = { plan: plan.title, question: plan.question, started: new Date().toISOString(), steps: [] }; RS.collected = collected;
+    let ok = 0, failed = 0, stopped = false;
+    for (let i = 0; i < plan.steps.length; i++) {
+      const s = plan.steps[i], holder = document.createElement('div'); holder.style.marginTop = '14px';
+      holder.innerHTML = '<div style="font-weight:600">Step ' + (i + 1) + ' of ' + plan.steps.length + ': ' + esc(s.title) + '</div><div class="an-muted">Running…</div>'; out.appendChild(holder);
+      st.textContent = 'Running step ' + (i + 1) + ' of ' + plan.steps.length + '…';
+      try {
+        const d = await post('/api/research/run-step', { spec: s.spec }, RS.ctl.signal);
+        holder.innerHTML = '<div style="font-weight:600">Step ' + (i + 1) + ' of ' + plan.steps.length + ': ' + esc(s.title) + '</div>' + (typeof renderRun === 'function' ? renderRun(d.result) : '<p class="an-muted">Result received (no renderer on this page).</p>');
+        collected.steps.push({ title: s.title, spec: s.spec, warnings: d.warnings, result: d.result }); ok++;
+        holder.insertAdjacentHTML('beforeend', '<div style="margin-top:8px"><button type="button" class="download-btn rsStepIns" style="margin-top:0">Insights (AI)</button><div class="rsStepInsOut"></div></div>');
+        const stepRun = insRun(collected, i + 1, s.title, d.result);
+        holder.querySelector('.rsStepIns').onclick = ev => insRequest([stepRun], 'run', ev.currentTarget, holder.querySelector('.rsStepInsOut'), 'Insights on step ' + (i + 1));
+      } catch (e) {
+        if (RS.ctl.signal.aborted) { holder.innerHTML = '<div style="font-weight:600">Step ' + (i + 1) + ': ' + esc(s.title) + '</div><p class="an-muted">Stopped by you.</p>'; stopped = true; break; }
+        holder.innerHTML = '<div style="font-weight:600">Step ' + (i + 1) + ' of ' + plan.steps.length + ': ' + esc(s.title) + '</div><p style="color:#c62828;font-size:13px">' + esc(e.message) + '</p>';
+        collected.steps.push({ title: s.title, spec: s.spec, error: e.message }); failed++;
+      }
+    }
+    collected.finished = new Date().toISOString();
+    st.textContent = ok + ' of ' + plan.steps.length + ' step' + (plan.steps.length === 1 ? '' : 's') + ' finished' + (failed ? ', ' + failed + ' failed' : '') + (stopped ? ', stopped by you' : '') + '. Exploratory and unadjusted: use for hypotheses, not conclusions.';
+    stop.style.display = 'none'; dl.style.display = collected.steps.length ? '' : 'none'; $('rsInsAll').style.display = collected.steps.some(x => x.result) ? '' : 'none';
+    RS.running = false; RS.ctl = null; drawPlans();
+  }
+  // AI insights reuse POST /api/ai/insights (tables only, capped rows, no patient ids), the same call as Analytics > Insights.
+  function insRun(c, n, title, result) {
+    const cohort = (document.querySelector('#rsProfile em') || {}).textContent || '';
+    return { n, label: c.plan + ' / ' + title, cohort, population: '', items: [{ t: 'result', d: result }] };
+  }
+  function insRequest(runs, scope, btn, out, what) {
+    if (typeof anInsRequest === 'function') return anInsRequest(runs, scope, btn, out, what);
+    out.innerHTML = '<p class="an-muted">AI insights are not available on this page.</p>';
+  }
+  function insAll() {
+    const c = RS.collected; if (!c) return;
+    const runs = c.steps.map((x, i) => x.result ? insRun(c, i + 1, x.title, x.result) : null).filter(Boolean);
+    insRequest(runs, 'all', $('rsInsAll'), $('rsInsAllOut'), 'Insights on all output (' + runs.length + ' step' + (runs.length === 1 ? '' : 's') + ')');
+  }
+  function downloadResults() {
+    if (!RS.collected) return;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(RS.collected, null, 2)], { type: 'application/json' }));
+    a.download = 'research-plan-results.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    drawTemplates(); $('rsReload').onclick = loadProfile;
+    $('rsPlanBtn').onclick = proposePlans; $('rsStop').onclick = () => { if (RS.ctl) { RS.ctl.abort(); $('rsStop').disabled = true; } }; $('rsDownload').onclick = downloadResults; $('rsInsAll').onclick = insAll;
+    const tab = document.querySelector('.tab[data-tab="tab10"]'); if (tab) tab.addEventListener('click', loadProfile);
+    if (tab && tab.classList.contains('active')) loadProfile();
+  });
 })();
 </script>
 </body>

@@ -566,8 +566,11 @@ const module = { exports: {} };
 //              reads of patient-level data (patient explorer, cohort graph sample), data sent to an external AI model,
 //              exports, refused requests (403) and the audit log's own export / verify.
 //              AUDIT_LEVEL=verbose also records every other /api/ request. Default is "standard".
+//   Also       analytics runs (analytic, mode, parameters), every custom SQL (text clipped to 300 characters + hash), cohort criteria
+//              (clipped + hash), Research plan steps, readiness checks, reads of aggregate data (at most once per person and path
+//              every 30 s), requests without a valid session (401, once a minute per address) and server errors (5xx).
 //   Never      request bodies, passwords, API keys, tokens or cookies. Only a short whitelist of fields (batch id, cohort
-//              id, name, counts) and, for patient-data reads, the query string (it holds the patient id).
+//              id, name, counts), the per-rule captures above and, for patient-data reads, the query string (it holds the patient id).
 //   Storage    table `audit_log`, append-only: a trigger refuses UPDATE, DELETE and TRUNCATE. Every row also carries the
 //              SHA-256 of the previous row's hash plus its own fields (a hash chain), so an edited or removed row is
 //              found by GET /api/audit/verify. A database superuser can still drop the trigger and rewrite the whole
@@ -632,8 +635,8 @@ const RULES = [
   ['POST',   /^\/api\/ehr\/fetch$/, 'ehr.fetch', 'data'],
   ['DELETE', /^\/api\/batches\/([^/]+)$/, 'batch.delete', 'data'],
   ['DELETE', /^\/api\/batch-groups\/([^/]+)$/, 'batch.group_delete', 'data'],
-  ['POST',   /^\/api\/cohorts$/, 'cohort.create', 'cohort'],
-  ['PUT',    /^\/api\/cohorts\/([^/]+)$/, 'cohort.update', 'cohort'],
+  ['POST',   /^\/api\/cohorts$/, 'cohort.create', 'cohort', { capture: 'cohort' }],
+  ['PUT',    /^\/api\/cohorts\/([^/]+)$/, 'cohort.update', 'cohort', { capture: 'cohort' }],
   ['DELETE', /^\/api\/cohorts\/([^/]+)$/, 'cohort.delete', 'cohort'],
   ['POST',   /^\/api\/cohorts\/([^/]+)\/activate$/, 'cohort.activate', 'cohort'],
   ['POST',   /^\/api\/cohorts\/([^/]+)\/deactivate$/, 'cohort.deactivate', 'cohort'],
@@ -650,17 +653,46 @@ const RULES = [
   ['POST',   /^\/api\/snomed\/hierarchy\/load$/, 'terminology.load', 'data'],
   ['DELETE', /^\/api\/snomed\/hierarchy$/, 'terminology.delete', 'data'],
   ['POST',   /^\/api\/snomed\/dictionary\/build$/, 'terminology.dictionary_build', 'data'],
-  ['POST',   /^\/api\/notebook\/download$/, 'export.notebook', 'export'],
+  ['POST',   /^\/api\/research\/run-step$/, 'research.step', 'analytics', { capture: 'research' }],  // one analytic of an AI study plan
+  ['POST',   /^\/api\/research\/(plan)$/, 'ai.request', 'external'],                         // cohort aggregates (codes and counts) go to an external model
   ['POST',   /^\/api\/(?:ai|pico)\/([a-z-]+)$/, 'ai.request', 'external'],          // text / statistics sent to an external model
   ['POST',   /^\/api\/analytics\/custom\/(generate)$/, 'ai.request', 'external'],     // the question text is sent to an external model
   ['GET',    /^\/api\/explorer\/patients$/, 'phi.list', 'phi', { query: true }],
   ['GET',    /^\/api\/explorer\/patient$/, 'phi.view', 'phi', { query: true }],
   ['GET',    /^\/api\/kg\/cohort$/, 'phi.cohort_graph', 'phi', { query: true }],
-  // noise: analytics runs, previews and polling are not audited one by one (use AUDIT_LEVEL=verbose to see them)
+  // analytics: who ran which analytic with which parameters, and every custom SQL (text clipped, plus its hash)
+  ['POST',   /^\/api\/analytics\/catalog\/run$/, 'analytics.run', 'analytics', { capture: 'analytic' }],
+  ['POST',   /^\/api\/analytics\/catalog\/run-all$/, 'analytics.run_all', 'analytics', { capture: 'analytic' }],
+  ['POST',   /^\/api\/analytics\/catalog\/(?:compare|compare-modes)$/, 'analytics.compare', 'analytics', { capture: 'analytic' }],
+  ['POST',   /^\/api\/analytics\/custom\/run$/, 'analytics.custom_sql', 'analytics', { capture: 'sql' }],
+  ['POST',   /^\/api\/readiness\/check$/, 'readiness.check', 'analytics'],
+  ['POST',   /^\/api\/ehr\/test$/, 'ehr.test', 'data'],
+  // reads of aggregate data (counts, code lists): recorded, at most once per person and path every 30 s
+  ['GET',    /^\/api\/(?:demographics\/population-details|analytics\/demographics|concepts|enrichment\/coverage|db-overview)$/, 'data.view', 'access', { query: true, throttle: 30000 }],
+  // noise: previews and polling are not audited one by one (use AUDIT_LEVEL=verbose to see them)
   ['POST',   /^\/api\/enrichment\/candidates$/, null, null],
-  ['POST',   /^\/api\/(?:analytics\/(?:catalog\/(?:run|run-all|compare)|custom\/run)|readiness\/.*|notebook\/preview|snomed\/(?:expand|query\/.*)|ehr\/(?:test|jobs\/.*))$/, null, null]
+  ['POST',   /^\/api\/(?:readiness\/.*|snomed\/(?:expand|query\/.*)|ehr\/jobs\/.*)$/, null, null]
 ];
-const BODY_KEYS = ['batchId', 'batchGroup', 'name', 'cohortId', 'maxPatients', 'count'];     // the only body fields that are ever stored
+const BODY_KEYS = ['batchId', 'batchGroup', 'name', 'cohortId', 'maxPatients', 'count'];     // body fields stored for every audited request
+// Extra, per-rule capture (opts.capture): analytic parameters and SQL text. SQL is clipped and hashed; nothing else from the body is kept.
+const sha16 = t => crypto.createHash('sha256').update(String(t)).digest('hex').slice(0, 16);
+function scalars(o, max = 14) {
+  const out = {}; let n = 0;
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+  for (const [k, v] of Object.entries(o)) {
+    if (n >= max) break;
+    if (['string', 'number', 'boolean'].includes(typeof v)) { out[clean(k, 40)] = typeof v === 'string' ? clean(v, 120) : v; n++; }
+    else if (Array.isArray(v) && v.every(x => ['string', 'number'].includes(typeof x))) { out[clean(k, 40)] = clean(v.slice(0, 8).join(','), 120); n++; }
+  }
+  return out;
+}
+const sqlInfo = (t, prefix) => typeof t === 'string' ? { [prefix]: clean(t.replace(/\s+/g, ' ').trim(), 300), [prefix + '_len']: t.length, [prefix + '_sha256']: sha16(t) } : {};
+const CAPTURE = {
+  analytic: b => ({ analytic: clean(b.id, 60), mode: clean(b.mode, 10), params: scalars(b.args), enrich: Array.isArray(b.enrich) ? b.enrich.slice(0, 8).map(x => clean(x, 10)).join(',') : undefined }),
+  research: b => ({ params: scalars(b.spec) }),
+  sql: b => ({ mode: clean(b.mode, 10), ...sqlInfo(b.sql, 'sql'), question: clean(b.question, 200) }),
+  cohort: b => ({ ...sqlInfo(b.criteria_sql, 'criteria'), population: clean(b.population_scope, 80) })
+};
 
 function classify(method, p) {
   for (const [m, re, action, category, opts] of RULES) {
@@ -759,6 +791,7 @@ function setup(app, getPool, { store: injected, env = process.env, logger = cons
   const store = injected || pgStore(getPool);
   const level = env.AUDIT_LEVEL === 'verbose' ? 'verbose' : 'standard';
   let tail = Promise.resolve(), pending = 0, dropped = 0, ready = false;
+  const seen = new Map();                                       // throttle for repeated reads / unauthenticated hits
 
   // record({req?, actor?, action, category, outcome, status?, method?, path?, details?}); never throws, never blocks
   function record(e) {
@@ -787,10 +820,18 @@ function setup(app, getPool, { store: injected, env = process.env, logger = cons
     let sel = null;
     if (c && !c.ignore) sel = c;
     else if (status === 403) sel = { action: 'access.denied', category: 'security', opts: {}, target: null };
+    else if (status === 401) sel = { action: 'access.unauthenticated', category: 'security', opts: { throttle: 60000, byIp: true }, target: null };     // no valid session
+    else if (status >= 500 && !/^\/api\/(hello|db-info)$/.test(p)) sel = { action: 'api.error', category: 'error', opts: {}, target: null };           // a request that failed on the server
     else if (c && c.ignore) sel = null;
     else if (method !== 'GET' && user) sel = { action: 'api.write', category: 'data', opts: {}, target: null };    // unknown new write route
     else if (level === 'verbose' && !/^\/api\/(hello|db-info)$/.test(p)) sel = { action: method === 'GET' ? 'api.read' : 'api.write', category: 'access', opts: {}, target: null };
     if (!sel) return;
+    if (sel.opts.throttle) {
+      const key = (sel.opts.byIp ? req.ip : (user && user.id)) + '|' + sel.action + '|' + p, now = Date.now();
+      if (seen.has(key) && now - seen.get(key) < sel.opts.throttle) return;
+      if (seen.size > 5000) seen.clear();
+      seen.set(key, now);
+    }
     const details = { ms };
     if (sel.target) details.target = sel.target;
     else if (req.auditTarget) details.target = String(req.auditTarget);       // a route that knows its own target (a create) names it
@@ -798,6 +839,8 @@ function setup(app, getPool, { store: injected, env = process.env, logger = cons
     if (b && typeof b === 'object' && !Array.isArray(b)) {
       for (const k of BODY_KEYS) if (typeof b[k] === 'string' || typeof b[k] === 'number') details[k] = b[k];
       if (sel.opts.entries && b.bundle && Array.isArray(b.bundle.entry)) details.entries = b.bundle.entry.length;
+      const cap = CAPTURE[sel.opts.capture];
+      if (cap) { try { Object.assign(details, cap(b)); } catch (e) { /* capture is best effort */ } }
     }
     if (sel.opts.query || sel.action === 'audit.export') {       // patient ids live in the query string of the patient-data reads
       const q = {}; let n = 0;
@@ -890,7 +933,12 @@ module.exports.selftest = () => {
     assert.strictEqual(classify('POST', '/api/import-fhir').action, 'data.import');
     assert.strictEqual(classify('DELETE', '/api/batches/my%20batch').target, 'my batch');
     assert.strictEqual(classify('POST', '/api/pico/parse').action, 'ai.request');
-    assert.ok(classify('POST', '/api/readiness/check').ignore);
+    assert.strictEqual(classify('POST', '/api/research/plan').action, 'ai.request'); assert.strictEqual(classify('POST', '/api/research/run-step').action, 'research.step');
+    assert.strictEqual(classify('POST', '/api/readiness/check').action, 'readiness.check'); assert.ok(classify('POST', '/api/readiness/profile').ignore);
+    assert.strictEqual(classify('POST', '/api/analytics/catalog/run').action, 'analytics.run'); assert.strictEqual(classify('POST', '/api/analytics/custom/run').action, 'analytics.custom_sql');
+    assert.strictEqual(classify('GET', '/api/demographics/population-details').action, 'data.view'); assert.strictEqual(classify('GET', '/api/analytics/catalog'), null);
+    assert.deepStrictEqual(CAPTURE.analytic({ id: 'pico_study', mode: 'v4', args: { concept: 'diabetes', iv: '861007', nested: { a: 1 } } }), { analytic: 'pico_study', mode: 'v4', params: { concept: 'diabetes', iv: '861007' }, enrich: undefined });
+    const cs = CAPTURE.sql({ mode: 'v2', sql: 'SELECT  1\n FROM t', password: 'x' }); assert.strictEqual(cs.sql, 'SELECT 1 FROM t'); assert.ok(!('password' in cs) && cs.sql_sha256.length === 16);
     assert.strictEqual(classify('PUT', '/api/enrichment/dx/chest%20pain').action, 'enrichment.review');
     assert.strictEqual(classify('PUT', '/api/enrichment/dx/chest%20pain').target, 'dx');
     assert.strictEqual(classify('POST', '/api/enrichment/bulk-approve').action, 'enrichment.bulk_approve');
