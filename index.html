@@ -266,6 +266,7 @@
         .an-hide-charts .an-chart, .an-hide-tables .an-tablewrap { display:none; }
         .an-vis-btns { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
         .an-vis-btns button { padding:3px 10px; font-size:12px; }
+        #anRunBtn:focus { outline: 3px solid #1a7a54; outline-offset: 3px; }
         .analytics-section {
             margin-bottom: 30px;
             padding: 20px;
@@ -2947,7 +2948,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                             <div class="an-muted" style="margin-top:6px;">The active cohort applies to both sides unless scope B is itself a cohort (then B runs on all batches restricted to that cohort).</div>
                         </details>
                         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="runCatalogAnalytic([demoMode()])">Run analytic</button>
+                            <button class="btn-primary" id="anRunBtn" onclick="runCatalogAnalytic([demoMode()])">Run analytic</button>
                             <button class="btn-secondary" onclick="runCatalogAnalytic(['v1','v2','v4'])">Compare V1 / V2 / V4</button>
                             <button class="btn-secondary" onclick="compareModes('v2v3')" title="Same analytic without and with approved enrichment codes (no dates), side by side with the difference. Uses the domains ticked under Enrich.">Compare V2 / V3</button>
                             <button class="btn-secondary" onclick="compareModes('v4v5')" title="Same analytic without and with approved enrichment codes (with dates), side by side with the difference. Uses the domains ticked under Enrich.">Compare V4 / V5</button>
@@ -9952,7 +9953,13 @@ async function enBulk() {
     sel.value = t.id;
     if (t.mode) { const m = document.querySelector('input[name="analyticsMode"][value="' + t.mode + '"]'); if (m) m.checked = true; }
     if (typeof refreshModeUI === 'function') refreshModeUI();
-    sel.scrollIntoView({ block: 'center' }); st.textContent = '';
+    // open the "Run analytics" section, bring it into view and focus the Run button so the user only has to press it
+    const sec = $('anRun'); if (sec) sec.open = true;
+    const runBtn = $('anRunBtn');
+    await new Promise(r => requestAnimationFrame(() => r()));
+    if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (runBtn) { try { runBtn.focus({ preventScroll: true }); } catch (e) { runBtn.focus(); } }
+    st.textContent = '';
   }
   /* ---- 3. AI study plans (POST /api/research/plan) and 4. results (POST /api/research/run-step, one request per step) ---- */
   const RS = { plans: [], running: false, ctl: null, collected: null };
