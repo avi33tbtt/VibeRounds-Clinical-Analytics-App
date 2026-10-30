@@ -3167,14 +3167,23 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
 
                 <!-- Patient trajectory: the whole cohort as one interactive flow diagram (Sankey), from each patient's first dated record (GET /api/trajectory/cohort) -->
                 <details class="an-collapse analytics-section" id="anPT" style="margin-top:14px;"><summary class="an-sum"><h4 style="display:inline; margin:0;">Patient trajectory</h4></summary>
-                    <div class="an-muted" style="margin-bottom:6px;">How the <strong>whole cohort</strong> (every patient of the selected <em>Population / Batch</em> and the <em>active cohort</em>) moves through care, as one flow diagram. Each patient starts at their first dated record of any kind (day 0); the app then follows the first time each diagnosis, admission / ED visit, lab, procedure and drug happens, in date order, for up to 8 steps. Band width = patients, the days on a link = median time between two steps, grey-red bands = patients with no further recorded care. Hover for numbers, click a box or a band to compare its patients with everyone and to list them (a row opens the patient in the Patient data explorer). Computed from the data each time; nothing is stored.</div>
+                    <div class="an-muted" style="margin-bottom:6px;">How the <strong>whole cohort</strong> (every patient of the selected <em>Population / Batch</em> and the <em>active cohort</em>) moves through care, as one flow diagram. Each patient starts at their first dated record of any kind (day 0); the app then follows the first time each diagnosis, admission / ED visit, lab, procedure and drug happens, in date order, for up to 8 steps. Band width = patients, the days on a link = median time between two steps, grey-red bands = patients with no further recorded care. Hover for numbers, click a box or a band to compare its patients with everyone and to list them (a row opens the patient in the Patient data explorer). Computed from the data each time; nothing is stored.<br><strong>Care stages</strong> is a second view: pick one diagnosis and every patient who has it is placed in nine columns, <em>Comorbidities</em> (all their other diagnoses), <em>Diagnosis</em>, <em>Presentation</em>, <em>Initial plan</em>, <em>Medications</em>, <em>Procedures</em>, <em>Escalation</em>, <em>Advanced/recurrent</em> and <em>Disposition</em>, the same stages as the Inpatient trajectory analytic but counted per patient.</div>
 
-                    <div class="pw-row">
-                        <button class="btn-primary" id="ptBuild" onclick="PT.build()">Build trajectory</button>
-                        <label>Steps followed <select id="ptDepth" onchange="PT.changed()"><option>3</option><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option></select></label>
-                        <label>Events kept per kind <select id="ptPerKind" onchange="PT.changed()"><option>4</option><option selected>6</option><option>8</option><option>10</option></select></label>
+                    <div class="pw-row"><strong>View:</strong>
+                        <label><input type="radio" name="ptView" value="events" checked onchange="PT.setView()">Event flow (first record onward)</label>
+                        <label title="One diagnosis, nine stages: comorbidities, diagnosis, presentation, initial plan, medications, procedures, escalation, advanced/recurrent, disposition"><input type="radio" name="ptView" value="stages" onchange="PT.setView()">Care stages (9 columns)</label>
+                    </div>
+                    <div class="pw-row" id="ptStageCtl" style="display:none;">
+                        <label>Diagnosis <select id="ptIndex" onchange="PT.changed()" style="max-width:320px;"><option value="">(most common in the cohort)</option></select></label>
+                        <label title="Medications, procedures, escalation, advanced/recurrent care and disposition are looked for in this many days after the first onset date of the diagnosis">Look ahead <select id="ptHorizon" onchange="PT.changed()"><option value="90">90 days</option><option value="180">180 days</option><option value="365" selected>1 year</option><option value="730">2 years</option><option value="1825">5 years</option></select></label>
+                        <label title="A hospital stay this long or longer counts as a prolonged stay (stage Advanced/recurrent)">Prolonged stay from <input type="number" id="ptLongStay" min="3" max="60" value="7" style="width:58px;" onchange="PT.changed()"> days</label>
                     </div>
                     <div class="pw-row">
+                        <button class="btn-primary" id="ptBuild" onclick="PT.build()">Build trajectory</button>
+                        <label id="ptDepthLbl">Steps followed <select id="ptDepth" onchange="PT.changed()"><option>3</option><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option></select></label>
+                        <label><span id="ptPerKindTxt">Events kept per kind</span> <select id="ptPerKind" onchange="PT.changed()"><option>4</option><option selected>6</option><option>8</option><option>10</option></select></label>
+                    </div>
+                    <div class="pw-row" id="ptKindsRow">
                         <strong>Include:</strong>
                         <label><input type="checkbox" class="ptKind" value="condition" checked onchange="PT.changed()">diagnoses</label>
                         <label><input type="checkbox" class="ptKind" value="encounter" checked onchange="PT.changed()">admissions / ED visits</label>
@@ -3204,6 +3213,19 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                         <div class="an-muted">Hover a row to light up its route in the diagram. Outcomes are crude and unadjusted.</div>
                         <div id="ptRoutes"></div>
                         <div class="an-muted" id="ptNotes" style="margin-top:12px;"></div>
+                    </div>
+
+                    <!-- Care stages view: nine columns for one chosen diagnosis (GET /api/trajectory/stages) -->
+                    <div id="ptStBody" style="display:none;">
+                        <div class="pw-row" style="margin:4px 0 0;">
+                            <button class="btn-primary" onclick="PT.addToOutput()" title="Adds the nine-column diagram, with the current filters, to the Output section below">Add this view to Output</button><span class="an-muted" id="ptStOutMsg"></span>
+                        </div>
+                        <div class="pw-kpis" id="ptStKpis"></div>
+                        <div class="pw-main">
+                            <div class="pw-canvas" id="ptStCanvas"></div>
+                            <div class="pw-side" id="ptStSide"></div>
+                        </div>
+                        <div class="an-muted" style="margin-top:12px;" id="ptStNotes"></div>
                     </div>
                 </details>
 
@@ -7489,6 +7511,7 @@ function anRenderItem(run, t, d) {
         else if (t === 'ckg') run.body.appendChild(KGC.renderOutput(d));
         else if (t === 'pw') run.body.appendChild(PW.renderOutput(d));
         else if (t === 'ptc') run.body.appendChild(PT.renderOutput(d));
+        else if (t === 'pts') run.body.appendChild(PT.renderStagesOutput(d));
         else if (t === 'air') {   // AI researcher: insight, suggested next analytics and summary of one round (text only)
             const sug = (Array.isArray(d.suggestions) ? d.suggestions : []).map(x => `<li><strong>${escapeHtml(x.title)}</strong> <span class="an-muted">${x.kind === 'custom' ? 'plain-English question' : escapeHtml(String(x.mode || '').toUpperCase())} · ${escapeHtml(x.priority)} priority${x.chosen ? ' · chosen to run next' : ''}</span>${x.kind === 'custom' ? `<div><em>${escapeHtml(x.question)}</em></div>` : ''}<div>${escapeHtml(x.why)}</div></li>`).join('');
             run.body.insertAdjacentHTML('beforeend', `<div class="air-out" style="margin-top:10px; padding:10px 12px; border:1px solid #1a7a54; border-radius:6px;"><div><strong>AI researcher${d.round ? ' · round ' + escapeHtml(String(d.round)) : ''}</strong> <span class="an-ai-tag">AI-generated, please review</span>${d.model ? ` <span class="an-muted">model: ${escapeHtml(d.model)}</span>` : ''}</div>`
@@ -7701,7 +7724,7 @@ async function anUploadOutput(input) {
             if (!r || !Array.isArray(r.items)) { bad++; return; }
             const run = anStartRun(String(r.label || 'Run'), { imported: true, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
                 cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'pts', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
             n++;
         });
         anReorder(); anSyncLast(); anUpdateHistoryBar();
@@ -10064,7 +10087,7 @@ const PT = (function () {
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const K = () => PW._kit;
-    const S = { data: null, qs: null, sel: null, seq: 0, timer: null, lay: null, drillSeq: 0 };
+    const S = { data: null, qs: null, sel: null, seq: 0, timer: null, lay: null, drillSeq: 0, mode: 'events', st: { data: null, qs: null, sel: null, seq: 0, lay: null, bands: null } };
     const P = v => K().P(v), D = v => K().D(v), num = v => K().num(v), trunc = (s, n) => K().trunc(s, n);
 
     function query() {
@@ -10152,8 +10175,134 @@ const PT = (function () {
         host.innerHTML = k.map(x => `<div class="pw-kpi"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
     }
 
+
+    // ================= Care stages: nine columns for one chosen diagnosis (GET /api/trajectory/stages) =================
+    // One patient = one row. Column layout and bands reuse trajNodesLayout / trajBands of the Inpatient trajectory view (rows are mapped to its field names).
+    const ST_PLACEHOLDER = '(groups under the minimum are hidden)';
+    function stQuery() {
+        const sc = typeof anScope === 'function' ? anScope() : {}, qs = new URLSearchParams();
+        if (sc.batchGroup) qs.set('batchGroup', sc.batchGroup); if (sc.batchId) qs.set('batchId', sc.batchId);
+        if ($('ptIndex').value) qs.set('index', $('ptIndex').value);
+        qs.set('horizon', $('ptHorizon').value); qs.set('longStay', $('ptLongStay').value || '7'); qs.set('perKind', $('ptPerKind').value);
+        if ($('ptSex').value) qs.set('gender', $('ptSex').value);
+        if ($('ptAgeMin').value !== '') qs.set('ageMin', $('ptAgeMin').value);
+        if ($('ptAgeMax').value !== '') qs.set('ageMax', $('ptAgeMax').value);
+        qs.set('minCell', $('ptMin').value || '5');
+        return qs;
+    }
+    // data -> { lay, bands }; a stage whose every value is under the minimum still gets its column (one small placeholder box)
+    function stPrep(d) {
+        const nodes = d.nodes.map(x => ({ stage_no: Number(x.stage_no), stage: String(x.stage), value: String(x.value), episodes: Number(x.patients), pct_of_episodes: Number(x.pct_of_patients) }));
+        (Array.isArray(d.stages) ? d.stages : []).forEach((name, i) => { if (!nodes.some(n => n.stage_no === i + 1)) nodes.push({ stage_no: i + 1, stage: String(name), value: ST_PLACEHOLDER, episodes: 0, pct_of_episodes: NaN }); });
+        const ribbons = d.ribbons.map(x => ({ from_stage: String(x.from_stage), from_value: String(x.from_value), to_stage: String(x.to_stage), to_value: String(x.to_value), episodes: Number(x.patients), pct_of_from: Number(x.pct_of_from) }));
+        const lay = trajNodesLayout(nodes), bands = trajBands(lay, ribbons);
+        return { lay, bands };
+    }
+    // the picture; live = nodes are clickable (the output copy is static)
+    function stSvg(lay, bands, sel, live) {
+        if (!lay.cols.length) return '<div class="an-muted" style="margin-top:6px;">Nothing to draw.</div>';
+        const hue = n => (n * 40) % 360, cut = t => (t.length > TJ.labelChars ? t.slice(0, TJ.labelChars - 1) + '…' : t);
+        const selCol = sel ? lay.cols.find(c => c.stage_no === sel.stage_no) : null, selNode = selCol ? selCol.nodes[sel.ni] : null, near = new Set();
+        if (selNode) { near.add(selNode); bands.forEach(b => { if (b.a === selNode) near.add(b.b); if (b.b === selNode) near.add(b.a); }); }
+        const bandSvg = bands.map(b => {
+            const xm = (b.x0 + b.x1) / 2, on = !selNode || b.a === selNode || b.b === selNode, col = b.grey ? '#9e9e9e' : `hsl(${hue(b.a.stage_no)}, 55%, 48%)`;
+            const tip = `${b.fromValue} → ${b.toValue}: ${b.episodes} patient${b.episodes === 1 ? '' : 's'}` + (Number.isFinite(b.pct) ? ` (${b.pct.toFixed(1)}% of ${b.fromValue})` : '');
+            return `<path d="M${b.x0.toFixed(1)},${b.y0.toFixed(1)} C${xm.toFixed(1)},${b.y0.toFixed(1)} ${xm.toFixed(1)},${b.y1.toFixed(1)} ${b.x1.toFixed(1)},${b.y1.toFixed(1)}" fill="none" stroke="${col}" stroke-opacity="${selNode ? (on ? 0.65 : 0.05) : 0.35}" stroke-width="${b.width.toFixed(2)}"><title>${escapeHtml(tip)}</title></path>`;
+        }).join('');
+        const cols = lay.cols.map(c => {
+            const head = `<text x="${c.x.toFixed(1)}" y="${TJ.top - 24}" font-size="10.5" font-weight="bold" fill="#333">${escapeHtml(c.stage)}</text>`;
+            const nodes = c.nodes.map((n, ni) => {
+                const tip = `${c.stage}: ${n.value} - ${n.episodes} patient${n.episodes === 1 ? '' : 's'}` + (Number.isFinite(n.pct) ? ` (${Number(n.pct).toFixed(1)}% of patients)` : '') + (n.other ? ' (the remaining values of this stage together)' : '');
+                const fill = n.other || n.value === ST_PLACEHOLDER ? '#9e9e9e' : `hsl(${hue(c.stage_no)}, 55%, 48%)`, on = !selNode || near.has(n), picked = n === selNode;
+                const label = cut(n.value) + (Number.isFinite(n.pct) ? ' ' + Number(n.pct).toFixed(0) + '%' : ''), ty = (n.y + Math.min(n.h, 12) / 2 + 3.5).toFixed(1);
+                return `<g${live ? ` style="cursor:pointer;" tabindex="0" role="button" onclick="PT.stPick(${c.stage_no},${ni})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();PT.stPick(${c.stage_no},${ni});}"` : ''}><title>${escapeHtml(tip)}</title><rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${TJ.rectW}" height="${n.h.toFixed(1)}" fill="${fill}" fill-opacity="${on ? 1 : 0.3}"${picked ? ' stroke="#000" stroke-width="1.5"' : ''}/><text x="${(n.x + TJ.rectW + 4).toFixed(1)}" y="${ty}" font-size="9.5" fill="#333" fill-opacity="${on ? 1 : 0.5}" stroke="#fff" stroke-width="2.5" paint-order="stroke">${escapeHtml(label)}</text></g>`;
+            }).join('');
+            return `<g>${head}${nodes}</g>`;
+        }).join('');
+        return `<svg viewBox="0 0 ${lay.W} ${lay.H}" width="100%" style="min-width:760px; max-width:${lay.W}px; background:#fff;" role="img" aria-label="Care stages for one diagnosis: nodes by stage with bands between consecutive stages"><g>${bandSvg}</g>${cols}</svg>`;
+    }
+    function stDraw() {
+        const X = S.st, host = $('ptStCanvas');
+        if (!X.data || !X.lay || !X.lay.cols.length) { host.innerHTML = `<div style="padding:14px; font-size:13px;">Nothing to draw: ${esc((X.data && X.data.notes && X.data.notes[0]) || 'no stage has enough patients.')}</div>`; return; }
+        host.innerHTML = stSvg(X.lay, X.bands, X.sel, true);
+    }
+    function stPick(stageNo, ni) {
+        const X = S.st; if (!X.lay) return;
+        X.sel = X.sel && X.sel.stage_no === stageNo && X.sel.ni === ni ? null : { stage_no: stageNo, ni };
+        stDraw(); stSide();
+    }
+    function stSide() {
+        const X = S.st, box = $('ptStSide'), d = X.data; if (!d || !X.lay) { box.innerHTML = ''; return; }
+        const col = X.sel && X.lay.cols.find(c => c.stage_no === X.sel.stage_no), n = col && col.nodes[X.sel.ni];
+        if (!n) {
+            box.innerHTML = `<h4>Everyone with ${esc(d.index.label)}</h4><div>${num(d.patients)} patients</div><table>${(d.detail ? [['With a visit or admission in the window', d.detail.withEncounter], ['With a completed inpatient stay', d.detail.withStay], ['With a recorded discharge disposition', d.detail.withDisposition]] : []).map(r => `<tr><td>${esc(r[0])}</td><td>${num(r[1])}</td></tr>`).join('')}</table><div class="an-muted" style="margin-top:10px;">Click a box to light up the boxes it connects to and see what comes before and after it. Heights share one scale. A patient with several comorbidities, drugs or procedures sits in several boxes of that column, so those columns can add up to more than the patient count.</div>`;
+            return;
+        }
+        const label = n.value, pctTxt = Number.isFinite(n.pct) ? ` (${P(n.pct)} of patients)` : '';
+        const from = X.bands.filter(b => b.b === n).sort((p, q) => q.episodes - p.episodes).slice(0, 6), to = X.bands.filter(b => b.a === n).sort((p, q) => q.episodes - p.episodes).slice(0, 6);
+        const tbl = (rows, name, side) => rows.length ? `<div style="margin-top:8px;"><b>${name}</b><table>${rows.map(b => `<tr><td>${esc(trunc(side === 'a' ? b.fromValue : b.toValue, 28))}</td><td>${num(b.episodes)} (${P(side === 'a' ? (n.episodes ? Math.round(1000 * b.episodes / n.episodes) / 10 : null) : b.pct)})</td></tr>`).join('')}</table></div>` : '';
+        box.innerHTML = `<h4>${esc(label)}</h4><div><span class="pw-chip">${esc(col.stage_no + ' ' + col.stage)}</span> ${num(n.episodes)} patients${pctTxt}</div>${n.other ? '<div class="an-muted" style="margin-top:6px;">The remaining values of this stage together.</div>' : ''}${tbl(from, 'Came from (stage before)', 'a')}${tbl(to, 'Goes to (stage after)', 'b')}<div class="an-muted" style="margin-top:8px;">Only the 40 biggest bands per step are kept, so these lists may not add up to the whole box.</div>`;
+    }
+    function stKpis() {
+        const d = S.st.data, de = d.detail || {}, host = $('ptStKpis');
+        const k = [[num(d.patients), 'patients with ' + d.index.label], [num(de.withEncounter || 0), 'with a visit or admission'], [num(de.withStay || 0), 'with a completed inpatient stay'], [num(de.withDisposition || 0), 'with a discharge disposition'], [d.params.horizon + ' d', 'look ahead']];
+        host.innerHTML = k.map(x => `<div class="pw-kpi"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
+    }
+    async function stBuild() {
+        const X = S.st, my = ++X.seq, btn = $('ptBuild'), st = $('ptStatus'), qs = stQuery();
+        btn.disabled = true; st.className = 'status-output info'; st.textContent = 'Placing every patient with the diagnosis into the nine stages...';
+        try {
+            const r = await fetch('/api/trajectory/stages?' + qs), text = await r.text(); let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+            if (my !== X.seq) return; if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            X.data = d; X.sel = null; X.qs = qs; Object.assign(X, stPrep(d));
+            const sel = $('ptIndex'), keep = d.index.value;
+            sel.innerHTML = '<option value="">(most common in the cohort)</option>' + d.indexOptions.map(o => `<option value="${esc(o.value)}">${esc(o.label)} (${num(o.patients)})</option>`).join('');
+            sel.value = keep;
+            $('ptStBody').style.display = ''; { const om = $('ptStOutMsg'); if (om) om.textContent = ''; }
+            stKpis(); stDraw(); stSide();
+            $('ptStNotes').innerHTML = d.notes.map(esc).join('<br>');
+            const pop = typeof anPopulationLabel === 'function' ? anPopulationLabel() : '';
+            st.className = 'status-output success';
+            st.textContent = `${num(d.patients)} patients with ${d.index.label}` + `, cohort: ${d.scope.cohort ? d.scope.cohort.name : 'none active (everyone in the population)'}` + (pop ? `, population: ${pop}` : '') + (d.patients < 30 ? '. Small group: percentages are unstable.' : '.');
+        } catch (e) { if (my === X.seq) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; } }
+        finally { if (my === X.seq) btn.disabled = false; }
+    }
+    function stAddToOutput() {
+        const d = S.st.data, msg = $('ptStOutMsg');
+        if (!d || !d.nodes || !d.nodes.length || typeof anStartRun !== 'function') { if (msg) msg.textContent = 'Build the care stages first.'; return; }
+        const snap = { index: d.index, params: d.params, patients: d.patients, stages: d.stages, nodes: d.nodes, ribbons: d.ribbons, detail: d.detail, notes: d.notes };
+        const p = d.params, lens = [p.gender, p.ageMin != null || p.ageMax != null ? `age ${p.ageMin == null ? '' : p.ageMin}-${p.ageMax == null ? '' : p.ageMax}` : ''].filter(Boolean).join(', ');
+        anStartRun('Patient trajectory · care stages · ' + d.index.label, {
+            cohort: d.scope && d.scope.cohort ? d.scope.cohort.name : null, population: typeof anPopulationLabel === 'function' ? anPopulationLabel() : '', patients: d.patients,
+            params: { diagnosis: d.index.label, look_ahead_days: p.horizon, prolonged_stay_days: p.longStay, values_kept_per_stage: p.perKind, sex_age_filter: lens || undefined, min_patients: p.minCell } }).addItem('pts', snap);
+        if (msg) msg.textContent = 'Added to the Output section below.';
+    }
+    function renderStagesOutput(raw) {
+        const root = document.createElement('div'), d = K().cleanSnap(raw, 0);
+        if (!d || !d.index || !Array.isArray(d.nodes) || !Array.isArray(d.ribbons) || !d.nodes.length) { root.className = 'an-muted'; root.textContent = 'This care stages snapshot is incomplete and cannot be drawn.'; return root; }
+        d.params = d.params || {}; d.notes = Array.isArray(d.notes) ? d.notes : [];
+        const tx = (tag, text, style) => { const e = document.createElement(tag); e.textContent = text == null ? '' : String(text); if (style) e.style.cssText = style; return e; };
+        root.appendChild(tx('div', `Care stages for ${d.index.label}: ${num(d.patients)} patients in nine columns. Comorbidities are every other diagnosis of the patient. Box height = patients (one scale for all columns), band thickness = patients going from one box to the next. Groups under ${num(d.params.minCell)} patients are not drawn. Counts only, no patient ids.`, 'font-size:13px; margin-bottom:6px;'));
+        const prep = stPrep(d), box = document.createElement('div'); box.className = 'an-chart'; box.style.overflowX = 'auto'; box.innerHTML = stSvg(prep.lay, prep.bands, null, false);
+        root.appendChild(box);
+        if (d.notes.length) root.appendChild(tx('div', d.notes.join(' '), 'font-size:12px; color:#666; margin-top:8px;'));
+        return root;
+    }
+    // switch between the event flow and the care stages
+    function setView() {
+        const stg = (document.querySelector('input[name="ptView"]:checked') || {}).value === 'stages';
+        S.mode = stg ? 'stages' : 'events';
+        $('ptStageCtl').style.display = stg ? '' : 'none';
+        ['ptDepthLbl', 'ptKindsRow'].forEach(id => { const e = $(id); if (e) e.style.display = stg ? 'none' : ''; });
+        $('ptPerKindTxt').textContent = stg ? 'Values kept per stage' : 'Events kept per kind';
+        $('ptBuild').textContent = stg ? 'Build care stages' : 'Build trajectory';
+        $('ptBody').style.display = !stg && S.data ? '' : 'none'; $('ptStBody').style.display = stg && S.st.data ? '' : 'none';
+        const st = $('ptStatus'); st.className = 'status-output'; st.textContent = '';
+    }
+
     // ---------- public handlers ----------
     async function build() {
+        if (S.mode === 'stages') return stBuild();
         const my = ++S.seq, btn = $('ptBuild'), st = $('ptStatus'), qs = query();
         if (!qs.get('kinds')) { st.className = 'status-output error'; st.textContent = 'Tick at least one kind of event to follow.'; return; }
         btn.disabled = true; st.className = 'status-output info'; st.textContent = 'Following every patient of the cohort from their first record...';
@@ -10171,7 +10320,7 @@ const PT = (function () {
         finally { if (my === S.seq) btn.disabled = false; }
     }
     // a control changed: rebuild automatically once a first diagram exists
-    function changed() { if (!S.data) return; clearTimeout(S.timer); S.timer = setTimeout(build, 400); }
+    function changed() { if (!(S.mode === 'stages' ? S.st.data : S.data)) return; clearTimeout(S.timer); S.timer = setTimeout(build, 400); }
     document.addEventListener('DOMContentLoaded', () => {
         const sel = $('cohortBatchSelector');
         if (sel) sel.addEventListener('change', () => { const st = $('ptStatus'); if (st && S.data) { st.className = 'status-output info'; st.textContent = 'The population changed. Press "Build trajectory" to refresh.'; } });
@@ -10179,6 +10328,7 @@ const PT = (function () {
 
     // ---------- Output section: aggregated numbers only (groups under the minimum are already removed by the server), never patient ids ----------
     function addToOutput() {
+        if (S.mode === 'stages') return stAddToOutput();
         const d = S.data, msg = $('ptOutMsg');
         if (!d || !d.nodes || !d.nodes.length || typeof anStartRun !== 'function') { if (msg) msg.textContent = 'Build a trajectory first.'; return; }
         const snap = { index: d.index, params: d.params, totals: d.totals, nodes: d.nodes, links: d.links, variants: d.variants, otherVariants: d.otherVariants, outcomes: d.outcomes, notes: d.notes };
@@ -10213,7 +10363,7 @@ const PT = (function () {
         if (d.notes.length) root.appendChild(tx('div', d.notes.join(' '), 'font-size:12px; color:#666; margin-top:8px;'));
         return root;
     }
-    return { build, changed, list, open, select, addToOutput, renderOutput, _S: S };
+    return { build, changed, list, open, select, addToOutput, renderOutput, setView, stPick, renderStagesOutput, _S: S };
 })();
 </script>
 <script>

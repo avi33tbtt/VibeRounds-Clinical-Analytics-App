@@ -664,6 +664,7 @@ const RULES = [
   ['GET',    /^\/api\/pathways\/patients$/, 'phi.pathway_patients', 'phi', { query: true }],
   ['GET',    /^\/api\/trajectory\/cohort$/, 'pathway.view', 'access', { query: true, throttle: 30000 }],            // whole-cohort trajectory (aggregates only)
   ['GET',    /^\/api\/trajectory\/cohort\/patients$/, 'phi.pathway_patients', 'phi', { query: true }],
+  ['GET',    /^\/api\/trajectory\/stages$/, 'pathway.view', 'access', { query: true, throttle: 30000 }],                   // nine care stages for one diagnosis (aggregates only)
   // analytics: who ran which analytic with which parameters, and every custom SQL (text clipped, plus its hash)
   ['POST',   /^\/api\/analytics\/catalog\/run$/, 'analytics.run', 'analytics', { capture: 'analytic' }],
   ['POST',   /^\/api\/analytics\/catalog\/run-all$/, 'analytics.run_all', 'analytics', { capture: 'analytic' }],
