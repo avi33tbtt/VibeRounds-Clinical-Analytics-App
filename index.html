@@ -1269,7 +1269,7 @@ div.modal {
 }
 .sub-nav a:hover { background: var(--green-l); color: var(--green-d); }
 .sub-nav a.is-current { background: var(--green-l); color: var(--green-d); font-weight: 600; }
-#anCohorts, #anGenerator, #anRun, #anKG, #outputSection { scroll-margin-top: 150px; }
+#anCohorts, #anGenerator, #anRun, #anKG, #anInsights, #outputSection { scroll-margin-top: 150px; }
 
 /* ---------- Page header pattern ---------- */
 .page-head { margin: 0 0 18px; }
@@ -2027,7 +2027,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
             
             
 <nav class="sub-nav" aria-label="Analytics sections">
-                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anEhr">Connect to FHIR</a><a href="#anExplorer">Patient explorer</a><a href="#anReady">Readiness</a><a href="#anEnrich">Enrichment</a><a href="#anRun">Run analytics</a><a href="#anCKG">Knowledge graph</a><a href="#anResearcher">AI researcher</a><a href="#outputSection">Output</a>
+                <a href="#anCohorts">Cohorts</a><a href="#anGenerator">Data generator</a><a href="#anEhr">Connect to FHIR</a><a href="#anExplorer">Patient explorer</a><a href="#anReady">Readiness</a><a href="#anEnrich">Enrichment</a><a href="#anRun">Run analytics</a><a href="#anInsights">Cohort insights</a><a href="#outputSection">Output</a>
             </nav>
 <!-- Population and cohorts Section -->
             <div class="analytics-section" id="anCohorts">
@@ -3001,7 +3001,10 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                     .kgc-mx th.c { height:auto; padding:4px 0; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; font-weight:normal; max-height:150px; overflow:hidden; text-overflow:ellipsis; }
                     .kgc-chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; border:1px solid #bbb; margin:1px 2px 1px 0; background:#fafafa; }
                 </style>
-                <details class="an-collapse analytics-section" id="anCKG" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Cohort knowledge graph</h3></summary>
+<details class="an-collapse analytics-section" id="anInsights" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Cohort insights</h3></summary>
+<div class="an-muted" style="margin-bottom:6px;">Four ways to look at the selected <em>Population / Batch</em> and the <em>active cohort</em> as a whole: the cohort knowledge graph, care pathways after a diagnosis, the whole-cohort patient trajectory, and the AI researcher. Open the one you need.</div>
+<div style="margin-left:14px; border-left:2px solid var(--line, #d9d9d9); padding-left:14px;">
+                <details class="an-collapse analytics-section" id="anCKG" style="margin-top:14px;"><summary class="an-sum"><h4 style="display:inline; margin:0;">Cohort knowledge graph</h4></summary>
                     <div class="an-muted" style="margin-bottom:6px;">Built from the patients in the selected <em>Population / Batch</em> and the <em>active cohort</em>: every condition, drug, lab / vital and procedure in the data becomes a node, and two nodes are linked when the same patients have both. Links are associations seen in this data (counts, lift, order in time), not clinical claims. Links that also exist in the built-in reference links (<code>terminology.js</code>) are marked, and those links that never occur in this cohort can be shown as dashed lines.</div>
 
                     <div class="kgc-row">
@@ -3086,6 +3089,124 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                     </div>
                 </details>
 
+                <!-- Care pathways: observed routes of the cohort's patients after a diagnosis (GET /api/pathways) -->
+                <style>
+                    .pw-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:8px; font-size:13px; }
+                    .pw-row label { display:inline-flex; gap:5px; align-items:center; }
+                    .pw-row select, .pw-row input[type=number] { padding:6px 8px; border-radius:4px; font-size:13px; }
+                    .pw-kpis { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 8px; }
+                    .pw-kpi { border:1px solid var(--line, #d9d9d9); border-radius:8px; padding:7px 12px; min-width:110px; }
+                    .pw-kpi b { display:block; font-size:18px; } .pw-kpi span { font-size:11.5px; color:var(--muted, #666); }
+                    .pw-main { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+                    .pw-canvas { position:relative; flex:1 1 640px; min-width:0; overflow-x:auto; border:1px solid var(--line, #d9d9d9); border-radius:8px; background:#fff; }
+                    .pw-canvas svg { display:block; }
+                    .pw-node, .pw-link { cursor:pointer; }
+                    .pw-node:focus { outline:none; } .pw-node:focus rect.pw-box { stroke:#000; stroke-width:2; }
+                    .pw-lbl { font-size:11.5px; fill:#222; pointer-events:none; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; } .pw-sub { font-size:10.5px; fill:#555; pointer-events:none; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; }
+                    .pw-gap { font-size:10px; fill:#333; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; pointer-events:none; }
+                    .pw-head { font-size:11px; fill:#777; }
+                    .pw-tip { position:absolute; z-index:5; pointer-events:none; background:#222; color:#fff; font-size:12px; line-height:1.4; padding:6px 9px; border-radius:6px; max-width:280px; display:none; }
+                    .pw-side { flex:0 1 290px; min-width:240px; border:1px solid var(--line, #d9d9d9); border-radius:8px; padding:10px 12px; font-size:13px; }
+                    .pw-side h4 { margin:0 0 4px; font-size:14px; } .pw-side table { width:100%; font-size:12px; border-collapse:collapse; margin-top:6px; }
+                    .pw-side td { padding:2px 0; vertical-align:top; } .pw-side td:last-child { text-align:right; white-space:nowrap; }
+                    .pw-chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11.5px; margin:1px 0; border:1px solid; background:#fff; }
+                    .pw-arrow { color:#999; margin:0 3px; }
+                    .pw-tbl { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:6px; }
+                    .pw-tbl th, .pw-tbl td { padding:5px 8px; border-bottom:1px solid var(--line, #e3e3e3); text-align:left; vertical-align:top; }
+                    .pw-tbl th { font-size:11.5px; color:var(--muted, #666); font-weight:600; } .pw-tbl td.n, .pw-tbl th.n { text-align:right; white-space:nowrap; }
+                    .pw-tbl tr.pw-hover:hover { background:rgba(0,0,0,.04); }
+                    .pw-bar { display:inline-block; height:8px; background:#1565c0; border-radius:2px; vertical-align:middle; margin-right:6px; }
+                    .pw-bad { color:#c62828; font-weight:700; }
+                </style>
+                <details class="an-collapse analytics-section" id="anPW" style="margin-top:14px;"><summary class="an-sum"><h4 style="display:inline; margin:0;">Care pathways</h4></summary>
+                    <div class="an-muted" style="margin-bottom:6px;">What the patients in the selected <em>Population / Batch</em> and the <em>active cohort</em> actually went through after one diagnosis: the first time each drug, lab, procedure, admission or other diagnosis happened, in date order. Band width = patients, the days on a link = median time between two steps, grey-red bands = patients with no further recorded care. Click a box or a band to see what happened to those patients and to list them. Computed from the data each time; nothing is stored.</div>
+
+                    <div class="pw-row">
+                        <button class="btn-primary" id="pwBuild" onclick="PW.build()">Build pathways</button>
+                        <label>Diagnosis <select id="pwIndex" onchange="PW.changed()" style="max-width:320px;"><option value="">(most common in the cohort)</option></select></label>
+                        <label>Steps followed <select id="pwDepth" onchange="PW.changed()"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select></label>
+                        <label>Events kept per kind <select id="pwPerKind" onchange="PW.changed()"><option>4</option><option selected>6</option><option>8</option><option>10</option></select></label>
+                    </div>
+                    <div class="pw-row">
+                        <strong>Include:</strong>
+                        <label><input type="checkbox" class="pwKind" value="condition" checked onchange="PW.changed()">other diagnoses</label>
+                        <label><input type="checkbox" class="pwKind" value="encounter" checked onchange="PW.changed()">admissions / ED visits</label>
+                        <label><input type="checkbox" class="pwKind" value="lab" checked onchange="PW.changed()">labs</label>
+                        <label><input type="checkbox" class="pwKind" value="procedure" checked onchange="PW.changed()">procedures</label>
+                        <label><input type="checkbox" class="pwKind" value="medication" checked onchange="PW.changed()">drugs</label>
+                        <label title="Off: only the first admission / ED visit counts. On: every one counts, so readmission loops show up as repeated boxes."><input type="checkbox" id="pwLoops" onchange="PW.changed()">count every admission / ED visit</label>
+                    </div>
+                    <div class="pw-row">
+                        <label>Sex <select id="pwSex" onchange="PW.changed()"><option value="">all</option><option value="female">female</option><option value="male">male</option></select></label>
+                        <label>Age <input type="number" id="pwAgeMin" min="0" max="120" placeholder="from" style="width:58px;" onchange="PW.changed()"> to <input type="number" id="pwAgeMax" min="0" max="120" placeholder="to" style="width:58px;" onchange="PW.changed()"></label>
+                        <label title="Boxes, links and routes with fewer patients are hidden so small groups cannot identify a person. The server never allows less than 5.">Hide groups under <input type="number" id="pwMin" min="5" max="1000" value="5" style="width:64px;" onchange="PW.changed()"> patients</label>
+                        <label title="A treatment drug counts as 'on time' if it starts within this many days of the diagnosis">Treatment window <input type="number" id="pwDrugDays" min="1" max="3650" value="90" style="width:64px;" onchange="PW.changed()"> d</label>
+                        <label title="A monitoring lab or screening counts as 'on time' if it happens within this many days of the diagnosis">Monitoring window <input type="number" id="pwMonDays" min="1" max="3650" value="365" style="width:64px;" onchange="PW.changed()"> d</label>
+                    </div>
+                    <div id="pwStatus" class="status-output" style="margin-top:8px; min-height:20px;"></div>
+
+                    <div id="pwBody" style="display:none;">
+                        <div class="pw-row" style="margin:4px 0 0;">
+                            <button class="btn-primary" onclick="PW.addToOutput()" title="Adds the diagram, the routes and the expected-versus-observed table, with the current filters, to the Output section below">Add this view to Output</button><span class="an-muted" id="pwOutMsg"></span>
+                        </div>
+                        <div class="pw-kpis" id="pwKpis"></div>
+                        <div class="pw-main">
+                            <div class="pw-canvas" id="pwCanvas"></div>
+                            <div class="pw-side" id="pwSide"></div>
+                        </div>
+                        <div id="pwDrill" style="margin-top:12px;"></div>
+                        <h4 style="margin:18px 0 0;">Most common routes</h4>
+                        <div class="an-muted">Hover a row to light up its route in the diagram. Outcomes are crude and unadjusted.</div>
+                        <div id="pwRoutes"></div>
+                        <h4 style="margin:18px 0 0;">Expected versus observed</h4>
+                        <div class="an-muted">Steps the app's reference list (terminology.js, demo links, verify before clinical use) links to this diagnosis, and how many patients had them.</div>
+                        <div id="pwExpected"></div>
+                        <div class="an-muted" id="pwNotes" style="margin-top:12px;"></div>
+                    </div>
+                </details>
+
+                <!-- Patient trajectory: the whole cohort as one interactive flow diagram (Sankey), from each patient's first dated record (GET /api/trajectory/cohort) -->
+                <details class="an-collapse analytics-section" id="anPT" style="margin-top:14px;"><summary class="an-sum"><h4 style="display:inline; margin:0;">Patient trajectory</h4></summary>
+                    <div class="an-muted" style="margin-bottom:6px;">How the <strong>whole cohort</strong> (every patient of the selected <em>Population / Batch</em> and the <em>active cohort</em>) moves through care, as one flow diagram. Each patient starts at their first dated record of any kind (day 0); the app then follows the first time each diagnosis, admission / ED visit, lab, procedure and drug happens, in date order, for up to 8 steps. Band width = patients, the days on a link = median time between two steps, grey-red bands = patients with no further recorded care. Hover for numbers, click a box or a band to compare its patients with everyone and to list them (a row opens the patient in the Patient data explorer). Computed from the data each time; nothing is stored.</div>
+
+                    <div class="pw-row">
+                        <button class="btn-primary" id="ptBuild" onclick="PT.build()">Build trajectory</button>
+                        <label>Steps followed <select id="ptDepth" onchange="PT.changed()"><option>3</option><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option></select></label>
+                        <label>Events kept per kind <select id="ptPerKind" onchange="PT.changed()"><option>4</option><option selected>6</option><option>8</option><option>10</option></select></label>
+                    </div>
+                    <div class="pw-row">
+                        <strong>Include:</strong>
+                        <label><input type="checkbox" class="ptKind" value="condition" checked onchange="PT.changed()">diagnoses</label>
+                        <label><input type="checkbox" class="ptKind" value="encounter" checked onchange="PT.changed()">admissions / ED visits</label>
+                        <label title="Off by default: routine vitals and labs are recorded for almost everyone, so they would fill the first steps. Day 0 is still the first dated record of any kind."><input type="checkbox" class="ptKind" value="lab" onchange="PT.changed()">labs / vitals</label>
+                        <label><input type="checkbox" class="ptKind" value="procedure" checked onchange="PT.changed()">procedures</label>
+                        <label><input type="checkbox" class="ptKind" value="medication" checked onchange="PT.changed()">drugs</label>
+                        <label title="Off: only the first admission / ED visit counts. On: every one counts, so readmission loops show up as repeated boxes."><input type="checkbox" id="ptLoops" onchange="PT.changed()">count every admission / ED visit</label>
+                    </div>
+                    <div class="pw-row">
+                        <label>Sex <select id="ptSex" onchange="PT.changed()"><option value="">all</option><option value="female">female</option><option value="male">male</option></select></label>
+                        <label>Age <input type="number" id="ptAgeMin" min="0" max="120" placeholder="from" style="width:58px;" onchange="PT.changed()"> to <input type="number" id="ptAgeMax" min="0" max="120" placeholder="to" style="width:58px;" onchange="PT.changed()"></label>
+                        <label title="Boxes, links and routes with fewer patients are hidden so small groups cannot identify a person. The server never allows less than 5.">Hide groups under <input type="number" id="ptMin" min="5" max="1000" value="5" style="width:64px;" onchange="PT.changed()"> patients</label>
+                    </div>
+                    <div id="ptStatus" class="status-output" style="margin-top:8px; min-height:20px;"></div>
+
+                    <div id="ptBody" style="display:none;">
+                        <div class="pw-row" style="margin:4px 0 0;">
+                            <button class="btn-primary" onclick="PT.addToOutput()" title="Adds the diagram and the routes, with the current filters, to the Output section below">Add this view to Output</button><span class="an-muted" id="ptOutMsg"></span>
+                        </div>
+                        <div class="pw-kpis" id="ptKpis"></div>
+                        <div class="pw-main">
+                            <div class="pw-canvas" id="ptCanvas"></div>
+                            <div class="pw-side" id="ptSide"></div>
+                        </div>
+                        <div id="ptDrill" style="margin-top:12px;"></div>
+                        <h4 style="margin:18px 0 0;">Most common routes</h4>
+                        <div class="an-muted">Hover a row to light up its route in the diagram. Outcomes are crude and unadjusted.</div>
+                        <div id="ptRoutes"></div>
+                        <div class="an-muted" id="ptNotes" style="margin-top:12px;"></div>
+                    </div>
+                </details>
+
                 <!-- AI researcher: automated loop = analytic -> AI insight -> suggested next analytics -> summary -> run one -> repeat N times -->
                 <style>
                     .air-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:10px; font-size:13px; }
@@ -3102,7 +3223,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                     .air-sql { width:100%; box-sizing:border-box; margin-top:6px; padding:8px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,Consolas,monospace; }
                     .air-sug.is-picked { border-color:#1a7a54; background:rgba(26,122,84,.08); }
                 </style>
-                <details class="an-collapse analytics-section" id="anResearcher" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">AI researcher</h3></summary>
+                <details class="an-collapse analytics-section" id="anResearcher" style="margin-top:14px;"><summary class="an-sum"><h4 style="display:inline; margin:0;">AI researcher</h4></summary>
                     <div class="an-muted" style="margin-bottom:6px;">Enter how many rounds, choose how to start, then activate. Round 1 runs either the analytic currently selected in <em>Run analytics</em> or a custom analytic you describe in plain English (the AI writes a read-only query for the mode selected in <em>Run analytics</em>; you can review it before it runs), on the selected <em>Population / Batch</em> and the <em>active cohort</em>. Each round then asks the AI for insight on the result, asks for suggested next analytics, writes a summary, and runs the top suggestion as the next round. A suggestion can be a catalog analytic or a <em>plain-English question</em> (the AI writes the read-only query for the selected mode and it runs as fixed SQL); if one cannot run, the next suggestion is tried. After the last round you get an overall summary. Every analytic lands in the Output section. If a model call fails or errors it is retried automatically. Needs the AI settings above; only result tables (no patient ids) are sent.</div>
                     <div class="air-start">
                         <strong>Start with</strong>
@@ -3127,6 +3248,8 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                     <div id="airStatus" class="status-output" style="margin-top:8px; min-height:20px;"></div>
                     <div id="airLog"></div>
                 </details>
+</div>
+</details>
                 <script>
                 const AIR = (function () {
                     const e = s => escapeHtml(String(s == null ? '' : s));
@@ -7364,6 +7487,8 @@ function anRenderItem(run, t, d) {
         else if (t === 'compare') run.body.insertAdjacentHTML('beforeend', renderCompare(d));
         else if (t === 'all') run.body.insertAdjacentHTML('beforeend', d.results.map(r => `<details ${r.success ? '' : 'open'} style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:bold;">${escapeHtml(r.title || r.id)} ${r.success ? '' : '⚠️'}</summary>${renderRun(Object.assign({ mode: d.mode }, r))}</details>`).join(''));
         else if (t === 'ckg') run.body.appendChild(KGC.renderOutput(d));
+        else if (t === 'pw') run.body.appendChild(PW.renderOutput(d));
+        else if (t === 'ptc') run.body.appendChild(PT.renderOutput(d));
         else if (t === 'air') {   // AI researcher: insight, suggested next analytics and summary of one round (text only)
             const sug = (Array.isArray(d.suggestions) ? d.suggestions : []).map(x => `<li><strong>${escapeHtml(x.title)}</strong> <span class="an-muted">${x.kind === 'custom' ? 'plain-English question' : escapeHtml(String(x.mode || '').toUpperCase())} · ${escapeHtml(x.priority)} priority${x.chosen ? ' · chosen to run next' : ''}</span>${x.kind === 'custom' ? `<div><em>${escapeHtml(x.question)}</em></div>` : ''}<div>${escapeHtml(x.why)}</div></li>`).join('');
             run.body.insertAdjacentHTML('beforeend', `<div class="air-out" style="margin-top:10px; padding:10px 12px; border:1px solid #1a7a54; border-radius:6px;"><div><strong>AI researcher${d.round ? ' · round ' + escapeHtml(String(d.round)) : ''}</strong> <span class="an-ai-tag">AI-generated, please review</span>${d.model ? ` <span class="an-muted">model: ${escapeHtml(d.model)}</span>` : ''}</div>`
@@ -7576,7 +7701,7 @@ async function anUploadOutput(input) {
             if (!r || !Array.isArray(r.items)) { bad++; return; }
             const run = anStartRun(String(r.label || 'Run'), { imported: true, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
                 cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
             n++;
         });
         anReorder(); anSyncLast(); anUpdateHistoryBar();
@@ -9631,6 +9756,464 @@ const KGC = (function () {
     });
     return { build, setView, changed, resetView, setFocus, hideSel, showHidden, pick, pickBoth, pickEdge, setComb, setAbn, copySql, sendSql, exportJson, exportCsv, exportPicture, addToOutput, renderOutput,
         _S: S, _visible: visible, _ui: ui, _layout: layout, _communities: communities, _buildSql: buildSql };
+})();
+</script>
+<script>
+/* ===== Care pathways: interactive flow diagram (Sankey) of what happened after a diagnosis. Data: GET /api/pathways ===== */
+const PW = (function () {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const NS = 'http://www.w3.org/2000/svg';
+    const COL = { index: '#546e7a', condition: '#c62828', encounter: '#ef6c00', lab: '#2e7d32', procedure: '#6a1b9a', medication: '#1565c0', other: '#9e9e9e', end: '#b0bec5' };
+    const KIND_NAME = { condition: 'diagnosis', encounter: 'admission / ED', lab: 'lab / vital', procedure: 'procedure', medication: 'drug', index: 'diagnosis', other: 'small groups', end: 'drop-off' };
+    const S = { data: null, qs: null, sel: null, seq: 0, timer: null, lay: null, drillSeq: 0 };
+    const el = (name, attrs, parent) => { const e = document.createElementNS(NS, name); for (const k in (attrs || {})) e.setAttribute(k, String(attrs[k])); if (parent) parent.appendChild(e); return e; };
+    const trunc = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+    const P = v => (v == null || !Number.isFinite(Number(v)) ? '–' : Number(v) + '%');
+    const D = v => (v == null || !Number.isFinite(Number(v)) ? '–' : Math.round(Number(v)) + ' d');
+    const num = v => Number(v).toLocaleString();
+    const kindOf = n => (n.kind === 'index' || n.kind === 'other' || n.kind === 'end' ? n.kind : n.kind);
+
+    function query() {
+        const sc = typeof anScope === 'function' ? anScope() : {}, qs = new URLSearchParams();
+        if (sc.batchGroup) qs.set('batchGroup', sc.batchGroup); if (sc.batchId) qs.set('batchId', sc.batchId);
+        if ($('pwIndex').value) qs.set('index', $('pwIndex').value);
+        qs.set('depth', $('pwDepth').value); qs.set('perKind', $('pwPerKind').value);
+        qs.set('kinds', Array.from(document.querySelectorAll('.pwKind')).filter(x => x.checked).map(x => x.value).join(','));
+        if ($('pwLoops').checked) qs.set('loops', '1');
+        if ($('pwSex').value) qs.set('gender', $('pwSex').value);
+        if ($('pwAgeMin').value !== '') qs.set('ageMin', $('pwAgeMin').value);
+        if ($('pwAgeMax').value !== '') qs.set('ageMax', $('pwAgeMax').value);
+        qs.set('minCell', $('pwMin').value || '5'); qs.set('drugDays', $('pwDrugDays').value || '90'); qs.set('monitorDays', $('pwMonDays').value || '365');
+        return qs;
+    }
+
+    // ---------- layout: columns = steps, box height = patients, ordered by barycentre to limit crossings ----------
+    function layout(d) {
+        const NW = 14, GAP = 175, PAD = 12, MT = 28, MB = 14, ML = 10, MR = 200, H0 = 520;
+        const nodes = d.nodes.map(n => Object.assign({}, n)), by = new Map(nodes.map(n => [n.id, n]));
+        const links = d.links.filter(l => by.has(l.source) && by.has(l.target)).map(l => Object.assign({}, l));
+        const maxL = Math.max(0, ...nodes.map(n => n.layer));
+        const layers = []; for (let i = 0; i <= maxL; i++) layers.push(nodes.filter(n => n.layer === i));
+        const val = n => Math.max(n.n, 1);
+        let ky = Infinity;
+        layers.forEach(ls => { if (ls.length) ky = Math.min(ky, (H0 - PAD * Math.max(0, ls.length - 1)) / ls.reduce((s, n) => s + val(n), 0)); });
+        if (!Number.isFinite(ky)) ky = 1;
+        links.forEach(l => { l.w = Math.max(1, l.n * ky); l.s = by.get(l.source); l.t = by.get(l.target); });
+        nodes.forEach(n => {
+            n.out = links.filter(l => l.source === n.id); n.in = links.filter(l => l.target === n.id);
+            n.h = Math.max(3, n.n * ky, n.out.reduce((s, l) => s + l.w, 0), n.in.reduce((s, l) => s + l.w, 0)); n.x = ML + n.layer * GAP;
+        });
+        const rankEnd = n => (n.kind === 'end' ? 2 : n.kind === 'other' ? 1 : 0);
+        // pass 1: order every column (barycentre of the boxes it receives from) and stack it from the top
+        layers.forEach((ls, i) => {
+            if (i > 0) {
+                ls.forEach(n => { const tot = n.in.reduce((s, l) => s + l.n, 0); n._bc = tot ? n.in.reduce((s, l) => s + l.n * l.s._yc, 0) / tot : 1e9; });
+                ls.sort((a, b) => rankEnd(a) - rankEnd(b) || a._bc - b._bc || b.n - a.n);
+            }
+            let y = MT; ls.forEach(n => { n.y = y; n._yc = y + n.h / 2; y += n.h + PAD; });
+        });
+        // pass 2: centre every column on the tallest one
+        const ext = ls => (ls.length ? ls[ls.length - 1].y + ls[ls.length - 1].h - ls[0].y : 0);
+        const Hmax = Math.max(...layers.map(ext), 1);
+        layers.forEach(ls => { if (!ls.length) return; const off = (Hmax - ext(ls)) / 2; ls.forEach(n => { n.y += off; n._yc = n.y + n.h / 2; }); });
+        nodes.forEach(n => { n.out.sort((a, b) => a.t._yc - b.t._yc); n.in.sort((a, b) => a.s._yc - b.s._yc); });
+        nodes.forEach(n => { let o = 0; n.out.forEach(l => { l.y0 = n.y + o + l.w / 2; o += l.w; }); o = 0; n.in.forEach(l => { l.y1 = n.y + o + l.w / 2; o += l.w; }); });
+        return { nodes, links, by, W: ML + maxL * GAP + NW + MR, H: MT + Hmax + MB, NW, GAP, ML, MT };
+    }
+
+    // ---------- drawing ----------
+    // One diagram = a host element + a state object st ({ lay, sel }). The live card and the Output section both use it.
+    function drawInto(host, d, st, onSelect, hooks) {
+        hooks = hooks || {};
+        if (!d.nodes.length) { host.innerHTML = '<div style="padding:14px; font-size:13px;">Nothing to draw: ' + esc((d.notes && d.notes[0]) || 'no pathway has enough patients.') + '</div>'; st.lay = null; return; }
+        const L = st.lay = layout(d);
+        host.innerHTML = '';
+        const svg = el('svg', { width: L.W, height: L.H, viewBox: `0 0 ${L.W} ${L.H}`, role: 'img', 'aria-label': hooks.aria || 'Care pathway flow diagram' });
+        host.appendChild(svg);
+        const maxLayer = Math.max(...L.nodes.map(n => n.layer));
+        for (let i = 0; i <= maxLayer; i++) {
+            const t = el('text', { x: L.ML + i * L.GAP, y: 16, class: 'pw-head' }, svg); t.textContent = i === 0 ? (hooks.head0 || 'Diagnosis') : 'Step ' + i;
+        }
+        const gl = el('g', {}, svg), gn = el('g', {}, svg), gt = el('g', {}, svg);
+        L.links.forEach(l => {
+            const x0 = l.s.x + L.NW, x1 = l.t.x, xm = (x0 + x1) / 2, c = COL[l.t.kind === 'end' ? 'end' : l.t.kind] || '#999';
+            const p = el('path', { d: `M${x0},${l.y0} C${xm},${l.y0} ${xm},${l.y1} ${x1},${l.y1}`, fill: 'none', stroke: l.t.kind === 'end' ? '#e57373' : c, 'stroke-width': l.w, class: 'pw-link' }, gl);
+            l.el = p; p.addEventListener('mouseenter', e => tip(host, e, (hooks.linkTip || linkTip)(l))); p.addEventListener('mousemove', e => moveTip(host, e)); p.addEventListener('mouseleave', () => hideTip(host));
+            p.addEventListener('click', ev => { ev.stopPropagation(); onSelect({ type: 'link', source: l.source, target: l.target }); });
+            if (l.medianDays != null && l.w >= 9 && x1 - x0 > 60) { const t = el('text', { x: xm, y: (l.y0 + l.y1) / 2 + 3, 'text-anchor': 'middle', class: 'pw-gap' }, gt); t.textContent = D(l.medianDays); }
+        });
+        L.nodes.forEach(n => {
+            const g = el('g', { class: 'pw-node', tabindex: 0, role: 'button', 'aria-label': `${n.label}, ${n.n} patients` }, gn);
+            n.el = el('rect', { x: n.x, y: n.y, width: L.NW, height: n.h, rx: 2, fill: COL[kindOf(n)] || '#999', class: 'pw-box' }, g);
+            const last = n.layer === maxLayer;
+            const tx = n.x + L.NW + 5, two = n.h >= 26;
+            const t1 = el('text', { x: tx, y: two ? n.y + n.h / 2 - 2 : n.y + n.h / 2 + 4, class: 'pw-lbl' }, g);
+            t1.textContent = two ? trunc(n.label, last ? 30 : 21) : trunc(n.label, last ? 24 : 15) + ' · ' + num(n.n);
+            if (two) { const t2 = el('text', { x: tx, y: n.y + n.h / 2 + 11, class: 'pw-sub' }, g); t2.textContent = `${num(n.n)} · ${P(n.pctOfIndex)}`; }
+            g.addEventListener('mouseenter', e => tip(host, e, (hooks.nodeTip || nodeTip)(n))); g.addEventListener('mousemove', e => moveTip(host, e)); g.addEventListener('mouseleave', () => hideTip(host));
+            g.addEventListener('click', ev => { ev.stopPropagation(); onSelect({ type: 'node', id: n.id }); });
+            g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onSelect({ type: 'node', id: n.id }); } });
+        });
+        svg.addEventListener('click', () => onSelect(null));
+        paintSt(st);
+    }
+    function draw() { drawInto($('pwCanvas'), S.data, S, select); }
+
+    // dim everything except the selection (or a hovered route)
+    function paintSt(st, routeIds) {
+        const L = st.lay; if (!L) return;
+        const sel = st.sel, on = new Set(), onL = new Set();
+        if (routeIds) { for (let i = 0; i < routeIds.length; i++) { on.add(routeIds[i]); if (i) onL.add(routeIds[i - 1] + '>' + routeIds[i]); } }
+        else if (sel && sel.type === 'node') { on.add(sel.id); L.links.forEach(l => { if (l.source === sel.id || l.target === sel.id) { onL.add(l.source + '>' + l.target); on.add(l.source); on.add(l.target); } }); }
+        else if (sel && sel.type === 'link') { on.add(sel.source); on.add(sel.target); onL.add(sel.source + '>' + sel.target); }
+        const any = on.size > 0;
+        L.links.forEach(l => { l.el.setAttribute('stroke-opacity', any ? (onL.has(l.source + '>' + l.target) ? 0.8 : 0.08) : 0.38); });
+        L.nodes.forEach(n => { n.el.setAttribute('opacity', any && !on.has(n.id) ? 0.3 : 1); n.el.setAttribute('stroke', sel && sel.type === 'node' && sel.id === n.id ? '#000' : 'none'); n.el.setAttribute('stroke-width', 2); });
+    }
+    function paint(routeIds) { paintSt(S, routeIds); }
+
+    // ---------- tooltips ----------
+    const out = n => `died ${P(n.deadPct)} · admitted ${P(n.admittedPct)} · readmitted ${P(n.readmittedPct)}`;
+    function nodeTip(n) {
+        const head = `<b>${esc(n.label)}</b><br>${num(n.n)} patients (${P(n.pctOfIndex)} of those with the diagnosis)`;
+        if (n.kind === 'index') return head + `<br>${out(n)}`;
+        return head + (n.medianDays != null ? `<br>median ${D(n.medianDays)} after diagnosis` : '') + `<br>${out(n)}`;
+    }
+    function linkTip(l) {
+        return `<b>${esc(l.s.label)} → ${esc(l.t.label)}</b><br>${num(l.n)} patients (${P(l.pctOfSource)} of the box on the left)` + (l.medianDays != null ? `<br>median ${D(l.medianDays)} between the two steps` : '');
+    }
+    function tip(host, e, html) { let t = host._tip; if (!t || t.parentNode !== host) { t = document.createElement('div'); t.className = 'pw-tip'; host.appendChild(t); host._tip = t; } t.innerHTML = html; t.style.display = 'block'; moveTip(host, e); }
+    function moveTip(host, e) { const t = host._tip; if (!t) return; const r = host.getBoundingClientRect(); t.style.left = Math.min(e.clientX - r.left + host.scrollLeft + 14, host.scrollLeft + r.width - 290) + 'px'; t.style.top = (e.clientY - r.top + 14) + 'px'; }
+    function hideTip(host) { const t = host._tip; if (t) t.style.display = 'none'; }
+
+    // ---------- side panel ----------
+    function select(s) { S.sel = s; paint(); side(); if (!s) $('pwDrill').innerHTML = ''; }
+    function cmp(v, base) { if (v == null || base == null) return ''; const x = Math.round((v - base) * 10) / 10; return x === 0 ? '' : ` <span style="color:${x > 0 ? '#c62828' : '#2e7d32'}">(${x > 0 ? '+' : ''}${x})</span>`; }
+    function side() {
+        const box = $('pwSide'), d = S.data, L = S.lay, s = S.sel;
+        if (!L) { box.innerHTML = ''; return; }
+        const o = d.outcomes;
+        if (!s) { box.innerHTML = `<h4>Everyone with ${esc(d.index.label)}</h4><div>${num(d.index.patients)} patients</div><table><tr><td>Died</td><td>${P(o.deadPct)}</td></tr><tr><td>Admitted at least once after diagnosis</td><td>${P(o.admittedPct)}</td></tr><tr><td>Admitted twice or more</td><td>${P(o.readmittedPct)}</td></tr><tr><td>Median days to the first step</td><td>${D(o.medianDaysToFirstStep)}</td></tr></table><div class="an-muted" style="margin-top:10px;">Click a box or a band. Clicking a box compares its patients with everyone (red = higher, green = lower, in percentage points).</div>`; return; }
+        if (s.type === 'node') {
+            const n = L.by.get(s.id); if (!n) return;
+            const outs = n.out.slice().sort((a, b) => b.n - a.n).slice(0, 6), ins = n.in.slice().sort((a, b) => b.n - a.n).slice(0, 4);
+            box.innerHTML = `<h4>${esc(n.label)}</h4><div><span class="pw-chip" style="border-color:${COL[kindOf(n)]};color:${COL[kindOf(n)]}">${esc(KIND_NAME[n.kind] || n.kind)}</span> ${num(n.n)} patients (${P(n.pctOfIndex)})</div>
+                <table><tr><td>Median day after diagnosis</td><td>${n.kind === 'index' || n.kind === 'end' ? '–' : D(n.medianDays)}</td></tr>
+                <tr><td>Died</td><td>${P(n.deadPct)}${cmp(n.deadPct, o.deadPct)}</td></tr><tr><td>Admitted</td><td>${P(n.admittedPct)}${cmp(n.admittedPct, o.admittedPct)}</td></tr><tr><td>Admitted twice or more</td><td>${P(n.readmittedPct)}${cmp(n.readmittedPct, o.readmittedPct)}</td></tr></table>
+                ${ins.length && n.kind !== 'index' ? `<div style="margin-top:8px;"><b>Came from</b><table>${ins.map(l => `<tr><td>${esc(trunc(l.s.label, 28))}</td><td>${num(l.n)}${l.medianDays != null ? ' · ' + D(l.medianDays) : ''}</td></tr>`).join('')}</table></div>` : ''}
+                ${outs.length ? `<div style="margin-top:8px;"><b>What happens next</b><table>${outs.map(l => `<tr><td>${esc(trunc(l.t.label, 28))}</td><td>${num(l.n)} (${P(l.pctOfSource)})${l.medianDays != null ? ' · ' + D(l.medianDays) : ''}</td></tr>`).join('')}</table></div>` : ''}
+                ${n.kind === 'index' ? '' : '<button class="btn-secondary" style="margin-top:10px;" onclick="PW.list()">List these patients</button>'}`;
+        } else {
+            const l = L.links.find(x => x.source === s.source && x.target === s.target); if (!l) return;
+            box.innerHTML = `<h4>${esc(l.s.label)} <span class="pw-arrow">→</span> ${esc(l.t.label)}</h4><div>${num(l.n)} patients · ${P(l.pctOfSource)} of the box on the left</div>
+                <table><tr><td>Median days between the steps</td><td>${l.t.kind === 'end' ? '–' : D(l.medianDays)}</td></tr></table>
+                ${l.t.kind === 'end' ? '<div class="an-muted" style="margin-top:6px;">These patients have no further recorded care among the events followed here. That can be a real gap (lost to follow-up) or simply care given elsewhere or not coded.</div>' : ''}
+                <button class="btn-secondary" style="margin-top:10px;" onclick="PW.list()">List these patients</button>`;
+        }
+    }
+
+    // ---------- patient list for the selected box / band ----------
+    async function list() {
+        const s = S.sel, host = $('pwDrill'); if (!s || !S.qs) return;
+        const qs = new URLSearchParams(S.qs); if (s.type === 'node') qs.set('node', s.id); else { qs.set('from', s.source); qs.set('to', s.target); }
+        const my = ++S.drillSeq; host.innerHTML = '<div class="status-output info">Loading patients...</div>';
+        try {
+            const r = await fetch('/api/pathways/patients?' + qs), text = await r.text(); let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 160)); }
+            if (my !== S.drillSeq) return; if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            const rows = d.patients.map(p => `<tr class="pw-hover" tabindex="0" style="cursor:pointer;" data-id="${esc(p.id)}" onclick="PW.open(this.dataset.id)" onkeydown="if (event.key === 'Enter') PW.open(this.dataset.id)"><td><b>${esc(p.id)}</b></td><td>${esc(p.gender || '–')}</td><td class="n">${p.age == null ? '–' : p.age}</td>
+                <td>${p.path.length ? p.path.map((x, i) => `${esc(trunc(x, 26))}<span class="an-muted"> d${p.days[i] == null ? '?' : p.days[i]}</span>`).join('<span class="pw-arrow">→</span>') : '<span class="an-muted">no further recorded care</span>'}</td><td class="n">${p.admissions}</td><td>${p.dead ? 'deceased' : ''}</td></tr>`).join('');
+            host.innerHTML = `<div style="font-size:13px;"><b>${num(d.total)}</b> patients${d.truncated ? ` (first ${d.patients.length} shown)` : ''}. Click a row to open the patient in the Patient data explorer.</div>
+                <div style="overflow-x:auto;"><table class="pw-tbl"><thead><tr><th>Patient</th><th>Sex</th><th class="n">Age</th><th>Steps (day after diagnosis)</th><th class="n">Admissions</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (e) { if (my === S.drillSeq) host.innerHTML = '<div class="status-output error">Error: ' + esc(e.message) + '</div>'; }
+    }
+    function open(id) {
+        const box = $('peDetail'), det = box && box.closest('details'); if (det) det.open = true;
+        if (typeof peOpen === 'function') peOpen(id);
+    }
+
+    // ---------- tables ----------
+    function chips(path, depth) {
+        if (!path.length) return '<span class="an-muted">no further recorded care</span>';
+        return path.map(x => `<span class="pw-chip" style="border-color:${COL[x.kind] || '#999'};color:${COL[x.kind] || '#555'}" title="${esc(x.label)}">${esc(trunc(x.label, 22))}</span>`).join('<span class="pw-arrow">→</span>') + (path.length >= depth ? '<span class="pw-arrow">…</span>' : '');
+    }
+    function routeIds(v, depth) {
+        const ids = ['0:index'].concat(v.path.map((x, k) => `${k + 1}:${x.kind}|${x.code}`)); if (v.path.length < depth) ids.push(`${v.path.length + 1}:end`);
+        return ids;
+    }
+    function routes(d, host, st) {
+        const v = d.variants;
+        if (!v.length) { host.innerHTML = '<div class="an-muted" style="margin-top:6px;">No route is shared by enough patients to show.</div>'; return; }
+        const max = Math.max(...v.map(x => x.n));
+        host.innerHTML = `<div style="overflow-x:auto;"><table class="pw-tbl"><thead><tr><th>#</th><th>Route after diagnosis</th><th class="n">Patients</th><th class="n">Days to last step</th><th class="n">Died</th><th class="n">Admitted</th><th class="n">Admitted 2+</th></tr></thead><tbody>` +
+            v.map((x, i) => `<tr class="pw-hover" data-i="${i}"><td>${num(x.rank)}</td><td>${chips(x.path, d.params.depth)}</td><td class="n"><span class="pw-bar" style="width:${Math.max(2, Math.round(60 * x.n / max))}px"></span>${num(x.n)} (${P(x.pct)})</td><td class="n">${D(x.medianDays)}</td><td class="n">${P(x.deadPct)}${cmp(x.deadPct, d.outcomes.deadPct)}</td><td class="n">${P(x.admittedPct)}${cmp(x.admittedPct, d.outcomes.admittedPct)}</td><td class="n">${P(x.readmittedPct)}${cmp(x.readmittedPct, d.outcomes.readmittedPct)}</td></tr>`).join('') +
+            `</tbody></table></div><div class="an-muted" style="margin-top:4px;">${d.otherVariants.routes ? `${num(d.otherVariants.routes)} other route(s) with ${num(d.otherVariants.patients)} patients are not listed (each has fewer than ${num(d.params.minCell)} patients, or falls outside the top 10). ` : ''}Brackets show percentage points against everyone with the diagnosis.</div>`;
+        host.querySelectorAll('tr[data-i]').forEach(tr => {   // hovering a row lights up its route in the diagram
+            tr.addEventListener('mouseenter', () => { const x = v[Number(tr.dataset.i)]; if (x) paintSt(st, routeIds(x, d.params.depth)); });
+            tr.addEventListener('mouseleave', () => paintSt(st));
+        });
+    }
+    function route(i) {
+        if (i < 0 || !S.data) { paint(); return; }
+        const v = S.data.variants[i]; if (v) paint(routeIds(v, S.data.params.depth));
+    }
+    function expected(d, host) {
+        const e = d.expected;
+        if (!e.length) { host.innerHTML = `<div class="an-muted" style="margin-top:6px;">${d.index.key ? 'The reference list has no drug, monitoring lab or screening for this diagnosis.' : 'This diagnosis is not in the reference dictionary, so there is nothing to compare with.'}</div>`; return; }
+        const bar = (v, c) => v == null ? '<span class="an-muted">&lt;' + num(d.params.minCell) + '</span>' : `<span class="pw-bar" style="width:${Math.round(Number(v) * 0.8)}px;background:${c}"></span>${num(v)}%`;
+        host.innerHTML = `<div style="overflow-x:auto;"><table class="pw-tbl"><thead><tr><th>Expected step</th><th>Had it after diagnosis</th><th>Within the window</th><th class="n">Missing or late</th><th class="n">Median days to first</th></tr></thead><tbody>` +
+            e.map(x => `<tr><td><b>${esc(x.label)}</b><br><span class="an-muted">${esc(x.role)}</span></td><td>${bar(x.everPct, '#90a4ae')}</td><td>${bar(x.withinPct, '#1565c0')} <span class="an-muted">(${num(x.windowDays)} d)</span></td><td class="n ${x.gapPct != null && x.gapPct >= 30 ? 'pw-bad' : ''}">${x.gapPct == null ? '–' : num(x.gapPct) + '%'}</td><td class="n">${D(x.medianDays)}</td></tr>`).join('') +
+            `</tbody></table></div><div class="an-muted" style="margin-top:4px;">Percentages are of all ${num(d.index.patients)} patients with the diagnosis. "Missing or late" = no such step inside the window, which includes patients who never had it recorded.</div>`;
+    }
+    function kpis(d, host) {
+        const o = d.outcomes; if (!o) { host.innerHTML = ''; return; }
+        const k = [[num(d.index.patients), 'patients with ' + d.index.label], [D(o.medianDaysToFirstStep), 'median days to first step'], [P(o.admittedPct), 'admitted after diagnosis'], [P(o.readmittedPct), 'admitted twice or more'], [P(o.deadPct), 'died'], [num(d.totals.distinctRoutes || 0), 'distinct routes']];
+        host.innerHTML = k.map(x => `<div class="pw-kpi"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
+    }
+
+    // ---------- public handlers ----------
+    async function build() {
+        const my = ++S.seq, btn = $('pwBuild'), st = $('pwStatus'), qs = query();
+        if (!qs.get('kinds')) { st.className = 'status-output error'; st.textContent = 'Tick at least one kind of event to follow.'; return; }
+        btn.disabled = true; st.className = 'status-output info'; st.textContent = 'Following each patient after the diagnosis...';
+        try {
+            const r = await fetch('/api/pathways?' + qs), text = await r.text(); let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+            if (my !== S.seq) return; if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            S.data = d; S.sel = null; qs.set('index', d.index.value); S.qs = qs; $('pwDrill').innerHTML = '';
+            const sel = $('pwIndex'), keep = d.index.value;
+            sel.innerHTML = '<option value="">(most common in the cohort)</option>' + d.indexOptions.map(o => `<option value="${esc(o.value)}">${esc(o.label)} (${num(o.patients)})</option>`).join('');
+            sel.value = keep;
+            $('pwBody').style.display = ''; { const om = $('pwOutMsg'); if (om) om.textContent = ''; } kpis(S.data, $('pwKpis')); draw(); side(); routes(S.data, $('pwRoutes'), S); expected(S.data, $('pwExpected'));
+            $('pwNotes').innerHTML = d.notes.map(esc).join('<br>');
+            const pop = typeof anPopulationLabel === 'function' ? anPopulationLabel() : '';
+            st.className = 'status-output success';
+            st.textContent = `${num(d.index.patients)} patients with ${d.index.label}` + `, cohort: ${d.scope.cohort ? d.scope.cohort.name : 'none active (everyone in the population)'}` + (pop ? `, population: ${pop}` : '') + (d.index.patients < 30 ? '. Small group: percentages are unstable.' : '.');
+        } catch (e) { if (my === S.seq) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; } }
+        finally { if (my === S.seq) btn.disabled = false; }
+    }
+    // a control changed: rebuild automatically once a first diagram exists
+    function changed() { if (!S.data) return; clearTimeout(S.timer); S.timer = setTimeout(build, 400); }
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = $('cohortBatchSelector');
+        if (sel) sel.addEventListener('change', () => { const st = $('pwStatus'); if (st && S.data) { st.className = 'status-output info'; st.textContent = 'The population changed. Press "Build pathways" to refresh.'; } });
+    });
+    // ---------- Output section: a snapshot of the current diagram and tables, kept like every other run ----------
+    // Only the aggregated numbers the page already shows are saved (groups under the minimum are already removed by the server), never patient ids.
+    function addToOutput() {
+        const d = S.data, msg = $('pwOutMsg');
+        if (!d || !d.nodes || !d.nodes.length || typeof anStartRun !== 'function') { if (msg) msg.textContent = 'Build a pathway diagram first.'; return; }
+        const snap = { index: d.index, params: d.params, totals: d.totals, nodes: d.nodes, links: d.links, variants: d.variants, otherVariants: d.otherVariants, outcomes: d.outcomes, expected: d.expected, notes: d.notes };
+        const p = d.params, lens = [p.gender, p.ageMin != null || p.ageMax != null ? `age ${p.ageMin == null ? '' : p.ageMin}-${p.ageMax == null ? '' : p.ageMax}` : ''].filter(Boolean).join(', ');
+        const run = anStartRun('Care pathways · ' + d.index.label, {
+            cohort: d.scope && d.scope.cohort ? d.scope.cohort.name : null, population: typeof anPopulationLabel === 'function' ? anPopulationLabel() : '', patients: d.index.patients,
+            params: { diagnosis: d.index.label, steps_followed: p.depth, events_per_kind: p.perKind, include: Array.isArray(p.kinds) ? p.kinds.join(',') : undefined, every_admission_counts: p.loops ? 'yes' : undefined,
+                sex_age_filter: lens || undefined, min_patients: p.minCell, treatment_window_days: p.drugDays, monitoring_window_days: p.monitorDays } });
+        run.addItem('pw', snap);
+        if (msg) msg.textContent = 'Added to the Output section below.';
+    }
+    // a saved snapshot may come from an uploaded file: coerce every numeric field so nothing but numbers reaches the markup
+    const NUMF = new Set(['n', 'layer', 'pctOfIndex', 'pctOfSource', 'medianDays', 'deadPct', 'admittedPct', 'readmittedPct', 'patients', 'rank', 'pct', 'everPct', 'withinPct', 'gapPct', 'windowDays',
+        'medianDaysToFirstStep', 'distinctRoutes', 'hiddenLinks', 'depth', 'perKind', 'minCell', 'drugDays', 'monitorDays', 'routes', 'ageMin', 'ageMax']);
+    function cleanSnap(x, depth) {
+        if (depth > 8) return null;
+        if (Array.isArray(x)) return x.slice(0, 2000).map(v => cleanSnap(v, depth + 1));
+        if (x && typeof x === 'object') {
+            const o = {};
+            Object.keys(x).forEach(k => { if (k === '__proto__') return; const v = x[k]; o[k] = NUMF.has(k) ? (v === null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v)) : cleanSnap(v, depth + 1); });
+            return o;
+        }
+        return x;
+    }
+    function renderOutput(raw) {
+        const root = document.createElement('div'), d = cleanSnap(raw, 0);
+        if (!d || !d.index || !d.params || !Array.isArray(d.nodes) || !Array.isArray(d.links)) { root.className = 'an-muted'; root.textContent = 'This care pathway snapshot is incomplete and cannot be drawn.'; return root; }
+        d.variants = Array.isArray(d.variants) ? d.variants : []; d.expected = Array.isArray(d.expected) ? d.expected : []; d.notes = Array.isArray(d.notes) ? d.notes : [];
+        d.otherVariants = d.otherVariants || { patients: 0, routes: 0 }; d.totals = d.totals || {}; d.index.label = String(d.index.label == null ? '' : d.index.label);
+        const tx = (tag, text, style) => { const e = document.createElement(tag); e.textContent = text == null ? '' : String(text); if (style) e.style.cssText = style; return e; };
+        root.appendChild(tx('div', `${num(d.index.patients)} patients with ${d.index.label}. Groups under ${num(d.params.minCell)} patients are hidden. Band width = patients, the days on a link = median time between two steps, grey-red bands = no further recorded care. Hover for numbers, click a box or band to highlight it.`, 'font-size:13px; margin-bottom:6px;'));
+        const k = document.createElement('div'); k.className = 'pw-kpis'; kpis(d, k); root.appendChild(k);
+        const chart = document.createElement('div'); chart.className = 'an-chart';
+        const canvas = document.createElement('div'); canvas.className = 'pw-canvas'; canvas.style.flex = 'none'; chart.appendChild(canvas);
+        const info = tx('div', '', 'font-size:12.5px; margin-top:4px; min-height:18px;'); info.className = 'an-muted'; chart.appendChild(info);
+        const st = { lay: null, sel: null };
+        drawInto(canvas, d, st, s => {
+            st.sel = s; paintSt(st);
+            if (!s || !st.lay) { info.textContent = ''; return; }
+            if (s.type === 'node') { const n = st.lay.by.get(s.id); info.innerHTML = n ? nodeTip(n) : ''; }
+            else { const l = st.lay.links.find(x => x.source === s.source && x.target === s.target); info.innerHTML = l ? linkTip(l) : ''; }
+        });
+        root.appendChild(chart);
+        root.appendChild(tx('strong', 'Most common routes'));
+        const rt = document.createElement('div'); rt.className = 'an-tablewrap'; routes(d, rt, st); root.appendChild(rt);
+        root.appendChild(tx('strong', 'Expected versus observed', 'display:block; margin-top:10px;'));
+        const ex = document.createElement('div'); ex.className = 'an-tablewrap'; expected(d, ex); root.appendChild(ex);
+        if (d.notes.length) root.appendChild(tx('div', d.notes.join(' '), 'font-size:12px; color:#666; margin-top:8px;'));
+        return root;
+    }
+    return { build, changed, list, open, route, select, addToOutput, renderOutput, _S: S, _layout: layout,
+        _kit: { drawInto, paintSt, linkTip, chips, routeIds, cleanSnap, COL, KIND_NAME, P, D, num, trunc } };   // shared with Patient trajectory
+})();
+</script>
+<script>
+/* ===== Patient trajectory: the whole cohort as one interactive flow diagram (Sankey). Data: GET /api/trajectory/cohort.
+   Drawing, layout and highlighting are shared with Care pathways (PW._kit); only the words and the start (first dated record) differ. ===== */
+const PT = (function () {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const K = () => PW._kit;
+    const S = { data: null, qs: null, sel: null, seq: 0, timer: null, lay: null, drillSeq: 0 };
+    const P = v => K().P(v), D = v => K().D(v), num = v => K().num(v), trunc = (s, n) => K().trunc(s, n);
+
+    function query() {
+        const sc = typeof anScope === 'function' ? anScope() : {}, qs = new URLSearchParams();
+        if (sc.batchGroup) qs.set('batchGroup', sc.batchGroup); if (sc.batchId) qs.set('batchId', sc.batchId);
+        qs.set('depth', $('ptDepth').value); qs.set('perKind', $('ptPerKind').value);
+        qs.set('kinds', Array.from(document.querySelectorAll('.ptKind')).filter(x => x.checked).map(x => x.value).join(','));
+        if ($('ptLoops').checked) qs.set('loops', '1');
+        if ($('ptSex').value) qs.set('gender', $('ptSex').value);
+        if ($('ptAgeMin').value !== '') qs.set('ageMin', $('ptAgeMin').value);
+        if ($('ptAgeMax').value !== '') qs.set('ageMax', $('ptAgeMax').value);
+        qs.set('minCell', $('ptMin').value || '5');
+        return qs;
+    }
+
+    // ---------- words that differ from Care pathways ----------
+    const out = n => `died ${P(n.deadPct)} · admitted ${P(n.admittedPct)} · readmitted ${P(n.readmittedPct)}`;
+    function nodeTip(n) {
+        const head = `<b>${esc(n.label)}</b><br>${num(n.n)} patients (${P(n.pctOfIndex)} of the cohort)`;
+        if (n.kind === 'index') return head + `<br>${out(n)}`;
+        return head + (n.medianDays != null ? `<br>median day ${Math.round(n.medianDays)} after the first record` : '') + `<br>${out(n)}`;
+    }
+    const hooks = { head0: 'First record', aria: 'Whole-cohort patient trajectory flow diagram', nodeTip };
+    function draw() { K().drawInto($('ptCanvas'), S.data, S, select, hooks); }
+    function select(s) { S.sel = s; K().paintSt(S); side(); if (!s) $('ptDrill').innerHTML = ''; }
+
+    // ---------- side panel ----------
+    function cmp(v, base) { if (v == null || base == null) return ''; const x = Math.round((v - base) * 10) / 10; return x === 0 ? '' : ` <span style="color:${x > 0 ? '#c62828' : '#2e7d32'}">(${x > 0 ? '+' : ''}${x})</span>`; }
+    function side() {
+        const box = $('ptSide'), d = S.data, L = S.lay, s = S.sel, C = K();
+        if (!L) { box.innerHTML = ''; return; }
+        const o = d.outcomes;
+        if (!s) { box.innerHTML = `<h4>Whole cohort</h4><div>${num(d.index.patients)} patients</div><table><tr><td>Died</td><td>${P(o.deadPct)}</td></tr><tr><td>Admitted at least once after the first record</td><td>${P(o.admittedPct)}</td></tr><tr><td>Admitted twice or more</td><td>${P(o.readmittedPct)}</td></tr><tr><td>Median days to the first step</td><td>${D(o.medianDaysToFirstStep)}</td></tr></table><div class="an-muted" style="margin-top:10px;">Click a box or a band. Clicking a box compares its patients with the whole cohort (red = higher, green = lower, in percentage points).</div>`; return; }
+        if (s.type === 'node') {
+            const n = L.by.get(s.id); if (!n) return;
+            const outs = n.out.slice().sort((a, b) => b.n - a.n).slice(0, 6), ins = n.in.slice().sort((a, b) => b.n - a.n).slice(0, 4), col = C.COL[n.kind] || '#999';
+            box.innerHTML = `<h4>${esc(n.label)}</h4><div><span class="pw-chip" style="border-color:${col};color:${col}">${esc(C.KIND_NAME[n.kind] || n.kind)}</span> ${num(n.n)} patients (${P(n.pctOfIndex)})</div>
+                <table><tr><td>Median day after the first record</td><td>${n.kind === 'index' || n.kind === 'end' ? '–' : D(n.medianDays)}</td></tr>
+                <tr><td>Died</td><td>${P(n.deadPct)}${cmp(n.deadPct, o.deadPct)}</td></tr><tr><td>Admitted</td><td>${P(n.admittedPct)}${cmp(n.admittedPct, o.admittedPct)}</td></tr><tr><td>Admitted twice or more</td><td>${P(n.readmittedPct)}${cmp(n.readmittedPct, o.readmittedPct)}</td></tr></table>
+                ${ins.length && n.kind !== 'index' ? `<div style="margin-top:8px;"><b>Came from</b><table>${ins.map(l => `<tr><td>${esc(trunc(l.s.label, 28))}</td><td>${num(l.n)}${l.medianDays != null ? ' · ' + D(l.medianDays) : ''}</td></tr>`).join('')}</table></div>` : ''}
+                ${outs.length ? `<div style="margin-top:8px;"><b>What happens next</b><table>${outs.map(l => `<tr><td>${esc(trunc(l.t.label, 28))}</td><td>${num(l.n)} (${P(l.pctOfSource)})${l.medianDays != null ? ' · ' + D(l.medianDays) : ''}</td></tr>`).join('')}</table></div>` : ''}
+                <button class="btn-secondary" style="margin-top:10px;" onclick="PT.list()">List these patients</button>`;
+        } else {
+            const l = L.links.find(x => x.source === s.source && x.target === s.target); if (!l) return;
+            box.innerHTML = `<h4>${esc(l.s.label)} <span class="pw-arrow">→</span> ${esc(l.t.label)}</h4><div>${num(l.n)} patients · ${P(l.pctOfSource)} of the box on the left</div>
+                <table><tr><td>Median days between the steps</td><td>${l.t.kind === 'end' ? '–' : D(l.medianDays)}</td></tr></table>
+                ${l.t.kind === 'end' ? '<div class="an-muted" style="margin-top:6px;">These patients have no further recorded care among the events followed here. That can be a real gap (lost to follow-up) or simply care given elsewhere or not coded.</div>' : ''}
+                <button class="btn-secondary" style="margin-top:10px;" onclick="PT.list()">List these patients</button>`;
+        }
+    }
+
+    // ---------- patient list for the selected box / band ----------
+    async function list() {
+        const s = S.sel, host = $('ptDrill'); if (!s || !S.qs) return;
+        const qs = new URLSearchParams(S.qs); if (s.type === 'node') qs.set('node', s.id); else { qs.set('from', s.source); qs.set('to', s.target); }
+        const my = ++S.drillSeq; host.innerHTML = '<div class="status-output info">Loading patients...</div>';
+        try {
+            const r = await fetch('/api/trajectory/cohort/patients?' + qs), text = await r.text(); let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 160)); }
+            if (my !== S.drillSeq) return; if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            const rows = d.patients.map(p => `<tr class="pw-hover" tabindex="0" style="cursor:pointer;" data-id="${esc(p.id)}" onclick="PT.open(this.dataset.id)" onkeydown="if (event.key === 'Enter') PT.open(this.dataset.id)"><td><b>${esc(p.id)}</b></td><td>${esc(p.gender || '–')}</td><td class="n">${p.age == null ? '–' : esc(p.age)}</td>
+                <td>${p.path.length ? p.path.map((x, i) => `${esc(trunc(x, 26))}<span class="an-muted"> d${p.days[i] == null ? '?' : esc(p.days[i])}</span>`).join('<span class="pw-arrow">→</span>') : '<span class="an-muted">no further recorded care</span>'}</td><td class="n">${esc(p.admissions)}</td><td>${p.dead ? 'deceased' : ''}</td></tr>`).join('');
+            host.innerHTML = `<div style="font-size:13px;"><b>${num(d.total)}</b> patients${d.truncated ? ` (first ${d.patients.length} shown)` : ''}. Click a row to open the patient in the Patient data explorer.</div>
+                <div style="overflow-x:auto;"><table class="pw-tbl"><thead><tr><th>Patient</th><th>Sex</th><th class="n">Age</th><th>Steps (day after the first record)</th><th class="n">Admissions</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (e) { if (my === S.drillSeq) host.innerHTML = '<div class="status-output error">Error: ' + esc(e.message) + '</div>'; }
+    }
+    function open(id) { PW.open(id); }
+
+    // ---------- tables ----------
+    function routes(d, host, st) {
+        const v = d.variants, C = K();
+        if (!v.length) { host.innerHTML = '<div class="an-muted" style="margin-top:6px;">No route is shared by enough patients to show.</div>'; return; }
+        const max = Math.max(...v.map(x => x.n)), o = d.outcomes || {};
+        host.innerHTML = `<div style="overflow-x:auto;"><table class="pw-tbl"><thead><tr><th>#</th><th>Route from the first record</th><th class="n">Patients</th><th class="n">Days to last step</th><th class="n">Died</th><th class="n">Admitted</th><th class="n">Admitted 2+</th></tr></thead><tbody>` +
+            v.map((x, i) => `<tr class="pw-hover" data-i="${i}"><td>${num(x.rank)}</td><td>${C.chips(x.path, d.params.depth)}</td><td class="n"><span class="pw-bar" style="width:${Math.max(2, Math.round(60 * x.n / max))}px"></span>${num(x.n)} (${P(x.pct)})</td><td class="n">${D(x.medianDays)}</td><td class="n">${P(x.deadPct)}${cmp(x.deadPct, o.deadPct)}</td><td class="n">${P(x.admittedPct)}${cmp(x.admittedPct, o.admittedPct)}</td><td class="n">${P(x.readmittedPct)}${cmp(x.readmittedPct, o.readmittedPct)}</td></tr>`).join('') +
+            `</tbody></table></div><div class="an-muted" style="margin-top:4px;">${d.otherVariants.routes ? `${num(d.otherVariants.routes)} other route(s) with ${num(d.otherVariants.patients)} patients are not listed (each has fewer than ${num(d.params.minCell)} patients, or falls outside the top 10). ` : ''}Brackets show percentage points against the whole cohort.</div>`;
+        host.querySelectorAll('tr[data-i]').forEach(tr => {
+            tr.addEventListener('mouseenter', () => { const x = v[Number(tr.dataset.i)]; if (x) C.paintSt(st, C.routeIds(x, d.params.depth)); });
+            tr.addEventListener('mouseleave', () => C.paintSt(st));
+        });
+    }
+    function kpis(d, host) {
+        const o = d.outcomes; if (!o) { host.innerHTML = ''; return; }
+        const k = [[num(d.index.patients), 'patients with a dated record'], [D(o.medianDaysToFirstStep), 'median days to first step'], [P(o.admittedPct), 'admitted after first record'], [P(o.readmittedPct), 'admitted twice or more'], [P(o.deadPct), 'died'], [num(d.totals.distinctRoutes || 0), 'distinct routes']];
+        host.innerHTML = k.map(x => `<div class="pw-kpi"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
+    }
+
+    // ---------- public handlers ----------
+    async function build() {
+        const my = ++S.seq, btn = $('ptBuild'), st = $('ptStatus'), qs = query();
+        if (!qs.get('kinds')) { st.className = 'status-output error'; st.textContent = 'Tick at least one kind of event to follow.'; return; }
+        btn.disabled = true; st.className = 'status-output info'; st.textContent = 'Following every patient of the cohort from their first record...';
+        try {
+            const r = await fetch('/api/trajectory/cohort?' + qs), text = await r.text(); let d; try { d = JSON.parse(text); } catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+            if (my !== S.seq) return; if (!d.success) throw new Error(d.error || d.details || 'Request failed');
+            S.data = d; S.sel = null; S.qs = qs; $('ptDrill').innerHTML = '';
+            $('ptBody').style.display = ''; { const om = $('ptOutMsg'); if (om) om.textContent = ''; }
+            kpis(d, $('ptKpis')); draw(); side(); routes(d, $('ptRoutes'), S);
+            $('ptNotes').innerHTML = d.notes.map(esc).join('<br>');
+            const pop = typeof anPopulationLabel === 'function' ? anPopulationLabel() : '';
+            st.className = 'status-output success';
+            st.textContent = `${num(d.index.patients)} patients followed` + `, cohort: ${d.scope.cohort ? d.scope.cohort.name : 'none active (everyone in the population)'}` + (pop ? `, population: ${pop}` : '') + (d.index.patients < 30 ? '. Small group: percentages are unstable.' : '.');
+        } catch (e) { if (my === S.seq) { st.className = 'status-output error'; st.textContent = 'Error: ' + e.message; } }
+        finally { if (my === S.seq) btn.disabled = false; }
+    }
+    // a control changed: rebuild automatically once a first diagram exists
+    function changed() { if (!S.data) return; clearTimeout(S.timer); S.timer = setTimeout(build, 400); }
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = $('cohortBatchSelector');
+        if (sel) sel.addEventListener('change', () => { const st = $('ptStatus'); if (st && S.data) { st.className = 'status-output info'; st.textContent = 'The population changed. Press "Build trajectory" to refresh.'; } });
+    });
+
+    // ---------- Output section: aggregated numbers only (groups under the minimum are already removed by the server), never patient ids ----------
+    function addToOutput() {
+        const d = S.data, msg = $('ptOutMsg');
+        if (!d || !d.nodes || !d.nodes.length || typeof anStartRun !== 'function') { if (msg) msg.textContent = 'Build a trajectory first.'; return; }
+        const snap = { index: d.index, params: d.params, totals: d.totals, nodes: d.nodes, links: d.links, variants: d.variants, otherVariants: d.otherVariants, outcomes: d.outcomes, notes: d.notes };
+        const p = d.params, lens = [p.gender, p.ageMin != null || p.ageMax != null ? `age ${p.ageMin == null ? '' : p.ageMin}-${p.ageMax == null ? '' : p.ageMax}` : ''].filter(Boolean).join(', ');
+        anStartRun('Patient trajectory · whole cohort', {
+            cohort: d.scope && d.scope.cohort ? d.scope.cohort.name : null, population: typeof anPopulationLabel === 'function' ? anPopulationLabel() : '', patients: d.index.patients,
+            params: { steps_followed: p.depth, events_per_kind: p.perKind, include: Array.isArray(p.kinds) ? p.kinds.join(',') : undefined, every_admission_counts: p.loops ? 'yes' : undefined,
+                sex_age_filter: lens || undefined, min_patients: p.minCell } }).addItem('ptc', snap);
+        if (msg) msg.textContent = 'Added to the Output section below.';
+    }
+    function renderOutput(raw) {
+        const root = document.createElement('div'), C = K(), d = C.cleanSnap(raw, 0);
+        if (!d || !d.index || !d.params || !Array.isArray(d.nodes) || !Array.isArray(d.links)) { root.className = 'an-muted'; root.textContent = 'This patient trajectory snapshot is incomplete and cannot be drawn.'; return root; }
+        d.variants = Array.isArray(d.variants) ? d.variants : []; d.notes = Array.isArray(d.notes) ? d.notes : [];
+        d.otherVariants = d.otherVariants || { patients: 0, routes: 0 }; d.totals = d.totals || {};
+        const tx = (tag, text, style) => { const e = document.createElement(tag); e.textContent = text == null ? '' : String(text); if (style) e.style.cssText = style; return e; };
+        root.appendChild(tx('div', `Whole-cohort trajectory: ${num(d.index.patients)} patients followed from their first dated record. Groups under ${num(d.params.minCell)} patients are hidden. Band width = patients, the days on a link = median time between two steps, grey-red bands = no further recorded care. Hover for numbers, click a box or band to highlight it.`, 'font-size:13px; margin-bottom:6px;'));
+        const k = document.createElement('div'); k.className = 'pw-kpis'; kpis(d, k); root.appendChild(k);
+        const chart = document.createElement('div'); chart.className = 'an-chart';
+        const canvas = document.createElement('div'); canvas.className = 'pw-canvas'; canvas.style.flex = 'none'; chart.appendChild(canvas);
+        const info = tx('div', '', 'font-size:12.5px; margin-top:4px; min-height:18px;'); info.className = 'an-muted'; chart.appendChild(info);
+        const st = { lay: null, sel: null };
+        C.drawInto(canvas, d, st, s => {
+            st.sel = s; C.paintSt(st);
+            if (!s || !st.lay) { info.textContent = ''; return; }
+            if (s.type === 'node') { const n = st.lay.by.get(s.id); info.innerHTML = n ? nodeTip(n) : ''; }
+            else { const l = st.lay.links.find(x => x.source === s.source && x.target === s.target); info.innerHTML = l ? C.linkTip(l) : ''; }
+        }, hooks);
+        root.appendChild(chart);
+        root.appendChild(tx('strong', 'Most common routes'));
+        const rt = document.createElement('div'); rt.className = 'an-tablewrap'; routes(d, rt, st); root.appendChild(rt);
+        if (d.notes.length) root.appendChild(tx('div', d.notes.join(' '), 'font-size:12px; color:#666; margin-top:8px;'));
+        return root;
+    }
+    return { build, changed, list, open, select, addToOutput, renderOutput, _S: S };
 })();
 </script>
 <script>
