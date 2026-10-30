@@ -17,13 +17,13 @@ ALTER ROLE vibe_readonly SET idle_in_transaction_session_timeout = '60s';
 GRANT CONNECT ON DATABASE :"db_name" TO vibe_readonly;
 GRANT USAGE ON SCHEMA public TO vibe_readonly;
 
--- existing tables: FHIR batches (fhir_*_<batch>), cohorts, concept overrides, code enrichment (V3 / V5 reads it), disease and department profiles, SNOMED reference tables
+-- existing tables: FHIR batches (fhir_*_<batch>), cohorts, concept overrides, code enrichment (V3 / V5 reads it), SNOMED reference tables
 DO $$
 DECLARE t text;
 BEGIN
   FOR t IN SELECT tablename FROM pg_tables
            WHERE schemaname = 'public'
-             AND (tablename LIKE 'fhir\_%' OR tablename IN ('cohorts', 'concept_overrides', 'pico_templates', 'code_enrichment', 'disease_profiles', 'department_profiles')
+             AND (tablename LIKE 'fhir\_%' OR tablename IN ('cohorts', 'concept_overrides', 'pico_templates', 'code_enrichment')
                   OR tablename LIKE 'snomed\_%')
   LOOP
     EXECUTE format('GRANT SELECT ON public.%I TO vibe_readonly', t);
@@ -44,7 +44,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- code_enrichment, disease_profiles and department_profiles are read-only for this role: the app writes them with its own (owner) connection, never with this role.
+-- code_enrichment is read-only for this role: the app writes it with its own (owner) connection, never with this role.
 
 -- check (should return no rows):
 -- SELECT table_name, privilege_type FROM information_schema.role_table_grants

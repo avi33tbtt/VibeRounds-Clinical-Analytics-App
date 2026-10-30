@@ -1920,26 +1920,15 @@ module.exports = function extend(k) {
   // Only server-defined strings go into the SQL: the disease key is checked with Object.hasOwn; codes and the goal go through q.add() / Number().
   // Cohort = patients with the condition code (any date, the same rule as Guideline adherence). Controlled = latest result of the control lab
   // in the 12 months before the as-of date is below the goal (the same rule as Guideline adherence); no result in those 12 months = untested.
-  // Chunk 0.3: the list comes from disease profiles (diseases.js; table disease_profiles, shipped built-ins diabetes and hypertension). Each entry keeps the fields the SQL
-  // below reads: label, condCode, labCode, goalBelow and drugCodes (the drugs of the profile's treatment lines, the old firstLine list as codes). Before the table has been
-  // read (and when it cannot be read) the built-in profiles give the same two entries as before. setDiseases() swaps the list; a profile the module cannot use is left out.
-  const DZ = require('./diseases');
-  const DISEASES = {};
-  // Chunk 1.6a: the generic sections (analytic disease_profile, below) need only the diagnosis, so this list holds EVERY switched-on profile with a diagnosis code
-  // (key -> DZ.toCohortEntry), also those the Disease module cannot use (no control measure, a goal that is not "below"). A Map: the keys come from stored JSON.
-  const PROFILES = new Map();
-  const setDiseases = profiles => {
-    const next = {}, gen = new Map();
-    for (const p of profiles) { const e = DZ.toModuleEntry(p); if (e && !Object.hasOwn(next, p.key)) next[String(p.key).toLowerCase()] = e; }
-    for (const p of profiles) { const g = DZ.toCohortEntry(p); if (g && DZ.KEY_RE.test(g.key) && !gen.has(g.key)) gen.set(g.key, g); }
-    for (const k of Object.keys(DISEASES)) delete DISEASES[k];
-    Object.assign(DISEASES, next);
-    PROFILES.clear(); for (const [k, g] of gen) PROFILES.set(k, g);
+  // Disease module list: the two diseases it knows, read from the terminology tables (label, condition code, control lab code, goal, first-line drug codes).
+  const dmEntry = (cond, measure, lab, label) => ({ label, condCode: T.CONDITIONS[cond].code, labCode: T.LABS[lab].code, goalBelow: Number(T.CONTROL_MEASURES[measure].goalBelow), drugCodes: T.TREATMENT_MAP[cond].map(k => T.MEDICATIONS[k].code) });
+  const DISEASES = {
+    diabetes: dmEntry('diabetes', 'diabetes_hba1c', 'hba1c', 'Type 2 diabetes (HbA1c below goal)'),
+    hypertension: dmEntry('hypertension', 'htn_bp', 'sbp', 'Hypertension (systolic BP below goal)')
   };
-  setDiseases(DZ.seedProfiles());
   const dmParse = a => {
     const key = a.disease == null || String(a.disease).trim() === '' ? (Object.hasOwn(DISEASES, 'diabetes') ? 'diabetes' : Object.keys(DISEASES)[0] || '') : String(a.disease).trim();
-    if (!Object.keys(DISEASES).length) throw new Error('No disease profile is switched on for the Disease module (Diseases tab)');
+    if (!Object.hasOwn(DISEASES, 'diabetes')) throw new Error('No disease available for the Disease module');
     if (!Object.hasOwn(DISEASES, key)) throw new Error(`Unknown disease "${key.slice(0, 40)}"; choose one of: ${Object.keys(DISEASES).join(', ')}`);
     const pick = (v, list, what) => { const t = v == null ? '' : String(v).trim(); if (t === '' || t === 'any') return null; if (!list.includes(t)) throw new Error(`Unknown ${what} "${t.slice(0, 40)}"; choose any or one of: ${list.join(', ')}`); return t; };   // Step M.11 (fixed server-side lists)
     return { key, dz: DISEASES[key], supply: Math.min(Math.max(Math.round(num(a.adhSupply, DM_ADH.supply)), 7), 180),   // supply days per fill for the adherence pass (Step M.7)
@@ -2199,326 +2188,6 @@ module.exports = function extend(k) {
         S('drivers', `Variation drivers (single-factor and overlapping, not adjusted: contributions do not add up; contribution = n x (lift - 1); low_n = fewer than ${DM_MIN_TESTED} tested)`, q => dmDrivers(c, q, dm))])); }
   });
 
-  // ---- Chunk 1.6a: generic disease sections. One analytic for ANY switched-on disease profile (diseases.js), in all five modes; chunks 1.6b-1.8c add the other eight sections.
-  // Only the profile's diagnosis is used here (code for V2-V5, search terms for V1), so no control measure is needed. Server-defined strings only go into the SQL: the disease
-  // key is looked up in the PROFILES map, the code and the V1 terms go through q.add(), and a batch name is written into a table name only when it is letters, digits and underscores.
-  // Section cohort = the patients with the disease, one long table: dimension all / age_band / sex / (V4, V5: onset_date) / batch, value, patients, pct_of_cohort.
-  // V1 = patients whose diagnosis or encounter text names the disease (simple negation handled, as in the other V1 analytics); V2 / V3 = patients with the diagnosis code (V3 also the
-  // approved enrichment codes, joined into the dx view by the engine); V4 / V5 = the same patients, plus how many of them have an onset date (what the time-based sections can use).
-  // Age is measured at the as-of date. A patient in several batches is counted once in all / age_band / sex and once in each batch he is in.
-  const dpBad = m => Object.assign(new Error(m), { status: 400 });
-  const dpParse = a => {
-    if (!PROFILES.size) throw dpBad('No disease profile is switched on (Diseases tab)');
-    const raw = a.disease == null ? '' : String(a.disease).trim().toLowerCase();
-    const key = raw === '' ? (PROFILES.has('diabetes') ? 'diabetes' : [...PROFILES.keys()][0]) : raw;
-    if (!PROFILES.has(key)) throw dpBad(`Unknown disease "${key.slice(0, 40)}"; choose one of: ${[...PROFILES.keys()].join(', ')}`);
-    return PROFILES.get(key);
-  };
-  // The cohort CTE `dc` (one row per patient with the disease) and the code parameter (null in V1, which never uses the code: an unused parameter would have no type).
-  const dpDc = (mode, q, g) => {
-    const code = mode === 'v1' ? null : q.add(g.code, 'text');
-    return { code, dc: mode === 'v1'
-      ? `${k.conceptCte(q, [{ key: g.key, label: g.label, terms: g.terms }])},
-    dc AS (SELECT DISTINCT patient_id FROM (${k.hitsSql(['dx', 'en'])}) h)`
-      : `dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code})` };
-  };
-  // Chunk 1.8c, low-count rule for the cohort section: fewer than 5 patients in a row -> low_n = true. For a sensitive profile the figures of a whole dimension (age band, sex, onset date, batch) are
-  // blanked (NULL) when ANY value of that dimension has fewer than 5 patients, so a blanked cell cannot be worked out by subtracting the visible ones from the total.
-  const dpCohort = (mode, c, q, g) => {
-    const hideC = x => g.sensitive ? `CASE WHEN min(patients) OVER (PARTITION BY dimension) < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    const { code, dc } = dpDc(mode, q, g);
-    const timed = mode === 'v4';
-    const batches = (c.suffixes || []).filter(s => s === '' || /^[A-Za-z0-9_]+$/.test(s))
-      .map(s => `SELECT ${q.add(s || '(legacy tables)', 'text')} AS value, count(*)::int AS patients FROM (SELECT DISTINCT patient_id FROM ${s ? 'fhir_patient_' + s : 'fhir_patient'}) b WHERE b.patient_id IN (SELECT patient_id FROM base)`).join(' UNION ALL ');
-    return `${c.with},
-    ${dc},
-    base AS (SELECT dc.patient_id, COALESCE(p.gender, 'unknown') AS gender,
-        ${k.bandCase(`(CASE WHEN p.birth_date IS NULL THEN NULL ELSE EXTRACT(YEAR FROM age((SELECT d FROM ref), p.birth_date)) END)`)} AS band${timed ? `,
-        COALESCE((SELECT bool_or(x.onset_date IS NOT NULL) FROM dx x WHERE x.patient_id = dc.patient_id AND x.code = ${code}), false) AS dated` : ''}
-      FROM dc JOIN p ON p.patient_id = dc.patient_id),
-    tot AS (SELECT count(*)::int AS n FROM base),
-    cc AS (SELECT dimension, value, patients, ${k.pct('patients', '(SELECT n FROM tot)')} AS pct_of_cohort, d, o FROM (
-      SELECT 'all' AS dimension, 'All patients with the disease' AS value, (SELECT n FROM tot) AS patients, 0 AS d, 0 AS o
-      UNION ALL SELECT 'age_band', band, count(*)::int, 1, array_position(ARRAY[${DM_AGE_BANDS.map(b => `'${b}'`).join(',')}]::text[], band) FROM base GROUP BY band
-      UNION ALL SELECT 'sex', gender, count(*)::int, 2, 0 FROM base GROUP BY gender${timed ? `
-      UNION ALL SELECT 'onset_date', CASE WHEN dated THEN 'Onset date recorded' ELSE 'No onset date' END, count(*)::int, 3, 0 FROM base GROUP BY dated` : ''}${batches ? `
-      UNION ALL SELECT 'batch', value, patients, 4, 0 FROM (${batches}) bt` : ''}
-    ) u)
-    SELECT dimension, value, (patients < ${DP_MIN_N}) AS low_n, ${hideC('patients')} AS patients, ${hideC('pct_of_cohort')} AS pct_of_cohort FROM cc ORDER BY d, o, cc.patients DESC, value`;
-  };
-  // ---- Chunk 1.6b: sections incidence_prevalence and control_status (V4 / V5 only: both need dates). Same rules as the cohort section: the diagnosis code and the control code go in
-  // through q.add(); goal, high end and look-back days are numbers checked by diseases.js (toControlRule) and are written as numeric literals; the direction picks one of three fixed texts.
-  // incidence_prevalence: per calendar year, the patients whose FIRST dated diagnosis falls in that year (new_cases), the running total and both as a share of all patients in scope.
-  // A patient with the code but no onset date is not counted here (the cohort section shows how many there are).
-  // Chunk 1.8c, low-count rule: a year with fewer than 5 new cases -> low_n = true. For a sensitive profile that year's new-case figures are blanked (NULL), and the running totals are blanked in every
-  // row when any year is small (the difference between two running totals would give the small count back).
-  const dpIncidence = (c, q, g) => {
-    const hn = x => g.sensitive ? `CASE WHEN new_cases < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    const hc = x => g.sensitive ? `CASE WHEN bool_or(new_cases < ${DP_MIN_N}) OVER () THEN NULL ELSE ${x} END` : x;
-    const code = q.add(g.code, 'text');
-    return `${c.with},
-    fo AS (SELECT patient_id, min(onset_date) AS d FROM dx WHERE code = ${code} AND onset_date IS NOT NULL GROUP BY patient_id),
-    yr AS (SELECT EXTRACT(YEAR FROM d)::int AS year, count(*)::int AS new_cases FROM fo GROUP BY EXTRACT(YEAR FROM d)),
-    cu AS (SELECT year, new_cases, (sum(new_cases) OVER (ORDER BY year))::int AS cumulative_patients FROM yr)
-    SELECT year, ${hn('new_cases')} AS new_cases, (new_cases < ${DP_MIN_N}) AS low_n, ${hc('cumulative_patients')} AS cumulative_patients,
-      ${hn(k.pct('new_cases', '(SELECT count(*) FROM p)'))} AS new_pct_of_patients,
-      ${hc(k.pct('cumulative_patients', '(SELECT count(*) FROM p)'))} AS cumulative_pct_of_patients
-    FROM cu ORDER BY year`;
-  };
-  // control_status: the cohort (diagnosis code) split by the latest result of the profile's control measure inside its look-back window before the as-of date.
-  // below = under the goal, above = over the goal, range = goal to goalHigh (both included). No result in the window = untested.
-  const dpControlCond = r => ({ below: `l.value < ${r.goal}::numeric`, above: `l.value > ${r.goal}::numeric`, range: `l.value BETWEEN ${r.goal}::numeric AND ${r.goalHigh}::numeric` })[r.direction];
-  // Chunk 1.8c, low-count rule: fewer than 5 patients -> low_n = true. For a sensitive profile every figure except the patient count is blanked (NULL) when the cohort, or any of the controlled /
-  // uncontrolled / untested groups, has fewer than 5 patients (one hidden group could otherwise be worked out from the total).
-  // DP_MIN_N is declared further down (same scope, read only when the function runs).
-  const dpControl = (c, q, g) => {
-    const hide = x => g.sensitive ? `CASE WHEN least(patients, controlled, uncontrolled, untested) < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    const r = g.control, code = q.add(g.code, 'text'), ctl = q.add(r.code, 'text');
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    lastv AS (SELECT DISTINCT ON (patient_id) patient_id, value FROM ob
-              WHERE code = ${ctl} AND value IS NOT NULL AND effective_date < (SELECT d FROM ref) + 1 AND effective_date > (SELECT d FROM ref) - ${Math.round(r.lookbackDays)}::int
-              ORDER BY patient_id, effective_date DESC),
-    st AS (SELECT dc.patient_id, l.value,
-             CASE WHEN l.value IS NULL THEN 'untested' WHEN ${dpControlCond(r)} THEN 'controlled' ELSE 'uncontrolled' END AS status
-           FROM dc LEFT JOIN lastv l ON l.patient_id = dc.patient_id),
-    ag AS (SELECT count(*)::int AS patients,
-      count(*) FILTER (WHERE status <> 'untested')::int AS tested,
-      count(*) FILTER (WHERE status = 'controlled')::int AS controlled,
-      count(*) FILTER (WHERE status = 'uncontrolled')::int AS uncontrolled,
-      count(*) FILTER (WHERE status = 'untested')::int AS untested,
-      round(percentile_cont(0.5) WITHIN GROUP (ORDER BY value)::numeric, 2)::float8 AS median_latest_value
-    FROM st)
-    SELECT patients, (patients < ${DP_MIN_N}) AS low_n, ${hide('tested')} AS tested, ${hide('controlled')} AS controlled, ${hide('uncontrolled')} AS uncontrolled, ${hide('untested')} AS untested,
-      ${hide(k.pct('controlled', 'tested'))} AS controlled_pct_of_tested, ${hide(k.pct('untested', 'patients'))} AS untested_pct, ${hide('median_latest_value')} AS median_latest_value
-    FROM ag`;
-  };
-  // ---- Chunk 1.7a: trend (V4 / V5, profiles with a readable control measure). Per patient with the disease: the FIRST and the LATEST result inside the look-back window before the
-  // as-of date; change = latest - first, needs 2 or more results. distance to target: below = value - goal, above = goal - value, range = distance from the middle of the range;
-  // improved = the latest result is closer to target than the first. One row: how many patients have a result / a change, the spread of the latest value (min, quartiles, median, max),
-  // mean and median change, and improved / worsened / unchanged. Low-count rule: fewer than 5 patients -> low_n = true; for a profile marked sensitive those figures are blanked (NULL).
-  const DP_MIN_N = 5;
-  const dpDist = r => ({ below: `(v - ${r.goal}::numeric)`, above: `(${r.goal}::numeric - v)`, range: `abs(v - ${(r.goal + r.goalHigh) / 2}::numeric)` })[r.direction];
-  const dpTrend = (c, q, g) => {
-    const r = g.control, code = q.add(g.code, 'text'), ctl = q.add(r.code, 'text'), hide = x => g.sensitive ? `CASE WHEN n_result < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    w AS (SELECT o.patient_id, o.value AS v, o.effective_date AS d FROM ob o JOIN dc ON dc.patient_id = o.patient_id
-          WHERE o.code = ${ctl} AND o.value IS NOT NULL AND o.effective_date < (SELECT d FROM ref) + 1 AND o.effective_date > (SELECT d FROM ref) - ${Math.round(r.lookbackDays)}::int),
-    f AS (SELECT DISTINCT ON (patient_id) patient_id, v AS first_v, d AS first_d FROM w ORDER BY patient_id, d ASC),
-    l AS (SELECT DISTINCT ON (patient_id) patient_id, v AS last_v, d AS last_d FROM w ORDER BY patient_id, d DESC),
-    t AS (SELECT l.patient_id, l.last_v, CASE WHEN f.first_d < l.last_d THEN l.last_v - f.first_v END AS change,
-            CASE WHEN f.first_d < l.last_d THEN (SELECT ${dpDist(r).replace(/\bv\b/g, 'l.last_v')} - (SELECT ${dpDist(r).replace(/\bv\b/g, 'f.first_v')}) ) END AS dist_change
-          FROM l JOIN f ON f.patient_id = l.patient_id),
-    a AS (SELECT (SELECT count(*) FROM dc)::int AS patients, count(*)::int AS n_result, count(change)::int AS n_change,
-            min(last_v) AS mn, percentile_cont(0.25) WITHIN GROUP (ORDER BY last_v) AS q1, percentile_cont(0.5) WITHIN GROUP (ORDER BY last_v) AS med, percentile_cont(0.75) WITHIN GROUP (ORDER BY last_v) AS q3, max(last_v) AS mx,
-            avg(change) AS mean_ch, percentile_cont(0.5) WITHIN GROUP (ORDER BY change) AS med_ch,
-            count(*) FILTER (WHERE dist_change < 0)::int AS improved, count(*) FILTER (WHERE dist_change > 0)::int AS worsened, count(*) FILTER (WHERE dist_change = 0)::int AS unchanged FROM t)
-    SELECT patients, n_result AS patients_with_result, n_change AS patients_with_change, (n_result < ${DP_MIN_N}) AS low_n,
-      ${hide('round(mn::numeric, 2)::float8')} AS min_latest, ${hide('round(q1::numeric, 2)::float8')} AS p25_latest, ${hide('round(med::numeric, 2)::float8')} AS median_latest,
-      ${hide('round(q3::numeric, 2)::float8')} AS p75_latest, ${hide('round(mx::numeric, 2)::float8')} AS max_latest,
-      ${hide('round(mean_ch::numeric, 2)::float8')} AS mean_change, ${hide('round(med_ch::numeric, 2)::float8')} AS median_change,
-      ${hide('improved')} AS improved, ${hide('worsened')} AS worsened, ${hide('unchanged')} AS unchanged
-    FROM a`;
-  };
-  // ---- Chunk 1.7b: treatment (V4 / V5, profiles with at least one treatment line that has a drug code). One row per treatment line of the profile plus a first row for "any line".
-  // Fills = the dated prescriptions of the line's drug up to the as-of date. One fill is taken to cover `supply` days (the profile's renewal interval, 7-180; same PDC proxy as the
-  // medication adherence analytic): overlapping fills are merged, covered_days = days inside the merged intervals from the first fill to the as-of date, pdc = covered / span (max 1).
-  // Per row: patients_on_drug (and share of the cohort), days_to_first_drug = first fill minus the patient's first dated diagnosis (median; patients without a diagnosis date are not in it;
-  // started_before_diagnosis = first fill earlier than that date), evaluable = patients whose span from the first fill is at least one supply, mean_pdc and adherent_pct (pdc 0.8 or more).
-  // Low-count rule: fewer than 5 patients on the drug -> low_n = true; for a sensitive profile every figure except the patient count is blanked (NULL).
-  // Drug codes, display text and the diagnosis code go in as parameters; line and supply are checked whole numbers from diseases.js.
-  const dpTreatment = (c, q, g) => {
-    const dx = q.add(g.code, 'text'), vals = g.treatment.map(t => `(${q.add(t.code, 'text')}, ${q.add(t.display, 'text')}, ${t.line | 0}, ${t.supply | 0})`).join(', ');
-    const hide = x => g.sensitive ? `CASE WHEN patients_on_drug < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    return `${c.with},
-    dcx AS (SELECT patient_id, min(onset_date)::date AS onset FROM dx WHERE code = ${dx} GROUP BY patient_id),
-    lines(code, display, line, supply) AS (VALUES ${vals}),
-    f AS (SELECT DISTINCT r.patient_id, r.code, r.prescribed_date::date AS d FROM rx r JOIN dcx ON dcx.patient_id = r.patient_id
-          WHERE r.code IN (SELECT code FROM lines) AND r.prescribed_date IS NOT NULL AND r.prescribed_date::date <= (SELECT d FROM ref)),
-    g AS (SELECT f.patient_id, f.code, f.d, f.d + l.supply AS e,
-            max(f.d + l.supply) OVER (PARTITION BY f.patient_id, f.code ORDER BY f.d ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_end
-          FROM f JOIN lines l ON l.code = f.code),
-    isl AS (SELECT patient_id, code, d, e, sum(CASE WHEN prev_end IS NULL OR d > prev_end THEN 1 ELSE 0 END) OVER (PARTITION BY patient_id, code ORDER BY d) AS island FROM g),
-    iv AS (SELECT patient_id, code, island, min(d) AS s, LEAST(max(e), (SELECT d FROM ref)) AS e FROM isl GROUP BY patient_id, code, island),
-    pd AS (SELECT patient_id, code, min(s) AS first_fill, sum(e - s)::int AS covered_days, ((SELECT d FROM ref) - min(s))::int AS span_days FROM iv GROUP BY patient_id, code),
-    ts AS (SELECT l.line, l.code, l.display, l.supply, pd.patient_id, pd.first_fill, pd.covered_days, pd.span_days, dcx.onset
-           FROM lines l JOIN pd ON pd.code = l.code JOIN dcx ON dcx.patient_id = pd.patient_id),
-    tot AS (SELECT count(*)::int AS n FROM dcx),
-    tr AS (
-      SELECT line, code, display, supply, count(*)::int AS patients_on_drug,
-        count(*) FILTER (WHERE onset IS NOT NULL)::int AS with_dx_date,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY (first_fill - onset)) AS med_days,
-        count(*) FILTER (WHERE first_fill < onset)::int AS before_dx,
-        count(*) FILTER (WHERE span_days >= supply)::int AS evaluable,
-        avg(LEAST(covered_days::numeric / NULLIF(span_days, 0), 1)) FILTER (WHERE span_days >= supply) AS mean_pdc,
-        count(*) FILTER (WHERE span_days >= supply AND LEAST(covered_days::numeric / NULLIF(span_days, 0), 1) >= 0.8) AS adherent
-      FROM ts GROUP BY line, code, display, supply
-      UNION ALL
-      SELECT NULL, NULL, 'Any treatment line', NULL, count(*)::int, count(*) FILTER (WHERE onset IS NOT NULL)::int,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY (ff - onset)), count(*) FILTER (WHERE ff < onset)::int, NULL, NULL, NULL
-      FROM (SELECT patient_id, onset, min(first_fill) AS ff FROM ts GROUP BY patient_id, onset) a)
-    SELECT line, code, display, supply AS supply_days, patients_on_drug, ${k.pct('patients_on_drug', '(SELECT n FROM tot)')} AS pct_of_cohort, (patients_on_drug < ${DP_MIN_N}) AS low_n,
-      ${hide('with_dx_date')} AS with_dx_date, ${hide('round(med_days::numeric, 1)::float8')} AS median_days_to_first_drug, ${hide('before_dx')} AS started_before_diagnosis,
-      ${hide('evaluable')} AS evaluable, ${hide('round(mean_pdc::numeric, 3)::float8')} AS mean_pdc,
-      ${hide(k.pct('adherent', 'evaluable'))} AS adherent_pct
-    FROM tr ORDER BY (line IS NOT NULL), line, code`;
-  };
-  // ---- Chunk 1.7c: comorbidity (code modes: V2 / V3 and V4 / V5; V1 has no codes). Two sections over the cohort (patients with the diagnosis code):
-  // comorbidity = the 10 most common OTHER diagnosis codes in the cohort (patients, share of the cohort); comorbidity_burden = how many OTHER chronic conditions (the reviewed chronic
-  // list of the run, without the disease itself) each patient has: 0, 1, 2, 3+. Counted by diagnosis code, no dates needed. Low-count rule: fewer than 5 patients -> low_n = true;
-  // for a sensitive profile the codes with fewer than 5 patients are left out and the small bands are blanked (NULL). Codes go in as parameters.
-  const dpComorb = (c, q, g) => {
-    const code = q.add(g.code, 'text');
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    tot AS (SELECT count(*)::int AS n FROM dc)
-    SELECT x.code, COALESCE(max(x.j->'code'->'coding'->0->>'display'), max(x.j->'code'->>'text')) AS display, count(DISTINCT x.patient_id)::int AS patients,
-      ${k.pct('count(DISTINCT x.patient_id)', '(SELECT n FROM tot)')} AS pct_of_cohort, (count(DISTINCT x.patient_id) < ${DP_MIN_N}) AS low_n
-    FROM dx x JOIN dc ON dc.patient_id = x.patient_id
-    WHERE x.code IS NOT NULL AND x.code <> ${code}
-    GROUP BY x.code${g.sensitive ? ` HAVING count(DISTINCT x.patient_id) >= ${DP_MIN_N}` : ''}
-    ORDER BY patients DESC, x.code LIMIT 10`;
-  };
-  const dpBurden = (c, q, g) => {
-    const code = q.add(g.code, 'text'), ch = q.add(chronicOf(c).filter(x => x !== g.code), 'text[]'), hide = x => g.sensitive ? `CASE WHEN patients < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    tot AS (SELECT count(*)::int AS n FROM dc),
-    cn AS (SELECT dc.patient_id, (SELECT count(DISTINCT code) FROM dx WHERE dx.patient_id = dc.patient_id AND code = ANY(${ch})) AS n FROM dc),
-    bd AS (SELECT CASE WHEN n >= 3 THEN '3+' ELSE n::text END AS band, count(*)::int AS patients FROM cn GROUP BY 1),
-    r AS (SELECT b.band, COALESCE(bd.patients, 0)::int AS patients FROM (VALUES ('0', 0), ('1', 1), ('2', 2), ('3+', 3)) b(band, o) LEFT JOIN bd ON bd.band = b.band)
-    SELECT band AS other_chronic_conditions, ${hide('patients')} AS patients, ${hide(k.pct('patients', '(SELECT n FROM tot)'))} AS pct_of_cohort, (patients < ${DP_MIN_N}) AS low_n
-    FROM r ORDER BY band`;
-  };
-  // ---- Chunk 1.8a: care_gaps (V4 / V5, profiles with at least one monitoring item that has a code and an interval). One row per monitoring item of the profile.
-  // Each cohort patient is checked against each item: the last dated event up to the as-of date (test = observation with that code, screening = procedure, vaccine = immunization) must be
-  // no older than the interval for the patient's control group: the uncontrolled interval when the profile's control measure says the patient is uncontrolled (latest result in its look-back
-  // window, same rule as control_status), the controlled interval for everyone else (controlled, untested, or a profile without a control measure). Overdue = never recorded, or the last
-  // event is more than the interval before the as-of date. Per row: patients, up_to_date, overdue, never_recorded, overdue_pct, median days since the last event (patients with one).
-  // Low-count rule: fewer than 5 patients in the cohort -> low_n = true; for a sensitive profile every figure except the patient count is blanked (NULL).
-  // Codes and display text go in as parameters; kind comes from a fixed list and the intervals are whole numbers from diseases.js (1-3650).
-  const dpCareGaps = (c, q, g) => {
-    const code = q.add(g.code, 'text'), r = g.control;
-    const vals = g.monitoring.map((m, i) => `(${i}, '${m.kind}', ${q.add(m.code, 'text')}, ${q.add(m.display, 'text')}, ${m.intervalControlledDays | 0}, ${m.intervalUncontrolledDays | 0})`).join(', ');
-    const hide = x => g.sensitive ? `CASE WHEN patients < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    const cs = r
-      ? `lastv AS (SELECT DISTINCT ON (patient_id) patient_id, value FROM ob
-              WHERE code = ${q.add(r.code, 'text')} AND value IS NOT NULL AND effective_date < (SELECT d FROM ref) + 1 AND effective_date > (SELECT d FROM ref) - ${Math.round(r.lookbackDays)}::int
-              ORDER BY patient_id, effective_date DESC),
-    cs AS (SELECT dc.patient_id, (l.value IS NOT NULL AND NOT (${dpControlCond(r)})) AS unc FROM dc LEFT JOIN lastv l ON l.patient_id = dc.patient_id)`
-      : `cs AS (SELECT patient_id, false AS unc FROM dc)`;
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    ${cs},
-    mon(ord, kind, code, display, ic, iu) AS (VALUES ${vals}),
-    ev AS (SELECT patient_id, 'test' AS kind, code, effective_date::date AS d FROM ob WHERE code IN (SELECT code FROM mon WHERE kind = 'test') AND effective_date IS NOT NULL
-           UNION ALL SELECT patient_id, 'screening', code, performed_date::date FROM pr WHERE code IN (SELECT code FROM mon WHERE kind = 'screening') AND performed_date IS NOT NULL
-           UNION ALL SELECT patient_id, 'vaccine', code, occurrence_date::date FROM im WHERE code IN (SELECT code FROM mon WHERE kind = 'vaccine') AND occurrence_date IS NOT NULL),
-    la AS (SELECT patient_id, kind, code, max(d) AS last_d FROM ev WHERE d <= (SELECT d FROM ref) GROUP BY patient_id, kind, code),
-    pm AS (SELECT m.ord, m.kind, m.code, m.display, m.ic, m.iu, la.last_d, (SELECT d FROM ref) - la.last_d AS since, CASE WHEN cs.unc THEN m.iu ELSE m.ic END AS iv
-           FROM dc JOIN cs ON cs.patient_id = dc.patient_id CROSS JOIN mon m LEFT JOIN la ON la.patient_id = dc.patient_id AND la.kind = m.kind AND la.code = m.code),
-    t AS (SELECT ord, kind, code, display, ic AS interval_controlled_days, iu AS interval_uncontrolled_days, count(*)::int AS patients,
-            count(*) FILTER (WHERE last_d IS NULL)::int AS never_recorded,
-            count(*) FILTER (WHERE last_d IS NOT NULL AND since > iv)::int AS stale,
-            round(percentile_cont(0.5) WITHIN GROUP (ORDER BY since)::numeric, 1)::float8 AS med_since
-          FROM pm GROUP BY ord, kind, code, display, ic, iu)
-    SELECT kind, code, display, interval_controlled_days, interval_uncontrolled_days, patients, (patients < ${DP_MIN_N}) AS low_n,
-      ${hide('patients - never_recorded - stale')} AS up_to_date, ${hide('never_recorded + stale')} AS overdue, ${hide('never_recorded')} AS never_recorded,
-      ${hide(k.pct('never_recorded + stale', 'patients'))} AS overdue_pct, ${hide('med_since')} AS median_days_since_last
-    FROM t ORDER BY ord`;
-  };
-  // ---- Chunk 1.8b: utilisation (V4 / V5). Emergency visits, inpatient admissions and 30-day readmissions of the cohort in the last 365 days before the as-of date, from the encounters
-  // (class EMER = emergency visit, IMP = inpatient admission, by start date). Readmission = an admission that starts 0 to 30 days after the end date of the same patient's previous
-  // inpatient encounter (an encounter without an end date cannot start a readmission). Rows: all patients, and - when the profile has a readable control measure - each control group
-  // (controlled / uncontrolled / untested, same rule as control_status). Per row: patients, ED visits (and per 100 patients, and patients with one), admissions (same), readmissions and
-  // their share of admissions. Low-count rule: fewer than 5 patients in the row -> low_n = true; for a sensitive profile the figures are blanked (NULL).
-  const dpUtil = (c, q, g) => {
-    const code = q.add(g.code, 'text'), r = g.control, W = col => `${col}::date <= (SELECT d FROM ref) AND ${col}::date > (SELECT d FROM ref) - 365`;
-    const hide = x => g.sensitive ? `CASE WHEN patients < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    const st = r
-      ? `lastv AS (SELECT DISTINCT ON (patient_id) patient_id, value FROM ob
-              WHERE code = ${q.add(r.code, 'text')} AND value IS NOT NULL AND effective_date < (SELECT d FROM ref) + 1 AND effective_date > (SELECT d FROM ref) - ${Math.round(r.lookbackDays)}::int
-              ORDER BY patient_id, effective_date DESC),
-    st AS (SELECT dc.patient_id, CASE WHEN l.value IS NULL THEN 'untested' WHEN ${dpControlCond(r)} THEN 'controlled' ELSE 'uncontrolled' END AS grp FROM dc LEFT JOIN lastv l ON l.patient_id = dc.patient_id)`
-      : `st AS (SELECT patient_id, 'all' AS grp FROM dc)`;
-    const agg = (name, where) => `SELECT ${name} AS grp, ${name === "'all'" ? 0 : 1} AS o, count(*)::int AS patients, sum(ed)::int AS ed, count(*) FILTER (WHERE ed > 0)::int AS p_ed, sum(adm)::int AS adm,
-        count(*) FILTER (WHERE adm > 0)::int AS p_adm, sum(readm)::int AS readm FROM pe ${where} ${name === "'all'" ? '' : 'GROUP BY grp'}`;
-    return `${c.with},
-    dc AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${code}),
-    ${st},
-    adm AS (SELECT patient_id, start_date::date AS s, lag(end_date::date) OVER (PARTITION BY patient_id ORDER BY start_date) AS prev_end FROM en
-            WHERE cls = 'IMP' AND start_date IS NOT NULL AND start_date::date <= (SELECT d FROM ref) AND patient_id IN (SELECT patient_id FROM dc)),
-    pe AS (SELECT st.patient_id, st.grp,
-             (SELECT count(*) FROM en WHERE en.patient_id = st.patient_id AND en.cls = 'EMER' AND en.start_date IS NOT NULL AND ${W('en.start_date')})::int AS ed,
-             (SELECT count(*) FROM adm a WHERE a.patient_id = st.patient_id AND ${W('a.s')})::int AS adm,
-             (SELECT count(*) FROM adm a WHERE a.patient_id = st.patient_id AND ${W('a.s')} AND a.prev_end IS NOT NULL AND a.s - a.prev_end BETWEEN 0 AND 30)::int AS readm
-           FROM st),
-    u AS (${agg("'all'", '')}${r ? ` UNION ALL ${agg('grp', '')}` : ''})
-    SELECT grp AS patient_group, patients, (patients < ${DP_MIN_N}) AS low_n,
-      ${hide('ed')} AS ed_visits, ${hide('p_ed')} AS patients_with_ed, ${hide(`round(100.0 * ed / NULLIF(patients, 0), 1)::float8`)} AS ed_visits_per_100,
-      ${hide('adm')} AS admissions, ${hide('p_adm')} AS patients_admitted, ${hide(`round(100.0 * adm / NULLIF(patients, 0), 1)::float8`)} AS admissions_per_100,
-      ${hide('readm')} AS readmissions_30d, ${hide(k.pct('readm', 'adm'))} AS readmission_pct
-    FROM u ORDER BY o, grp`;
-  };
-  // ---- Chunk 1.8c: data_quality (V2 to V5, by diagnosis code). How the disease is recorded, so a reader knows what the other sections stand on. One long table, one row per measure:
-  // patients with the code; (V3 / V5, enrichment on for diagnoses) of them coded in the source data, and reached only through approved enrichment (the gain of V3 over V2, V5 over V4);
-  // (V4 / V5) with and without an onset date; patients whose diagnosis TEXT names the disease but who have no record with the code (what enrichment could still gain); and the same
-  // in diagnosis records: with the code, (enrichment) by source / by enrichment, and naming the disease in text with no code at all. Text = the profile's search words in the diagnosis text,
-  // simple negation ignored (as in V1); a record counts as "no code" when its code is empty AFTER enrichment. Columns: measure, unit, n, low_n, pct, basis (what pct is a share of).
-  // Low-count rule: fewer than 5 -> low_n = true. For a sensitive profile n and pct are blanked (NULL) when fewer than 5, and the members of a split that adds up to a visible total
-  // (source / enrichment, with / without onset date, record sources) are blanked together when any member is small, so a hidden number cannot be worked out by subtraction.
-  const dpQuality = (mode, c, q, g) => {
-    const enr = ((c.enrich && c.enrich.domains) || []).includes('dx'), timed = mode === 'v4';
-    const code = q.add(g.code, 'text');
-    const row = (o, gid, measure, unit, n, basis, den) => `SELECT ${o} AS o, ${gid} AS gid, '${measure}' AS measure, '${unit}' AS unit, (${n})::int AS n, ${basis ? `'${basis}'` : 'NULL::text'} AS basis, ${den ? `(${den})::int` : 'NULL::int'} AS den`;
-    const parts = [
-      row(1, 1, 'Patients with the diagnosis code', 'patients', 'SELECT count(*) FROM pp', 'patients with the code', 'SELECT count(*) FROM pp'),
-      ...(enr ? [
-        row(2, 2, 'of them: the code is in the source data', 'patients', 'SELECT count(*) FILTER (WHERE has_src) FROM pp', 'patients with the code', 'SELECT count(*) FROM pp'),
-        row(3, 2, 'of them: reached only through approved enrichment (gain over the source codes)', 'patients', 'SELECT count(*) FILTER (WHERE NOT has_src) FROM pp', 'patients with the code', 'SELECT count(*) FROM pp')] : []),
-      ...(timed ? [
-        row(4, 3, 'of them: with an onset date', 'patients', 'SELECT count(*) FILTER (WHERE dated) FROM pp', 'patients with the code', 'SELECT count(*) FROM pp'),
-        row(5, 3, 'of them: without an onset date', 'patients', 'SELECT count(*) FILTER (WHERE NOT dated) FROM pp', 'patients with the code', 'SELECT count(*) FROM pp')] : []),
-      row(6, 4, 'Patients whose diagnosis text names the disease but who have no record with the code', 'patients', 'SELECT count(DISTINCT patient_id) FROM tx WHERE patient_id NOT IN (SELECT patient_id FROM pp)', null, null),
-      row(7, 5, 'Diagnosis records with the code', 'records', 'SELECT count(*) FROM cr', 'records with the code', 'SELECT count(*) FROM cr'),
-      ...(enr ? [
-        row(8, 6, 'of them: the code is in the source data', 'records', `SELECT count(*) FILTER (WHERE code_source = 'source') FROM cr`, 'records with the code', 'SELECT count(*) FROM cr'),
-        row(9, 6, 'of them: coded by approved enrichment', 'records', `SELECT count(*) FILTER (WHERE code_source = 'enriched') FROM cr`, 'records with the code', 'SELECT count(*) FROM cr')] : []),
-      row(10, 7, 'Diagnosis records naming the disease in text, with no code', 'records', 'SELECT count(*) FROM tx', null, null)
-    ];
-    const hide = x => g.sensitive ? `CASE WHEN min(n) OVER (PARTITION BY gid) < ${DP_MIN_N} THEN NULL ELSE ${x} END` : x;
-    return `${c.with},
-    ${k.conceptCte(q, [{ key: g.key, label: g.label, terms: g.terms }])},
-    cr AS (SELECT patient_id, onset_date, ${enr ? 'code_source' : 'NULL::text AS code_source'} FROM dx WHERE code = ${code}),
-    pp AS (SELECT patient_id, ${enr ? `COALESCE(bool_or(code_source = 'source'), false)` : 'true'} AS has_src, COALESCE(bool_or(onset_date IS NOT NULL), false) AS dated FROM cr GROUP BY patient_id),
-    tx AS (SELECT t.patient_id FROM (SELECT patient_id, code, ${TXT.dx} AS txt FROM dx) t JOIN concepts cn ON t.txt ~* cn.pos AND t.txt !~* cn.neg WHERE t.code IS NULL OR btrim(t.code) = ''),
-    u AS (${parts.join('\n      UNION ALL ')})
-    SELECT measure, unit, ${hide('n')} AS n, (n < ${DP_MIN_N}) AS low_n, ${hide(k.pct('n', 'den'))} AS pct, basis FROM u ORDER BY o`;
-  };
-  const dpRuleText = r => ({ below: `below ${r.goal}`, above: `above ${r.goal}`, range: `from ${r.goal} to ${r.goalHigh}` })[r.direction] + (r.unit ? ' ' + r.unit : '');
-  const dpSections = (mode, a, c) => { const g = dpParse(a); return [
-    S('cohort', `Cohort: patients with ${g.label}, by age band, sex${mode === 'v4' ? ', onset date' : ''} and batch (age at the as-of date; ${mode === 'v1' ? 'found by text' : 'found by diagnosis code ' + g.code})`, q => dpCohort(mode, c, q, g))]
-    .concat(mode === 'v4' ? [S('incidence_prevalence', `Incidence and prevalence: new cases per year of ${g.label} (first dated diagnosis), running total, and both as a share of all patients in scope; patients without an onset date are not counted`, q => dpIncidence(c, q, g))] : [])
-    .concat(mode === 'v4' && g.control ? [S('trend', `Trend: latest ${g.control.display} per patient (first and latest result in the last ${g.control.lookbackDays} days; change = latest - first, needs 2 results; improved = latest closer to the goal than first; fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', figures hidden for this sensitive disease' : ''})`, q => dpTrend(c, q, g))] : [])
-    .concat(mode === 'v4' && g.control ? [S('control_status', `Control status: latest ${g.control.display} in the last ${g.control.lookbackDays} days before the as-of date; controlled when ${dpRuleText(g.control)}; no result in that window = untested`, q => dpControl(c, q, g))] : [])
-    .concat(mode === 'v4' && g.treatment.length ? [S('treatment', `Treatment: use of each treatment line of ${g.label}, days from the first dated diagnosis to the first fill, and adherence (days covered by fills, one fill = the line's renewal interval; fills merged; pdc = covered / span; adherent = pdc 0.8 or more); fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', figures hidden for this sensitive disease' : ''}`, q => dpTreatment(c, q, g))] : [])
-    .concat(mode === 'v4' && g.monitoring.length ? [S('care_gaps', `Care gaps: for each monitoring item of ${g.label} (test, screening, vaccine), patients up to date and overdue (never recorded, or last event older than the interval: the uncontrolled interval for uncontrolled patients, the controlled interval for everyone else); fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', figures hidden for this sensitive disease' : ''}`, q => dpCareGaps(c, q, g))] : [])
-    .concat(mode === 'v4' ? [S('utilisation', `Utilisation: emergency visits, admissions and 30-day readmissions of patients with ${g.label} in the last 365 days before the as-of date${g.control ? ', all patients and by control group' : ''}; readmission = an admission 0 to 30 days after the previous inpatient encounter ended; fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', figures hidden for this sensitive disease' : ''}`, q => dpUtil(c, q, g))] : [])
-    .concat(mode === 'v3' || mode === 'v4' ? [S('comorbidity', `Comorbidity: the 10 most common other diagnosis codes among patients with ${g.label} (share of the cohort; fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', such codes left out for this sensitive disease' : ''})`, q => dpComorb(c, q, g)),
-      S('comorbidity_burden', `Comorbidity burden: patients with ${g.label} by number of other chronic conditions (0, 1, 2, 3+; reviewed chronic list, by diagnosis code; fewer than ${DP_MIN_N} patients = low_n${g.sensitive ? ', hidden for this sensitive disease' : ''})`, q => dpBurden(c, q, g))] : [])
-    .concat(mode === 'v3' || mode === 'v4' ? [S('data_quality', `Data quality: how ${g.label} is recorded: patients and diagnosis records with the code${mode === 'v4' ? ', with and without an onset date' : ''}, the share coded in the source data and the share reached only through approved enrichment (when enrichment is on for diagnoses), and patients / records where the diagnosis text names the disease but there is no code; fewer than ${DP_MIN_N} = low_n${g.sensitive ? ', figures hidden for this sensitive disease' : ''}`, q => dpQuality(mode, c, q, g))] : []); };
-  def({
-    id: 'disease_profile', category: 'Disease modules', title: 'Disease profile (generic sections)',
-    // Chunk 3.2a: the section names with the modes that offer them (modes = what the user picks; V2 runs the V3 function, V5 the V4 function) and what the profile must have for the section to exist.
-    sections: [{ name: 'cohort', modes: ['v1', 'v2', 'v3', 'v4', 'v5'] }, { name: 'incidence_prevalence', modes: ['v4', 'v5'] }, { name: 'trend', modes: ['v4', 'v5'], needs: 'control' },
-      { name: 'control_status', modes: ['v4', 'v5'], needs: 'control' }, { name: 'treatment', modes: ['v4', 'v5'], needs: 'treatment' }, { name: 'care_gaps', modes: ['v4', 'v5'], needs: 'monitoring' },
-      { name: 'utilisation', modes: ['v4', 'v5'] }, { name: 'comorbidity', modes: ['v2', 'v3', 'v4', 'v5'] }, { name: 'comorbidity_burden', modes: ['v2', 'v3', 'v4', 'v5'] }, { name: 'data_quality', modes: ['v2', 'v3', 'v4', 'v5'] }],
-    description: 'Generic sections for any disease profile switched on in the Diseases tab; the Disease module (diabetes, hypertension) keeps its own control-measure sections. Section cohort: the patients with the disease, counted by age band (age at the as-of date), sex and batch, with their share of the cohort. V1 finds them by the profile\'s search words in diagnosis and encounter text (simple negation such as "no history of" is ignored), V2 by the diagnosis code, V3 by the code plus approved enrichment codes, V4 like V2 with an extra count of patients who have an onset date (the time-based sections need one), V5 like V4 with enrichment. A patient in several batches is counted once in the totals and once in each batch. V4 and V5 add two sections: incidence_prevalence (new cases per year from the first dated diagnosis, running total, share of all patients in scope) and, for profiles with a lab or vital control measure and a numeric goal, control_status (controlled, uncontrolled and untested by the latest result in the profile\'s look-back window against its goal: below, above or range). Section trend (V4 / V5, same profiles as control_status): spread of the latest result and the change from the first to the latest result in the look-back window, with improved / worsened / unchanged against the goal; counts under 5 are flagged and, for a sensitive disease, hidden. Section treatment (V4 / V5, profiles with treatment lines): per treatment line the patients on the drug, median days from the first dated diagnosis to the first fill, and adherence as days covered by fills (one fill covers the line\'s renewal interval); small counts are flagged and, for a sensitive disease, hidden. Sections comorbidity and comorbidity_burden (V2 to V5, by diagnosis code): the 10 most common other diagnoses in the cohort, and the cohort by number of other chronic conditions (0, 1, 2, 3+); small counts are flagged and, for a sensitive disease, left out or hidden. Section care_gaps (V4 / V5, profiles with monitoring items): per monitoring test, screening or vaccine, the patients up to date and overdue against the profile\'s intervals (shorter for uncontrolled patients); small counts are flagged and, for a sensitive disease, hidden. Section utilisation (V4 / V5): emergency visits, admissions and 30-day readmissions in the last 365 days, for all patients and by control group; small counts are flagged and, for a sensitive disease, hidden. Section data_quality (V2 to V5): how the disease is recorded, patients and diagnosis records with the code, (V3 / V5) the share coded in the source data and the share reached only through approved enrichment (the gain of V3 over V2, V5 over V4), (V4 / V5) with and without an onset date, and the patients and records whose diagnosis text names the disease but have no code at all; small counts are flagged and, for a sensitive disease, hidden. Low-count rule on every section: fewer than 5 patients (or years, records) = low_n; for a sensitive disease the figure is blanked, and so are the other members of a split that would give it back by subtraction. Aggregates only, no patient ids. Synthetic data: the cohort shows what the generator was told to produce, not real prevalence.',
-    params: [{ name: 'disease', label: 'Disease (profiles switched on in the Diseases tab)', type: 'select', options: () => [...PROFILES.values()].map(g => ({ value: g.key, label: g.label })) }],
-    v1: (a, c) => dpSections('v1', a, c), v3: (a, c) => dpSections('v3', a, c), v4: (a, c) => dpSections('v4', a, c)
-  });
-
   // Step D.7d: the V1 search terms the engine learns for ONE data code that terminology.js does not know.
   // Returns { sql, params }: rows `term` (display strings first, then the most specific phrases, at most 8). `withSql` is ctx.with of the run.
   // Fixed rules: 5+ records of the code, phrases in 20%+ of them, specificity 3+, strict single-word rule. Only the code goes in as a parameter.
@@ -2531,7 +2200,7 @@ module.exports = function extend(k) {
       SELECT term FROM sel ORDER BY grp, rn`;
     return { sql, params: q.params };
   };
-  return { learnedTermsQuery, labFlagCtes, eventStreamCte, setDiseases, diseaseEntry: key => PROFILES.get(String(key)) || null };
+  return { learnedTermsQuery, labFlagCtes, eventStreamCte };
 };
 return module.exports;
 })();
@@ -3360,7 +3029,6 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
   async function run({ id, mode = 'v2', args = {}, ...scopeOpts }) {
     const a = CATALOG.find(x => x.id === id);
     if (!a) throw httpErr(404, `Unknown analytic '${id}'`);
-    if (a.id === 'disease_module' || a.id === 'disease_profile') await refreshDiseases();
     if (!MODES.includes(mode)) throw httpErr(400, `Mode '${mode}' is not supported (use ${MODES.join(', ')})`);
     if (NOT_READY.has(mode)) throw httpErr(400, badMode(mode));
     if (!modesOf(a).includes(mode)) throw httpErr(400, `'${a.title}' has no ${mode.toUpperCase()} version`);
@@ -3406,7 +3074,6 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
   // Step D.2c: params flagged `fromData: 'dx'` get their options from the scope's data ('(all)' first); every other param is unchanged.
   // A failure to read the inventory never breaks the catalog (conceptOptions falls back to the dictionary list).
   async function catalog(scopeOpts = {}) {
-    await refreshDiseases();
     let dx = null;
     const optsFor = async p => {
       if (p.fromData !== 'dx') return typeof p.options === 'function' ? p.options() : p.options;
@@ -3526,57 +3193,10 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
     };
   }
 
-  // Chunk 0.3: the Disease module's list is read from disease_profiles (enabled rows) at most every 3 seconds and right after a profile write (invalidateDiseases).
-  // A table that is missing or not readable keeps the list already in memory (the built-in profiles at start), so the module never breaks because of it.
-  let dzAt = 0;
-  const invalidateDiseases = () => { dzAt = 0; };
-  async function refreshDiseases() {
-    if (!EXT.setDiseases || Date.now() - dzAt < 3000) return;
-    dzAt = Date.now();
-    try {
-      const r = await pool.query('SELECT profile, enabled FROM disease_profiles');
-      if (r.rows.length) EXT.setDiseases(r.rows.filter(x => x.enabled && x.profile).map(x => x.profile));
-    } catch (e) { /* keep the current list */ }
-  }
-  return { run, demographics, catalog, concepts, conceptOptions, clearConceptCache, getOverrides, resolveScope, enrichmentCoverage, CATALOG, invalidateDiseases, refreshDiseases };
+  return { run, demographics, catalog, concepts, conceptOptions, clearConceptCache, getOverrides, resolveScope, enrichmentCoverage, CATALOG };
 }
 
 // ---------------------------------------------------------------- express wiring
-// ---- Chunk 3.2a: department bundles. A department profile (diseases.js, table department_profiles) lists catalog items and sections; these two functions say what each item means today.
-// catalogInfo(id): what diseases.js needs to check a bundle item at save time: { id, title, category, modes, sections } (sections = null when the analytic does not declare them, so any name passes).
-const catalogInfo = id => { const a = CATALOG.find(x => x.id === id); return a ? { id: a.id, title: a.title, category: a.category, modes: modesOf(a), sections: Array.isArray(a.sections) ? a.sections.map(x => ({ ...x })) : null } : null; };
-// bundleReport(profile, { diseaseRows: Map key -> { label, enabled }, entryOf(key) -> profile entry the generic sections can use or null, optionsOf(analytic) -> allowed disease values or null }, mode?)
-// -> the resolved bundle. Nothing here runs an analytic. With `mode`, items fixed to another mode are left out and sections not offered in that mode are marked.
-function bundleReport(profile, deps, mode) {
-  const p = profile || {}, items = (p.bundle && p.bundle.items) || [], keys = p.diseases || [], problems = [];
-  const diseases = keys.map(k => { const r = deps.diseaseRows.get(k); return { key: k, label: r ? r.label : k, found: !!r, enabled: !!(r && r.enabled) }; });
-  diseases.filter(d => !d.found).forEach(d => problems.push({ item: null, message: `disease "${d.key}" has no profile` }));
-  const out = items.filter(it => !mode || !it.mode || it.mode === mode).map((it, i) => {
-    const info = catalogInfo(it.analytic), at = it.analytic + (it.mode ? ' (' + it.mode + ')' : ''), own = [];
-    if (!info) { own.push(`analytic "${it.analytic}" is not in the catalog`); problems.push({ item: i, message: own[0] }); return { analytic: it.analytic, mode: it.mode || null, known: false, problems: own, sections: [], runs: [] }; }
-    const m = mode || it.mode || null;
-    if (it.mode && !info.modes.includes(it.mode)) own.push(`${info.title} has no ${it.mode.toUpperCase()} version`);
-    const meta = info.sections, names = it.sections && it.sections.length ? it.sections : meta ? meta.filter(x => !m || x.modes.includes(m)).map(x => x.name) : [];
-    const sections = names.map(n => {
-      const x = meta && meta.find(y => y.name === n);
-      if (!meta) return { name: n, status: 'unverified' };
-      if (!x) { own.push(`${info.title} has no section "${n}"`); return { name: n, status: 'unknown' }; }
-      if (m && !x.modes.includes(m)) return { name: n, status: 'not_in_mode', modes: x.modes };
-      return { name: n, status: 'ok', modes: x.modes, needs: x.needs || null };
-    });
-    const allowed = deps.optionsOf ? deps.optionsOf(it.analytic) : null;
-    const runs = allowed ? keys.filter(k => deps.diseaseRows.has(k)).map(k => {
-      const e = deps.entryOf ? deps.entryOf(k) : null, ready = allowed.includes(k);
-      const avail = sections.filter(x => x.status === 'ok').map(x => ({ name: x.name, available: !x.needs || !!(e && (x.needs === 'control' ? e.control : e[x.needs] && e[x.needs].length)),
-        reason: x.needs && !(e && (x.needs === 'control' ? e.control : e[x.needs] && e[x.needs].length)) ? `${k} has no ${x.needs === 'control' ? 'usable control measure' : x.needs === 'treatment' ? 'treatment line with a drug code' : 'monitoring item'}` : null }));
-      return { disease: k, label: (deps.diseaseRows.get(k) || {}).label || k, args: { disease: k }, ready, reason: ready ? null : 'the disease is switched off or has no diagnosis code', sections: avail };
-    }) : [];
-    own.forEach(msg => problems.push({ item: i, message: msg }));
-    return { analytic: it.analytic, title: info.title, category: info.category, mode: it.mode || null, modes: info.modes, known: true, problems: own, sections, runs };
-  });
-  return { diseases, items: out, problems, ok: !problems.length };
-}
-
 function register(app, pool, helpers = {}) {
   const readPool = helpers.readPool || pool;              // SELECT-only connection for cohort SQL and analytics (see db-readonly.sql)
   const engine = createEngine(readPool, helpers);
@@ -3585,26 +3205,6 @@ function register(app, pool, helpers = {}) {
   const scopeOf = b => ({ batchId: b.batchId, batchGroup: b.batchGroup, cohortId: b.cohortId, useCohort: true }); // analytics run on cohortId, else the most recently updated active cohort
 
   app.locals.clearConceptCache = engine.clearConceptCache; // server.js calls this after data-changing requests (Step D.2c)
-  app.locals.clearDiseaseCache = engine.invalidateDiseases; // diseases.js calls this after a profile write (chunk 0.3)
-  app.locals.catalogInfo = catalogInfo;                     // diseases.js checks department bundles against it (chunk 3.2a)
-  // Chunk 3.2a: GET /api/departments/:key/bundle[?mode=v1..v5] the department's bundle, resolved against the catalog and the diseases switched on (read-only connection, nothing is run).
-  app.get('/api/departments/:key/bundle', async (req, res) => {
-    try {
-      const key = String(req.params.key || '').toLowerCase(); if (!/^[a-z][a-z0-9_]{1,39}$/.test(key)) return res.status(400).json({ success: false, error: 'Invalid department key.' });
-      const mode = req.query.mode === undefined || req.query.mode === '' ? null : String(req.query.mode).toLowerCase();
-      if (mode && !MODES.includes(mode)) return res.status(400).json({ success: false, error: `Mode '${mode.slice(0, 20)}' is not supported (use ${MODES.join(', ')})` });
-      const row = (await readPool.query('SELECT key, profile, enabled FROM department_profiles WHERE key = $1', [key])).rows[0];
-      if (!row) return res.status(404).json({ success: false, error: `No department "${key}".` });
-      const prof = row.profile || {}, keys = Array.isArray(prof.diseases) ? prof.diseases.filter(k => typeof k === 'string').slice(0, 100) : [];
-      const dr = keys.length ? (await readPool.query('SELECT key, profile, enabled FROM disease_profiles WHERE key = ANY($1::text[])', [keys])).rows : [];
-      await engine.refreshDiseases();
-      const diseaseRows = new Map(dr.map(r => [r.key, { label: (r.profile && r.profile.label) || r.key, enabled: !!r.enabled }]));
-      const optionsOf = id => { const a = CATALOG.find(x => x.id === id), p = a && a.params.find(x => x.name === 'disease'); return p && typeof p.options === 'function' ? p.options().map(o => o.value) : null; };
-      const rep = bundleReport({ ...prof, diseases: keys }, { diseaseRows, entryOf: k => EXT.diseaseEntry(k), optionsOf }, mode);
-      res.json({ success: true, department: { key: row.key, label: prof.label || row.key, enabled: !!row.enabled, sensitive: !!prof.sensitive }, mode,
-        measureSet: prof.measureSet || [], scores: prof.scores || [], scopeFilters: prof.scopeFilters || {}, episodeModel: prof.episodeModel || {}, ...rep });
-    } catch (err) { fail(res, 'Department bundle', err); }
-  });
   app.get('/api/analytics/catalog', async (req, res) => {
     try {
       const q = req.query, one = v => (Array.isArray(v) ? v[0] : v);
@@ -3684,11 +3284,9 @@ function register(app, pool, helpers = {}) {
   __s.readiness(app, readPool, engine, { CATALOG, scopeOf, fail });                  // analytics readiness: POST /api/readiness/*
   require('./evidence').patientExplorer(app, readPool, engine, { fail });                              // patient data explorer: GET /api/explorer/patients, /api/explorer/patient
 
-  // plan chunk 1.11b: diseases = ['gout', ...] (those keys) or 'enabled' (every profile switched on) adds the disease profiles to the run; without it the run is what it always was
   app.post('/api/synthetic/generate', async (req, res) => {
-    try { const { count, seed, years, endDate, messy, inpatient, enrich, uncoded, diseases, edTimes, edTriage, decompensation, stayDetail } = req.body || {};
-      const list = diseases === undefined || diseases === null || diseases === false ? [] : await require('./diseases').profilesFor(readPool, diseases);
-      const out = generateBundle({ count, seed: seed ?? Date.now() % 100000, years, messy, inpatient, enrich, uncoded, edTimes, edTriage, decompensation, stayDetail, ...(list.length ? { profiles: list } : {}), endDate: endDate || new Date().toISOString().slice(0, 10) }); res.json({ success: true, ...out }); }
+    try { const { count, seed, years, endDate, messy, inpatient, enrich, uncoded } = req.body || {};
+      const out = generateBundle({ count, seed: seed ?? Date.now() % 100000, years, messy, inpatient, enrich, uncoded, endDate: endDate || new Date().toISOString().slice(0, 10) }); res.json({ success: true, ...out }); }
     catch (err) { fail(res, 'Synthetic data generation', err); }
   });
 }
@@ -3880,237 +3478,6 @@ async function enrichJoinSelftest() {
   } finally { CATALOG.splice(CATALOG.indexOf(probe), 1); }
   console.log('analytics.js enrichment-join self-test: all checks passed');
 }
-
-// Generic disease sections (plan chunk 1.6a, analytic disease_profile): the profile list, the five modes and what goes into the SQL. No database; the real SQL is run by e2e-diseases.js (chunk 1.12).
-async function diseaseProfileSelftest() {
-  const assert = require('assert'), DZ = require('./diseases');
-  const gout = { key: 'gout', label: 'Gout', enabled: true, dx: { system: 'snomed', code: '90560007', display: 'Gout', terms: ['Gout', 'podagra'] } };   // no control measure: the Disease module cannot use it
-  const off = { key: 'asthma', label: 'Asthma', enabled: false, dx: { system: 'snomed', code: '195967001', display: 'Asthma', terms: ['asthma'] } };
-  const nocode = { key: 'vague', label: 'Vague', enabled: true, dx: { system: 'snomed', code: '', terms: ['vague'] } };
-  const seen = [];
-  const pool = { query: async (sql, params) => {
-    seen.push({ sql, params: params || [] });
-    if (/information_schema/.test(sql)) return { rows: [{ table_name: 'fhir_patient_a' }, { table_name: 'fhir_patient_b-c' }] };
-    if (/FROM cohorts/.test(sql)) return { rows: [] };
-    if (/FROM disease_profiles/.test(sql)) return { rows: [{ profile: gout, enabled: true }, { profile: off, enabled: false }, { profile: nocode, enabled: true }, ...DZ.seedProfiles().map(p => ({ profile: p, enabled: true }))] };
-    return { rows: [{ n: 7, d: null }] };
-  } };
-  const eng = createEngine(pool);
-  const cohortSql = () => seen.filter(x => /'all' AS dimension/.test(x.sql)).pop();
-  try {
-    for (const mode of ['v1', 'v2', 'v3', 'v4', 'v5']) {
-      seen.length = 0;
-      const r = await eng.run({ id: 'disease_profile', mode, args: { disease: 'gout' } });
-      assert.deepStrictEqual(r.sections.map(s => s.name), ({ v1: ['cohort'], v2: ['cohort', 'comorbidity', 'comorbidity_burden', 'data_quality'], v3: ['cohort', 'comorbidity', 'comorbidity_burden', 'data_quality'], v4: ['cohort', 'incidence_prevalence', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], v5: ['cohort', 'incidence_prevalence', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'] })[mode], mode + ': cohort; code modes add comorbidity, V4 on the incidence section (gout has no control measure)');
-      const x = cohortSql(); assert.ok(x, mode + ': the cohort query ran');
-      assert.ok(!/90560007|podagra/i.test(x.sql), mode + ': code and terms are bound parameters, never SQL text');
-      if (mode === 'v1') assert.ok(x.params.some(p => p === '\\m(?:gout|podagra)\\M') && !x.params.includes('90560007'), 'V1 searches the profile terms (lower-case, display text too) and not the code');
-      else assert.ok(x.params.includes('90560007'), mode + ': the diagnosis code is a parameter');
-      assert.strictEqual(/'onset_date' AS|'onset_date',/.test(x.sql), mode === 'v4' || mode === 'v5', mode + ': the onset-date count is a V4 / V5 feature');
-      const tail = x.sql.slice(x.sql.indexOf(`'batch'`));   // the scoped views are the engine's; the batch rows are this section's
-      assert.ok(/FROM fhir_patient_a\b/.test(tail) && !/b-c/.test(tail) && !x.params.includes('b-c') && x.params.includes('a'), mode + ': batch rows use plain batch names only (letters, digits, underscore)');
-      assert.ok(/ref AS/.test(x.sql) && /WITH/.test(x.sql), mode + ': built on the scoped views');
-    }
-    // V3 / V5 join approved enrichment into dx (engine), V2 / V4 do not
-    seen.length = 0; await eng.run({ id: 'disease_profile', mode: 'v3', args: { disease: 'gout' } }); assert.ok(/enr AS/.test(cohortSql().sql) || seen.some(q => /to_regclass/.test(q.sql)), 'V3 asks for enrichment');
-    seen.length = 0; await eng.run({ id: 'disease_profile', mode: 'v2', args: { disease: 'gout' } }); assert.ok(!seen.some(q => /code_enrichment|to_regclass/.test(q.sql)), 'V2 never touches enrichment');
-    // the default is diabetes; a disease that is unknown, switched off or without a diagnosis code is a clear 400 and nothing runs
-    seen.length = 0; await eng.run({ id: 'disease_profile', mode: 'v2', args: {} }); assert.ok(cohortSql().params.includes('44054006'), 'no disease = diabetes');
-    for (const bad of ['asthma', 'vague', 'nope', "gout'; DROP TABLE x;--", '__proto__']) {
-      seen.length = 0;
-      await assert.rejects(() => eng.run({ id: 'disease_profile', mode: 'v2', args: { disease: bad } }), e => e.status === 400 && /Unknown disease/.test(e.message), 'refused: ' + bad);
-      assert.ok(!seen.some(q => /dc AS/.test(q.sql)), 'nothing ran for ' + bad);
-    }
-    // the catalog lists every switched-on profile with a code (gout too), the Disease module only those it can use
-    const cat = await eng.catalog({}), opt = id => cat.find(a => a.id === id).params.find(p => p.name === 'disease').options.map(o => o.value).sort();
-    assert.deepStrictEqual(opt('disease_profile'), ['diabetes', 'gout', 'hypertension']); assert.deepStrictEqual(opt('disease_module'), ['diabetes', 'hypertension']);
-    assert.deepStrictEqual(cat.find(a => a.id === 'disease_profile').modes, ['v1', 'v2', 'v3', 'v4', 'v5']);
-    // chunk 1.6b: incidence_prevalence and control_status exist in V4 / V5 only; control_status only for a profile whose control measure the generic rule can read
-    const sec = async (disease, mode) => { seen.length = 0; const r = await eng.run({ id: 'disease_profile', mode, args: { disease } }); return { names: r.sections.map(s => s.name), r }; };
-    const sqlOf = name => seen.filter(x => new RegExp(name === 'incidence_prevalence' ? 'fo AS' : 'lastv AS').test(x.sql)).pop();
-    for (const mode of ['v1', 'v2', 'v3']) assert.deepStrictEqual((await sec('diabetes', mode)).names, mode === 'v1' ? ['cohort'] : ['cohort', 'comorbidity', 'comorbidity_burden', 'data_quality'], mode + ': V1 only the cohort, V2 / V3 add the comorbidity sections');
-    for (const mode of ['v4', 'v5']) {
-      assert.deepStrictEqual((await sec('diabetes', mode)).names, ['cohort', 'incidence_prevalence', 'trend', 'control_status', 'treatment', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], mode + ': diabetes (no monitoring items in the built-in profile) has every other section');
-      const inc = sqlOf('incidence_prevalence'), ctl = sqlOf('control_status');
-      assert.ok(inc && inc.params.includes('44054006') && !/44054006/.test(inc.sql), mode + ': incidence binds the diagnosis code');
-      assert.ok(/min\(onset_date\)/.test(inc.sql) && /onset_date IS NOT NULL/.test(inc.sql), mode + ': incidence counts the first dated diagnosis');
-      assert.ok(ctl.params.includes('44054006') && ctl.params.includes('4548-4') && !/4548-4/.test(ctl.sql), mode + ': control binds the diagnosis and control codes');
-      assert.ok(/l\.value < 7::numeric/.test(ctl.sql) && /- 365::int/.test(ctl.sql), mode + ': below-goal rule and 365-day look-back as numeric literals');
-      assert.ok(/effective_date < \(SELECT d FROM ref\) \+ 1/.test(ctl.sql), mode + ': results after the as-of date are ignored');
-    }
-    assert.deepStrictEqual((await sec('gout', 'v4')).names, ['cohort', 'incidence_prevalence', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'a profile without a control measure gets no control_status');
-    const hdl = { ...gout, key: 'hdl', label: 'Low HDL', dx: { ...gout.dx, code: '1' }, control: { type: 'lab', system: 'loinc', code: '2085-9', display: 'HDL', unit: 'mg/dL', goal: 40, direction: 'above', lookbackDays: 180 } };
-    const bp = { ...gout, key: 'bpr', label: 'BP range', dx: { ...gout.dx, code: '2' }, control: { type: 'vital', system: 'loinc', code: '8480-6', display: 'SBP', unit: 'mm[Hg]', goal: 100, goalHigh: 140, direction: 'range', lookbackDays: 90 } };
-    const score = { ...gout, key: 'phq', label: 'PHQ', dx: { ...gout.dx, code: '3' }, control: { type: 'score', system: 'loinc', code: '44261-6', display: 'PHQ-9', goal: 5, direction: 'below' } };
-    const inj = { ...gout, key: 'inj', label: 'Inj', dx: { ...gout.dx, code: '4' }, control: { type: 'lab', system: 'loinc', code: "x'; DROP TABLE y;--", display: 'x', goal: 1, direction: 'below', lookbackDays: 30 } };
-    const base = pool.query;
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [hdl, bp, score, inj].map(p => ({ profile: p, enabled: true })) } : base(sql, params);
-    EXT.setDiseases([hdl, bp, score, inj]); eng.invalidateDiseases && eng.invalidateDiseases();
-    assert.deepStrictEqual((await sec('hdl', 'v4')).names, ['cohort', 'incidence_prevalence', 'trend', 'control_status', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'above rule is usable');
-    assert.ok(/l\.value > 40::numeric/.test(sqlOf('control_status').sql) && /- 180::int/.test(sqlOf('control_status').sql), 'above rule and its 180-day window');
-    assert.deepStrictEqual((await sec('bpr', 'v4')).names, ['cohort', 'incidence_prevalence', 'trend', 'control_status', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'range rule is usable');
-    assert.ok(/l\.value BETWEEN 100::numeric AND 140::numeric/.test(sqlOf('control_status').sql) && /- 90::int/.test(sqlOf('control_status').sql), 'range rule, both ends included');
-    assert.deepStrictEqual((await sec('phq', 'v4')).names, ['cohort', 'incidence_prevalence', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'a score control measure is not read yet (phase 4)');
-    assert.ok((await sec('inj', 'v4')).names.includes('control_status') && sqlOf('control_status').params.includes("x'; DROP TABLE y;--") && !/DROP TABLE/.test(sqlOf('control_status').sql), 'a hostile control code is only ever a bound parameter');
-    // chunk 1.7a: trend
-    await sec('hdl', 'v4'); const tr = sqlOf('control_status') && seen.filter(x => /f AS \(SELECT DISTINCT ON/.test(x.sql)).pop();
-    assert.ok(tr && tr.params.includes('1') && tr.params.includes('2085-9') && !/2085-9/.test(tr.sql), 'trend binds the codes');
-    assert.ok(/\(40::numeric - v\)|\(40::numeric - l\.last_v\)/.test(tr.sql) && /- 180::int/.test(tr.sql), 'above rule: distance = goal - value; its window');
-    assert.ok(!/CASE WHEN n_result < 5/.test(tr.sql) && /n_result < 5\) AS low_n/.test(tr.sql), 'a normal disease is flagged low_n but not blanked');
-    await sec('bpr', 'v4'); assert.ok(/abs\(l\.last_v - 120::numeric\)/.test(seen.filter(x => /f AS \(SELECT DISTINCT ON/.test(x.sql)).pop().sql), 'range rule: distance from the middle of the range');
-    { const sens = { ...hdl, sensitive: true }; pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: sens, enabled: true }] } : base(sql, params); EXT.setDiseases([sens]); eng.invalidateDiseases(); }
-    await sec('hdl', 'v4'); assert.ok(/CASE WHEN n_result < 5 THEN NULL/.test(seen.filter(x => /f AS \(SELECT DISTINCT ON/.test(x.sql)).pop().sql), 'a sensitive disease has its small counts blanked');
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [hdl, bp, score, inj].map(p => ({ profile: p, enabled: true })) } : base(sql, params); EXT.setDiseases([hdl, bp, score, inj]); eng.invalidateDiseases();
-    assert.deepStrictEqual((await sec('phq', 'v4')).names.includes('trend'), false, 'no control measure the rule can read, no trend');
-    // chunk 1.7b: treatment
-    const txSql = () => seen.filter(x => /lines\(code, display, line, supply\)/.test(x.sql)).pop();
-    EXT.setDiseases(DZ.seedProfiles()); pool.query = base; eng.invalidateDiseases();
-    await sec('diabetes', 'v4'); let tx = txSql(); const dz = DZ.seedProfiles()[0];
-    assert.ok(tx, 'diabetes has a treatment section');
-    for (const t of dz.treatment) assert.ok(tx.params.includes(t.code) && !tx.sql.includes(t.code), 'drug code ' + t.code + ' is a bound parameter');
-    assert.ok(tx.params.includes('44054006') && /VALUES \(\$\d+::text, \$\d+::text, 1, 30\), \(\$\d+::text, \$\d+::text, 2, 30\)/.test(tx.sql), 'lines and supply days are numeric literals');
-    assert.ok(/UNION ALL\s+SELECT NULL, NULL, 'Any treatment line'/.test(tx.sql) && /\(patients_on_drug < 5\) AS low_n/.test(tx.sql) && !/CASE WHEN patients_on_drug < 5/.test(tx.sql), 'any-line row; small counts flagged, not blanked');
-    assert.ok(/f\.d \+ l\.supply/.test(tx.sql) && /prescribed_date::date <= \(SELECT d FROM ref\)/.test(tx.sql), 'fills up to the as-of date cover the line supply');
-    await sec('diabetes', 'v2'); assert.ok(!txSql(), 'no treatment section without dates (V2)');
-    const tsens = { ...gout, key: 'txs', label: 'Tx sens', sensitive: true, dx: { ...gout.dx, code: '9' }, treatment: [{ code: "9'; DROP TABLE z;--", display: 'Odd', line: 1, renewalDays: 7 }, { code: '11', line: 2, renewalDays: 500 }] };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: tsens, enabled: true }] } : base(sql, params); EXT.setDiseases([tsens]); eng.invalidateDiseases();
-    await sec('txs', 'v4'); tx = txSql();
-    assert.ok(tx.params.includes("9'; DROP TABLE z;--") && !/DROP TABLE/.test(tx.sql) && /, 1, 7\), \(\$\d+::text, \$\d+::text, 2, 180\)/.test(tx.sql), 'hostile drug code is a parameter; supply limited to 7-180');
-    assert.ok(/CASE WHEN patients_on_drug < 5 THEN NULL/.test(tx.sql), 'sensitive: small counts blanked');
-    assert.deepStrictEqual((await sec('txs', 'v4')).names, ['cohort', 'incidence_prevalence', 'treatment', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'no control measure: treatment without trend or control status');
-    // chunk 1.7c: comorbidity
-    const cmSql = n => seen.filter(x => new RegExp(n === 'cm' ? 'FROM dx x JOIN dc' : 'cn AS').test(x.sql)).pop();
-    EXT.setDiseases(DZ.seedProfiles()); pool.query = base; eng.invalidateDiseases();
-    await sec('diabetes', 'v2'); let cm = cmSql('cm'), bd = cmSql('bd');
-    assert.ok(cm && bd, 'V2 runs both comorbidity sections');
-    assert.ok(cm.params.includes('44054006') && !cm.sql.includes('44054006') && /x\.code <> \$\d+/.test(cm.sql) && /LIMIT 10/.test(cm.sql) && !/HAVING/.test(cm.sql), 'top 10 other codes, code bound, no HAVING for a normal disease');
-    const chParam = bd.params.find(p => Array.isArray(p)); assert.ok(chParam && chParam.length > 0 && !chParam.includes('44054006'), 'the burden list is the chronic list without the disease itself');
-    assert.ok(/VALUES \('0', 0\), \('1', 1\), \('2', 2\), \('3\+', 3\)/.test(bd.sql) && !/CASE WHEN patients < 5/.test(bd.sql), 'all four bands, small bands flagged not blanked');
-    await sec('diabetes', 'v1'); assert.ok(!cmSql('cm') || cmSql('cm') === cm, 'V1 has no comorbidity section (no codes)');
-    const csens = { ...gout, key: 'cs', label: 'Cs', sensitive: true, dx: { ...gout.dx, code: '7' } };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: csens, enabled: true }] } : base(sql, params); EXT.setDiseases([csens]); eng.invalidateDiseases();
-    await sec('cs', 'v4'); cm = cmSql('cm'); bd = cmSql('bd');
-    assert.ok(/HAVING count\(DISTINCT x\.patient_id\) >= 5/.test(cm.sql) && /CASE WHEN patients < 5 THEN NULL/.test(bd.sql), 'sensitive: small codes left out, small bands blanked');
-    // chunk 1.8a: care gaps
-    const cgSql = () => seen.filter(x => /mon\(ord, kind, code, display, ic, iu\)/.test(x.sql)).pop();
-    const cgm = { ...DZ.seedProfiles()[0], key: 'cgm', label: 'Cgm', monitoring: [{ kind: 'test', code: '4548-4', display: 'HbA1c', intervalControlledDays: 180, intervalUncontrolledDays: 90 }, { kind: 'screening', code: '29303009', intervalControlledDays: 365, intervalUncontrolledDays: 365 }, { kind: 'vaccine', code: '141', intervalControlledDays: 365, intervalUncontrolledDays: 365 }] };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: cgm, enabled: true }] } : base(sql, params); EXT.setDiseases([cgm]); eng.invalidateDiseases();
-    assert.deepStrictEqual((await sec('cgm', 'v4')).names, ['cohort', 'incidence_prevalence', 'trend', 'control_status', 'treatment', 'care_gaps', 'utilisation', 'comorbidity', 'comorbidity_burden', 'data_quality'], 'a profile with monitoring items gets care_gaps');
-    let cg = cgSql(); const mons = cgm.monitoring;
-    assert.ok(cg, 'care-gaps query ran');
-    for (const m of mons) assert.ok(cg.params.includes(m.code) && !cg.sql.includes(`'${m.code}'`), 'monitoring code ' + m.code + ' is a bound parameter');
-    assert.ok(/VALUES \(0, 'test', \$\d+::text, \$\d+::text, 180, 90\), \(1, 'screening', \$\d+::text, \$\d+::text, 365, 365\), \(2, 'vaccine'/.test(cg.sql), 'kind from a fixed list, intervals as numeric literals');
-    assert.ok(/FROM ob WHERE code IN/.test(cg.sql) && /FROM pr WHERE code IN/.test(cg.sql) && /FROM im WHERE code IN/.test(cg.sql) && /lastv AS/.test(cg.sql) && /CASE WHEN cs\.unc THEN m\.iu ELSE m\.ic END/.test(cg.sql), 'tests, screenings and vaccines; interval by control group');
-    assert.ok(!/CASE WHEN patients < 5/.test(cg.sql) && /\(patients < 5\) AS low_n/.test(cg.sql), 'normal disease: flagged, not blanked');
-    await sec('cgm', 'v2'); assert.ok(!cgSql(), 'no care gaps without dates (V2)');
-    const cgs = { ...gout, key: 'cg', label: 'Cg', sensitive: true, dx: { ...gout.dx, code: '8' }, monitoring: [{ kind: 'vaccine', code: '141', intervalControlledDays: 365, intervalUncontrolledDays: 365 }] };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: cgs, enabled: true }] } : base(sql, params); EXT.setDiseases([cgs]); eng.invalidateDiseases();
-    await sec('cg', 'v4'); cg = cgSql();
-    assert.ok(!/lastv AS/.test(cg.sql) && /false AS unc/.test(cg.sql) && /CASE WHEN patients < 5 THEN NULL/.test(cg.sql), 'no control measure: everyone uses the controlled interval; sensitive: blanked');
-    // chunk 1.8b: utilisation
-    const utSql = () => seen.filter(x => /adm AS \(SELECT patient_id, start_date::date AS s, lag/.test(x.sql)).pop();
-    EXT.setDiseases(DZ.seedProfiles()); pool.query = base; eng.invalidateDiseases();
-    await sec('diabetes', 'v4'); let ut = utSql();
-    assert.ok(ut && ut.params.includes('44054006') && !ut.sql.includes('44054006'), 'utilisation binds the diagnosis code');
-    assert.ok(/cls = 'EMER'/.test(ut.sql) && /cls = 'IMP'/.test(ut.sql) && /BETWEEN 0 AND 30/.test(ut.sql) && /- 365/.test(ut.sql), 'ED visits, admissions, 30-day readmission, 365-day window');
-    assert.ok(/UNION ALL SELECT grp AS grp/.test(ut.sql) && /lastv AS/.test(ut.sql), 'a profile with a control measure also gets the control groups');
-    assert.ok(!/CASE WHEN patients < 5/.test(ut.sql) && /\(patients < 5\) AS low_n/.test(ut.sql), 'normal disease: flagged, not blanked');
-    await sec('diabetes', 'v2'); assert.ok(!utSql(), 'no utilisation without dates (V2)');
-    const usens = { ...gout, key: 'us', label: 'Us', sensitive: true, dx: { ...gout.dx, code: '6' } };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: usens, enabled: true }] } : base(sql, params); EXT.setDiseases([usens]); eng.invalidateDiseases();
-    await sec('us', 'v4'); ut = utSql();
-    assert.ok(!/lastv AS/.test(ut.sql) && !/UNION ALL SELECT grp/.test(ut.sql) && /'all' AS grp FROM dc/.test(ut.sql) && /CASE WHEN patients < 5 THEN NULL/.test(ut.sql), 'no control measure: one row for all; sensitive: blanked');
-    pool.query = base; EXT.setDiseases(DZ.seedProfiles());
-    // chunk 1.8c: data_quality and the low-count rule on every section (the real SQL runs in a throw-away Postgres: see the plan, chunk 1.12 e2e-diseases.js)
-    const dqSql = () => seen.filter(x => /cr AS \(SELECT patient_id, onset_date/.test(x.sql)).pop();
-    eng.invalidateDiseases(); await sec('diabetes', 'v2'); let dq = dqSql();
-    assert.ok(dq && dq.params.includes('44054006') && !dq.sql.includes('44054006'), 'data_quality binds the diagnosis code');
-    assert.ok(/concepts\(key,label,pos,neg\)/.test(dq.sql) && /t\.code IS NULL OR btrim\(t\.code\) = ''/.test(dq.sql), 'text rows: the profile\'s words, records with no code');
-    assert.ok(!/code_source = 'source'/.test(dq.sql) && !/onset date/.test(dq.sql) && !/CASE WHEN min\(n\)/.test(dq.sql), 'V2: no enrichment rows, no onset rows; a normal disease is not blanked');
-    await sec('diabetes', 'v4'); dq = dqSql(); assert.ok(/with an onset date/.test(dq.sql) && !/code_source = 'source'/.test(dq.sql), 'V4: onset rows, no enrichment rows');
-    seen.length = 0; await eng.run({ id: 'disease_profile', mode: 'v3', args: { disease: 'diabetes' }, enrich: ['dx'] }); dq = dqSql();
-    assert.ok(dq && /code_source = 'source'/.test(dq.sql) && /code_source = 'enriched'/.test(dq.sql) && /reached only through approved enrichment/.test(dq.sql), 'V3 with diagnosis enrichment: source / enrichment split');
-    seen.length = 0; await eng.run({ id: 'disease_profile', mode: 'v3', args: { disease: 'diabetes' }, enrich: [] }); dq = dqSql(); assert.ok(dq && !/code_source = 'source'/.test(dq.sql), 'enrich [] = plain V2 rows');
-    await sec('diabetes', 'v1'); assert.ok(!dqSql(), 'no data_quality in V1 (text only)');
-    // sensitive: the cohort, incidence, control and data_quality queries blank small cells
-    const dsens = { ...hdl, key: 'dsn', label: 'Dsn', sensitive: true, dx: { ...gout.dx, code: '5' } };
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: dsens, enabled: true }] } : base(sql, params); EXT.setDiseases([dsens]); eng.invalidateDiseases();
-    await sec('dsn', 'v4');
-    const last = re => seen.filter(x => re.test(x.sql)).pop();
-    assert.ok(/min\(patients\) OVER \(PARTITION BY dimension\) < 5/.test(cohortSql().sql) && /\(patients < 5\) AS low_n/.test(cohortSql().sql) && /ORDER BY d, o, cc\.patients DESC/.test(cohortSql().sql), 'sensitive cohort: a dimension with a small value is blanked as a whole; low_n flag');
-    assert.ok(/bool_or\(new_cases < 5\) OVER \(\)/.test(sqlOf('incidence_prevalence').sql) && /CASE WHEN new_cases < 5 THEN NULL/.test(sqlOf('incidence_prevalence').sql) && /\(new_cases < 5\) AS low_n/.test(sqlOf('incidence_prevalence').sql), 'sensitive incidence: small years and the running totals blanked');
-    assert.ok(/least\(patients, controlled, uncontrolled, untested\) < 5/.test(last(/ag AS \(SELECT count/).sql) && /\(patients < 5\) AS low_n/.test(last(/ag AS \(SELECT count/).sql), 'sensitive control_status: blanked when the cohort or any group is small');
-    dq = dqSql(); assert.ok(/min\(n\) OVER \(PARTITION BY gid\) < 5/.test(dq.sql) && /\(n < 5\) AS low_n/.test(dq.sql), 'sensitive data_quality: small members of a split are blanked together');
-    pool.query = base; EXT.setDiseases(DZ.seedProfiles()); eng.invalidateDiseases();
-    await sec('diabetes', 'v4'); assert.ok(!/min\(patients\) OVER/.test(cohortSql().sql) && !/bool_or\(new_cases/.test(sqlOf('incidence_prevalence').sql) && !/least\(patients, controlled/.test(last(/ag AS \(SELECT count/).sql), 'a normal disease: flagged low_n, nothing blanked');
-    // no profile switched on at all: a clear 400
-    pool.query = async (sql, params) => /FROM disease_profiles/.test(sql) ? { rows: [{ profile: off, enabled: false }] } : /information_schema/.test(sql) ? { rows: [{ table_name: 'fhir_patient_a' }] } : /FROM cohorts/.test(sql) ? { rows: [] } : { rows: [{ n: 1, d: null }] };
-    await assert.rejects(() => createEngine(pool).run({ id: 'disease_profile', mode: 'v2', args: {} }), e => e.status === 400 && /No disease profile/.test(e.message));
-  } finally { EXT.setDiseases(DZ.seedProfiles()); }   // the list is shared by the whole process: put the built-in profiles back
-  console.log('analytics.js disease-profile (all nine generic sections, low-count rule) self-test: all checks passed');
-}
-
-// Chunk 3.2a: department bundles. No database: a recording pool answers the two reads; the catalog is the real one.
-async function bundleSelftest() {
-  const assert = require('assert'), DZ = require('./diseases');
-  const info = catalogInfo('disease_profile'); assert.ok(info && info.sections.length === 10 && info.modes.join() === 'v1,v2,v3,v4,v5');
-  assert.strictEqual(catalogInfo('nope'), null);
-  // the declared sections are exactly the ones the analytic builds, per mode (checked against real runs, so the metadata cannot drift)
-  const gout = { key: 'gout', label: 'Gout', enabled: true, dx: { system: 'snomed', code: '90560007', terms: ['gout'] },
-    control: { type: 'lab', system: 'loinc', code: '3084-1', display: 'Uric acid', unit: 'mg/dL', goal: 6, direction: 'below', lookbackDays: 365 }, treatment: [{ code: '519', display: 'allopurinol', line: 1 }], monitoring: [{ kind: 'test', code: '3084-1', intervalControlledDays: 180, intervalUncontrolledDays: 90 }] };
-  const bare = { key: 'bare', label: 'Bare', enabled: true, dx: { system: 'snomed', code: '12345678', terms: ['bare'] } };
-  const dept = { key: 'rheum', label: 'Rheumatology', diseases: ['gout', 'bare', 'ghost'], measureSet: [{ kind: 'lab', code: '3084-1' }], scores: [],
-    bundle: { items: [{ analytic: 'disease_profile', mode: '', sections: [] }, { analytic: 'medication_utilization', mode: '', sections: ['x_y'] }, { analytic: 'nope_nope', mode: '', sections: [] }] } };
-  const profiles = [gout, bare], seen = [];
-  const pool = { query: async (sql, params) => { seen.push({ sql, params: params || [] });
-    if (/information_schema/.test(sql)) return { rows: [{ table_name: 'fhir_patient_a' }] }; if (/FROM cohorts/.test(sql)) return { rows: [] };
-    if (/FROM disease_profiles/.test(sql)) return { rows: profiles.map(p => ({ profile: p, enabled: true })) };
-    return { rows: [{ n: 1, d: null }] }; } };
-  const eng = createEngine(pool);
-  try {
-    for (const mode of ['v1', 'v2', 'v3', 'v4', 'v5']) {
-      const r = await eng.run({ id: 'disease_profile', mode, args: { disease: 'gout' } });
-      assert.deepStrictEqual(r.sections.map(x => x.name).sort(), info.sections.filter(x => x.modes.includes(mode)).map(x => x.name).sort(), mode + ': declared sections = built sections');
-      const r2 = await eng.run({ id: 'disease_profile', mode, args: { disease: 'bare' } });
-      assert.deepStrictEqual(r2.sections.map(x => x.name).sort(), info.sections.filter(x => x.modes.includes(mode) && !x.needs).map(x => x.name).sort(), mode + ': a profile without control / treatment / monitoring builds fewer sections, as declared');
-    }
-    await eng.refreshDiseases();
-    const rows = new Map([['gout', { label: 'Gout', enabled: true }], ['bare', { label: 'Bare', enabled: true }]]);
-    const optionsOf = id => (id === 'disease_profile' ? [...['gout', 'bare']] : null), entryOf = k => EXT.diseaseEntry(k);
-    let r = bundleReport(dept, { diseaseRows: rows, entryOf, optionsOf });
-    assert.strictEqual(r.ok, false); assert.ok(r.problems.some(x => /"ghost" has no profile/.test(x.message)) && r.problems.some(x => /"nope_nope" is not in the catalog/.test(x.message)));
-    const dp = r.items[0]; assert.deepStrictEqual([dp.known, dp.sections.length, dp.runs.map(x => x.disease)], [true, 10, ['gout', 'bare']], 'no sections listed = every section; one run per disease that exists');
-    const bareRun = dp.runs[1], goutRun = dp.runs[0];
-    assert.ok(goutRun.sections.every(x => x.available) && goutRun.ready && goutRun.args.disease === 'gout');
-    assert.deepStrictEqual(bareRun.sections.filter(x => !x.available).map(x => x.name).sort(), ['care_gaps', 'control_status', 'treatment', 'trend']); assert.ok(/no usable control measure/.test(bareRun.sections.find(x => x.name === 'trend').reason));
-    assert.strictEqual(r.items[1].known, true, 'an analytic without declared sections is accepted'); assert.deepStrictEqual(r.items[1].sections, [{ name: 'x_y', status: 'unverified' }]);
-    assert.deepStrictEqual(r.items[1].runs, [], 'no disease parameter: no per-disease runs'); assert.strictEqual(r.items[2].known, false);
-    // with a mode: sections not offered there are marked, items fixed to another mode are left out
-    r = bundleReport({ ...dept, diseases: ['gout'], bundle: { items: [{ analytic: 'disease_profile', mode: 'v4', sections: ['cohort', 'comorbidity', 'nosuch'] }, { analytic: 'disease_profile', mode: 'v1', sections: [] }] } }, { diseaseRows: rows, entryOf, optionsOf }, 'v4');
-    assert.strictEqual(r.items.length, 1); assert.deepStrictEqual(r.items[0].sections.map(x => x.status), ['ok', 'ok', 'unknown']); assert.ok(r.problems.some(x => /no section "nosuch"/.test(x.message)));
-    r = bundleReport({ ...dept, diseases: [], bundle: { items: [{ analytic: 'disease_profile', mode: 'v1', sections: ['trend'] }] } }, { diseaseRows: rows, entryOf, optionsOf });
-    assert.deepStrictEqual(r.items[0].sections.map(x => x.status), ['not_in_mode'], 'V1 has no trend section'); assert.strictEqual(r.ok, true);
-    r = bundleReport({ diseases: ['gout'], bundle: { items: [{ analytic: 'disease_profile', mode: '', sections: [] }] } }, { diseaseRows: rows, entryOf, optionsOf }, 'v1'); assert.deepStrictEqual(r.items[0].sections.map(x => x.name), ['cohort'], 'with a mode and no list: the sections of that mode');
-    assert.deepStrictEqual(bundleReport(null, { diseaseRows: new Map() }).items, []);
-    // a disease that is switched off is not ready
-    r = bundleReport({ diseases: ['gout'], bundle: { items: [{ analytic: 'disease_profile', mode: '', sections: ['cohort'] }] } }, { diseaseRows: rows, entryOf, optionsOf: () => [] }); assert.deepStrictEqual([r.items[0].runs[0].ready, /switched off/.test(r.items[0].runs[0].reason)], [false, true]);
-    // the route
-    const routes = {}, app = { locals: {}, get: (p, h) => { routes[p] = h; }, post() {}, put() {}, delete() {} };
-    const rpool = { query: async (sql, params) => {
-      if (/FROM department_profiles/.test(sql)) return { rows: params[0] === 'rheum' ? [{ key: 'rheum', enabled: true, profile: dept }] : [] };
-      if (/FROM disease_profiles WHERE key = ANY/.test(sql)) return { rows: params[0].filter(k => k !== 'ghost').map(k => ({ key: k, enabled: true, profile: k === 'gout' ? gout : bare })) };
-      return pool.query(sql, params); } };
-    register(app, rpool, {}); assert.strictEqual(typeof app.locals.catalogInfo, 'function');
-    const call = async (key, query = {}) => { const res = { code: 200, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } }; await routes['/api/departments/:key/bundle']({ params: { key }, query }, res); return res; };
-    let x = await call('rheum'); assert.deepStrictEqual([x.code, x.body.department.label, x.body.items.length, x.body.ok, x.body.diseases.map(d => d.found)], [200, 'Rheumatology', 3, false, [true, true, false]], JSON.stringify(x.body).slice(0, 200));
-    assert.deepStrictEqual(x.body.items[0].runs.map(r => [r.disease, r.ready]), [['gout', true], ['bare', true]], 'the route reads the profiles the engine uses');
-    assert.strictEqual((await call('nosuch')).code, 404); assert.strictEqual((await call('BAD KEY')).code, 400); assert.strictEqual((await call('rheum', { mode: 'v9' })).code, 400);
-    x = await call('rheum', { mode: 'v1' }); assert.deepStrictEqual(x.body.items[0].sections.map(s => s.name), ['cohort']);
-  } finally { EXT.setDiseases(DZ.seedProfiles()); }
-  console.log('analytics.js department-bundle self-test: all checks passed');
-}
-
-module.exports.bundleSelftest = bundleSelftest; module.exports.catalogInfo = catalogInfo; module.exports.bundleReport = bundleReport;
 if (require.main === module && process.argv.includes('--selftest')) {
   (async () => {
     for (const m of [customAnalytic, readiness]) await m.selftest();
@@ -4118,8 +3485,6 @@ if (require.main === module && process.argv.includes('--selftest')) {
     await modeDispatchSelftest();
     await enrichmentCoverageSelftest();
     await enrichJoinSelftest();
-    await diseaseProfileSelftest();
-    await bundleSelftest();
     console.log('analytics.js: all self-tests passed');
   })().catch(e => { console.error(e); process.exit(1); });
 }

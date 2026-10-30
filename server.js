@@ -374,30 +374,6 @@ const SCHEMA_SQL = `
       );
       CREATE INDEX IF NOT EXISTS idx_code_enrichment_status ON code_enrichment(status);
 
-      -- Disease profiles (Diseases tab, generator, Disease module): one row per disease, the profile itself is JSON validated by diseases.js. No patient data.
-      -- builtin = shipped with the app: cannot be edited or deleted, only switched on or off. Written with the owner connection only.
-      CREATE TABLE IF NOT EXISTS disease_profiles (
-        key VARCHAR(40) PRIMARY KEY,
-        profile JSONB NOT NULL,
-        enabled BOOLEAN NOT NULL DEFAULT TRUE,
-        builtin BOOLEAN NOT NULL DEFAULT FALSE,
-        updated_by VARCHAR(254),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      -- Department profiles (Diseases tab, department pages): one row per department, the profile itself is JSON validated by diseases.js (diseases, measure set, scores, analytics bundle,
-      -- episode model, scope filters). Same rules as disease_profiles: builtin rows cannot be edited or deleted, written with the owner connection only. No patient data.
-      CREATE TABLE IF NOT EXISTS department_profiles (
-        key VARCHAR(40) PRIMARY KEY,
-        profile JSONB NOT NULL,
-        enabled BOOLEAN NOT NULL DEFAULT TRUE,
-        builtin BOOLEAN NOT NULL DEFAULT FALSE,
-        updated_by VARCHAR(254),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
       -- Create indexes for common queries
       CREATE INDEX IF NOT EXISTS idx_fhir_patient_patient_id ON fhir_patient(patient_id);
       CREATE INDEX IF NOT EXISTS idx_fhir_patient_batch ON fhir_patient(ingestion_batch_id);
@@ -1411,9 +1387,6 @@ require('./knowledge').snomedQuery(app, pool, { sanitizeBatchId });
 // Enrichment candidates (V3 / V5): real codes from the reference tables for strings that have no source code (read-only, strings in, codes out)
 require('./knowledge').enrichCandidates(app, pool);
 
-// Disease profiles: list / read through the read-only connection, create / edit / delete through the owner connection (audited as disease.write)
-require('./diseases').register(app, pool, { readPool, onChange: () => { if (app.locals.clearDiseaseCache) app.locals.clearDiseaseCache(); } });
-
 // Jupyter notebook generator for the Extended Analytics tab
 if (String(process.env.ENABLE_NOTEBOOK || '').toLowerCase() === 'true') require('./evidence').notebook(app, pool, { sanitizeBatchId });   // Notebook feature is hidden: its tab is hidden in index.html and its routes are off unless ENABLE_NOTEBOOK=true
 
@@ -1451,7 +1424,6 @@ async function initializeDatabaseSchema() {
       if (orphans) console.warn(`${orphans} cohort(s) are not bound to an existing population (flagged "orphaned" in the Cohorts tab).`);
     } catch (err) { console.error('Cohort population migration failed:', err.message); }
     console.log('Database schema initialized successfully');
-    try { const n = await require('./diseases').seedBuiltins(pool); if (n) console.log(`Built-in disease profiles added: ${n}`); } catch (err) { console.error('Built-in disease profiles could not be added:', err.message); }
   } catch (err) {
     console.error('Error initializing database schema:', err);
   }

@@ -644,15 +644,6 @@ const RULES = [
   ['POST',   /^\/api\/enrichment\/(bulk-approve)$/, 'enrichment.bulk_approve', 'data'],
   ['POST',   /^\/api\/enrichment\/(propose)$/, 'ai.request', 'external'],                          // strings (never patient data) go to an external model
   ['DELETE', /^\/api\/pico-templates\/([^/]+)$/, 'template.delete', 'data'],
-  ['POST',   /^\/api\/diseases$/, 'disease.write', 'data'],                                           // create (target = the new key, set by the route)
-  ['POST',   /^\/api\/diseases\/import$/, 'disease.write', 'data'],
-  ['PUT',    /^\/api\/diseases\/([^/]+)$/, 'disease.write', 'data'],                                    // edit or switch on / off (target = key)
-  ['DELETE', /^\/api\/diseases\/([^/]+)$/, 'disease.write', 'data'],
-  ['POST',   /^\/api\/departments$/, 'department.write', 'data'],                                    // create (target = the new key, set by the route)
-  ['PUT',    /^\/api\/departments\/([^/]+)$/, 'department.write', 'data'],                             // edit or switch on / off (target = key)
-  ['DELETE', /^\/api\/departments\/([^/]+)$/, 'department.write', 'data'],
-  ['POST',   /^\/api\/departments\/install-library$/, 'department.write', 'data'],                      // chunk 3.5a: stores the missing library departments
-  ['POST',   /^\/api\/departments\/validate$/, null, null],                                              // dry run, nothing written
   ['POST',   /^\/api\/llm\/settings$/, 'settings.llm_update', 'admin'],
   ['POST',   /^\/api\/llm\/test$/, 'settings.llm_test', 'admin'],
   ['POST',   /^\/api\/synthetic\/generate$/, 'synthetic.generate', 'data'],
@@ -667,7 +658,6 @@ const RULES = [
   ['GET',    /^\/api\/kg\/cohort$/, 'phi.cohort_graph', 'phi', { query: true }],
   // noise: analytics runs, previews and polling are not audited one by one (use AUDIT_LEVEL=verbose to see them)
   ['POST',   /^\/api\/enrichment\/candidates$/, null, null],
-  ['POST',   /^\/api\/diseases\/(?:validate|[^/]+\/(?:preview|truth-report))$/, null, null],                               // dry run / in-memory preview, nothing written                                      // reference-table lookup, no write
   ['POST',   /^\/api\/(?:analytics\/(?:catalog\/(?:run|run-all|compare)|custom\/run)|readiness\/.*|notebook\/preview|snomed\/(?:expand|query\/.*)|ehr\/(?:test|jobs\/.*))$/, null, null]
 ];
 const BODY_KEYS = ['batchId', 'batchGroup', 'name', 'cohortId', 'maxPatients', 'count'];     // the only body fields that are ever stored
@@ -906,15 +896,6 @@ module.exports.selftest = () => {
     assert.strictEqual(classify('POST', '/api/enrichment/bulk-approve').action, 'enrichment.bulk_approve');
     assert.strictEqual(classify('POST', '/api/enrichment/propose').action, 'ai.request');
     assert.ok(classify('POST', '/api/enrichment/candidates').ignore);
-    assert.strictEqual(classify('POST', '/api/diseases').action, 'disease.write');
-    assert.deepStrictEqual([classify('PUT', '/api/diseases/gout').action, classify('PUT', '/api/diseases/gout').target, classify('DELETE', '/api/diseases/gout').action], ['disease.write', 'gout', 'disease.write']);
-    assert.strictEqual(classify('POST', '/api/diseases/import').action, 'disease.write');
-    assert.ok(classify('POST', '/api/diseases/validate').ignore && classify('POST', '/api/diseases/gout/preview').ignore && classify('POST', '/api/diseases/gout/truth-report').ignore);
-    assert.strictEqual(classify('GET', '/api/diseases'), null);
-    assert.strictEqual(classify('POST', '/api/departments').action, 'department.write');
-    assert.deepStrictEqual([classify('PUT', '/api/departments/cardiology').action, classify('PUT', '/api/departments/cardiology').target, classify('DELETE', '/api/departments/cardiology').action], ['department.write', 'cardiology', 'department.write']);
-    assert.strictEqual(classify('POST', '/api/departments/install-library').action, 'department.write');
-    assert.ok(classify('POST', '/api/departments/validate').ignore); assert.strictEqual(classify('GET', '/api/departments'), null);
     assert.strictEqual(classify('GET', '/api/hello'), null);
     const n1 = normalize({ ts: 't', action: 'x', outcome: 'success', details: { z: 1, a: 'x\u0000y' } });
     assert.strictEqual(n1.details.a, 'xy'); assert.strictEqual(n1.status, null);

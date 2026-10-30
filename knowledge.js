@@ -483,30 +483,6 @@ const DEMO_EDGES = [
   ['764146007', '105590001'], ['387406002', '105590001']
 ];
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Code picker helpers (pure; GET /api/codes/search below, disease form, plan chunk 1.10a)
-const CODE_SYSTEMS = { snomed: ['CONDITIONS', 'PROCEDURES', 'ALLERGENS', 'REACTIONS'], loinc: ['LABS'], rxnorm: ['MEDICATIONS'], cvx: ['IMMUNIZATIONS'] };
-function bundledCodes(system) {
-  const T = __s.terminology, out = [];
-  for (const name of CODE_SYSTEMS[system] || []) for (const e of Object.values(T[name] || {})) if (e && e.code) out.push({ code: String(e.code), display: e.display || '', terms: e.terms || [] });
-  return out;
-}
-// rank: exact code, name starts with the text, name contains it, a synonym contains it; then shorter names first. Same code from several sources is one row.
-function rankCodes(rows, term, limit) {
-  const t = String(term || '').trim().toLowerCase(), by = new Map();
-  for (const r of rows) {
-    const name = String(r.display || '').toLowerCase(), syn = (r.terms || []).map(x => String(x).toLowerCase());
-    let rank = r.sources.includes('bundled') ? 9 : 3;   // database rows were already matched by the query
-    if (!t) rank = 5; else if (r.code === t) rank = 0; else if (r.code.startsWith(t)) rank = 1; else if (name.startsWith(t)) rank = 2; else if (name.includes(t)) rank = 3; else if (syn.some(x => x.includes(t))) rank = 4;
-    if (rank === 9) continue;
-    const have = by.get(r.code);
-    if (have) { have.sources = [...new Set([...have.sources, ...r.sources])]; if (!have.display && r.display) have.display = r.display; if (r.patients != null) have.patients = r.patients; have.rank = Math.min(have.rank, rank); }
-    else by.set(r.code, { code: r.code, display: r.display || '', sources: r.sources.slice(), patients: r.patients == null ? null : r.patients, rank });
-  }
-  return [...by.values()].sort((a, b) => a.rank - b.rank || (b.patients || 0) - (a.patients || 0) || (a.display || '~').length - (b.display || '~').length || a.code.localeCompare(b.code)).slice(0, limit)
-    .map(({ rank, ...x }) => x);
-}
-
 function register(app, pool, opts = {}) {
   const sanitize = opts.sanitizeBatchId || (b => String(b).replace(/[^a-zA-Z0-9]/g, '_').replace(/^_+|_+$/g, ''));
 
@@ -631,23 +607,6 @@ function register(app, pool, opts = {}) {
       WHERE domain = $1 AND ($2 = '' OR display ILIKE $3 OR code LIKE $4)
       ORDER BY (code = $2) DESC, patients_rollup DESC, display NULLS LAST, code LIMIT $5`, [domain, term, `%${esc}%`, `${esc}%`, lim]);
     return { domain, concepts: r.rows.map(x => ({ code: x.code, display: x.display, system: x.code_system, patients: x.patients, patientsRollup: x.patients_rollup, inData: x.in_data })) };
-  }
-
-  // ---- code picker: GET /api/codes/search?system=snomed|loinc|rxnorm|cvx&q=&limit= (disease form, plan chunk 1.10a) -----------
-  // Looks in the bundled demo dictionary, and for SNOMED also in the loaded concepts (snomed_concept) and the codes seen in imported data
-  // (snomed_dictionary). Returns the code, its display, the system key and where it was found, so the form can show how well it is backed.
-  async function codeSearch(q) {
-    const system = String(q.system || 'snomed').toLowerCase(); if (!CODE_SYSTEMS[system]) throw httpError(400, 'Unknown code system.');
-    const term = String(q.q || '').trim().slice(0, 100), lim = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), 50);
-    const rows = bundledCodes(system).map(r => ({ ...r, sources: ['bundled'] }));
-    if (system === 'snomed' && term.length >= 2) {
-      const esc = term.replace(/[\\%_]/g, '\\$&'), like = `%${esc}%`, pre = `${esc}%`;
-      const c = await pool.query(`SELECT code, display FROM snomed_concept WHERE display ILIKE $1 OR code LIKE $2 ORDER BY (code = $3) DESC, length(display) LIMIT $4`, [like, pre, term, lim * 3]);
-      c.rows.forEach(r => rows.push({ code: String(r.code), display: r.display || '', terms: [], sources: ['concepts'] }));
-      const d = await pool.query(`SELECT code, max(display) AS display, max(patients) AS patients FROM snomed_dictionary WHERE domain = 'dx' AND (display ILIKE $1 OR code LIKE $2) GROUP BY code ORDER BY max(patients) DESC LIMIT $3`, [like, pre, lim * 3]);
-      d.rows.forEach(r => rows.push({ code: String(r.code), display: r.display || '', terms: [], sources: ['data'], patients: r.patients }));
-    }
-    return { system, query: term, codes: rankCodes(rows, term, lim) };
   }
 
   // ---- expansion: selected codes -> codes that exist in the data -------------------------------------------------
@@ -784,7 +743,6 @@ function register(app, pool, opts = {}) {
   app.get('/api/snomed/status', wrap(() => status()));
   app.post('/api/snomed/dictionary/build', wrap(req => buildDictionary(req.body || {})));
   app.get('/api/snomed/search', wrap(req => search(req.query || {})));
-  app.get('/api/codes/search', wrap(req => codeSearch(req.query || {})));
   app.post('/api/snomed/expand', wrap(req => expand(req.body || {})));
   app.post('/api/snomed/query/build', wrap(req => buildQuery(req.body || {})));
   app.post('/api/snomed/hierarchy/load', wrap(req => loadHierarchy(req.body || {})));
@@ -793,7 +751,7 @@ function register(app, pool, opts = {}) {
 
 module.exports = register;
 module.exports.DOMAINS = DOMAINS;
-module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, parseCsvLine, DEMO_EDGES, DEMO_NAMES, rankCodes, bundledCodes };
+module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, parseCsvLine, DEMO_EDGES, DEMO_NAMES };
 
 // ---------------------------------------------------------------------------------------------------------------------
 module.exports.selftest = () => {
@@ -820,14 +778,6 @@ module.exports.selftest = () => {
   // demo hierarchy: every link endpoint has a name, no self links, no duplicates
   const seen = new Set();
   for (const [c, p] of t.DEMO_EDGES) { assert.ok(t.DEMO_NAMES[c] && t.DEMO_NAMES[p], `unnamed concept in ${c}->${p}`); assert.notStrictEqual(c, p); assert.ok(!seen.has(c + p)); seen.add(c + p); }
-  // code picker: bundled codes found by name, synonym and code; one row per code; unknown system rejected; route answers without a database for loinc
-  const T0 = __s.terminology, dm = T0.CONDITIONS.diabetes.code;
-  let cr = t.rankCodes(t.bundledCodes('snomed').map(x => ({ ...x, sources: ['bundled'] })), 'sugar diabetes', 5); assert.strictEqual(cr[0].code, dm, 'synonym finds diabetes');
-  cr = t.rankCodes(t.bundledCodes('snomed').map(x => ({ ...x, sources: ['bundled'] })), dm, 5); assert.strictEqual(cr[0].code, dm);
-  cr = t.rankCodes([{ code: '1', display: 'Gout', terms: [], sources: ['bundled'] }, { code: '1', display: '', terms: [], sources: ['data'], patients: 4 }], 'gout', 5);
-  assert.deepStrictEqual([cr.length, cr[0].sources, cr[0].patients], [1, ['bundled', 'data'], 4], 'same code from two sources is one row');
-  assert.deepStrictEqual(t.rankCodes([{ code: '2', display: 'Asthma', terms: [], sources: ['bundled'] }], 'zzz', 5), []);
-  assert.ok(t.bundledCodes('loinc').length && t.bundledCodes('rxnorm').length && t.bundledCodes('cvx').length && !t.bundledCodes('nope').length);
   console.log('snomed-query selftest: ok');
 };
 return module.exports;
