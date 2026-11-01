@@ -2956,22 +2956,79 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                             <button class="btn-secondary" onclick="runPopulationHealth()">Population Health quick-run</button>
                         </div>
                         <details id="anCustomBox" style="margin-top:12px; padding:10px 12px; border-radius:6px; font-size:13px;">
-                            <summary style="cursor:pointer; user-select:none;"><strong>Custom analytic in plain English</strong> <span class="an-muted">(AI writes a read-only query for the mode selected above; you review it, then run. Needs the AI settings above.)</span></summary>
-                            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:flex-start;">
-                                <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
-                                <button id="anCustomGenBtn" class="btn-secondary" onclick="customGenerate()">Generate query</button>
+                            <summary style="cursor:pointer; user-select:none;"><strong>Custom analytic in plain English</strong> <span class="an-muted">(AI writes read-only queries for the mode selected above; you review them, then run. Needs the AI settings above. Examples work without AI.)</span></summary>
+                            <style>
+                                .cu-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-top:10px; border-bottom:1px solid var(--line); }
+                                .cu-tab { padding:6px 12px; border:1px solid transparent; border-bottom:0; border-radius:6px 6px 0 0; background:none; color:var(--ink-2); font:inherit; font-size:13px; cursor:pointer; }
+                                .cu-tab[aria-selected="true"] { background:var(--tint); border-color:var(--line); color:var(--ink); font-weight:600; }
+                                .cu-panel { margin-top:10px; }
+                                .cu-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+                                .cu-chip { padding:3px 10px; border:1px solid var(--line); border-radius:999px; background:none; color:var(--ink-2); font:inherit; font-size:12px; cursor:pointer; }
+                                .cu-chip:hover { border-color:var(--accent); color:var(--accent); }
+                                .cu-card { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-top:8px; }
+                                .cu-card h4 { margin:0 0 2px; font-size:13.5px; }
+                                .cu-card pre { white-space:pre-wrap; font-size:12px; margin:6px 0 0; }
+                                .cu-group { margin:14px 0 2px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-2); }
+                                .cu-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+                                .cu-input { flex:1; min-width:220px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit; }
+                            </style>
+                            <div class="cu-tabs" role="tablist" id="cuTabs">
+                                <button class="cu-tab" role="tab" data-tab="ask" aria-selected="true">Ask a question</button>
+                                <button class="cu-tab" role="tab" data-tab="disease" aria-selected="false">By disease</button>
+                                <button class="cu-tab" role="tab" data-tab="department" aria-selected="false">By department</button>
+                                <button class="cu-tab" role="tab" data-tab="examples" aria-selected="false">Examples</button>
                             </div>
-                            <div class="an-muted" style="margin-top:6px;">Follows the mode chosen above: <strong>V1</strong> matches text only (no codes, no dates), <strong>V2</strong> uses codes but no dates, <strong>V4</strong> uses codes and dates. A query that breaks the rules of its mode is refused. Only your question is sent to the model, never patient data.</div>
+
+                            <div class="cu-panel" id="cuPanel-ask">
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+                                    <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
+                                    <button id="anCustomGenBtn" class="btn-secondary" onclick="customGenerate()">Generate query</button>
+                                </div>
+                                <div class="an-muted" style="margin-top:6px;">Follows the mode chosen above: <strong>V1</strong> matches text only (no codes, no dates), <strong>V2</strong> uses codes but no dates, <strong>V4</strong> uses codes and dates. A query that breaks the rules of its mode is refused. Only your question is sent to the model, never patient data.</div>
+                            </div>
+
+                            <div class="cu-panel" id="cuPanel-disease" hidden>
+                                <div class="cu-row" style="margin-top:0;">
+                                    <input id="cuDisease" class="cu-input" type="text" maxlength="80" placeholder="Disease, e.g. Type 2 diabetes" aria-label="Disease name">
+                                    <button id="cuDiseaseBtn" class="btn-secondary" onclick="customPlan('disease')">Plan analytics</button>
+                                </div>
+                                <div class="cu-chips" id="cuDiseaseIdeas"></div>
+                                <div class="an-muted" style="margin-top:6px;">The AI plans 4 to 6 analytics for the disease: how many patients and who, comorbidities, drugs, monitoring labs, care use and (in V4) trends. You review each query and run one or all.</div>
+                            </div>
+
+                            <div class="cu-panel" id="cuPanel-department" hidden>
+                                <div class="cu-row" style="margin-top:0;">
+                                    <input id="cuDepartment" class="cu-input" type="text" maxlength="80" placeholder="Department, e.g. Cardiology" aria-label="Department name">
+                                    <button id="cuDepartmentBtn" class="btn-secondary" onclick="customPlan('department')">Plan analytics</button>
+                                </div>
+                                <div class="cu-chips" id="cuDepartmentIdeas"></div>
+                                <div class="an-muted" style="margin-top:6px;"><strong>Note:</strong> the data has no department field. The AI defines a department by the conditions, drugs and encounter types that usually belong to it and says which ones in each explanation: check that list before you trust the numbers.</div>
+                            </div>
+
+                            <div class="cu-panel" id="cuPanel-examples" hidden>
+                                <div class="an-muted">Pick an example to see the idea. <strong>Load query</strong> puts its ready-made query in the editor below (and switches to the mode it needs) so you can run it right away, without the AI. <strong>Use as my question</strong> copies the wording so you can adapt it to your own condition, drug or lab and press Generate.</div>
+                                <div id="cuExamples" style="margin-top:4px;"><span class="an-muted">Loading examples...</span></div>
+                            </div>
+
+                            <div id="cuPlan" style="display:none; margin-top:12px;">
+                                <div><strong id="cuPlanTitle"></strong> <span id="cuPlanMode" class="an-tag"></span> <span class="an-ai-tag">AI-planned, please review</span></div>
+                                <div id="cuPlanNote" class="an-muted" style="margin:4px 0;"></div>
+                                <div id="cuPlanList"></div>
+                                <div class="cu-row"><button class="btn-primary" onclick="customRunPlan()">Run all</button><span class="an-muted">Each result is added to the Output. Edit a query before running if you like; it is checked again.</span></div>
+                            </div>
+
                             <div id="anCustomOut" style="display:none; margin-top:10px;">
-                                <div><strong id="anCustomTitle"></strong> <span id="anCustomModeTag" class="an-tag"></span> <span class="an-ai-tag">AI-generated, please review</span></div>
+                                <div><strong id="anCustomTitle"></strong> <span id="anCustomModeTag" class="an-tag"></span> <span id="anCustomAi" class="an-ai-tag">AI-generated, please review</span></div>
                                 <div id="anCustomExpl" class="an-muted" style="margin:4px 0 6px;"></div>
                                 <textarea id="anCustomSql" rows="9" spellcheck="false" style="width:100%; box-sizing:border-box; padding:8px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,Consolas,monospace;"></textarea>
                                 <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
                                     <button class="btn-primary" onclick="customRun()">Run this query</button>
-                                    <label for="anCustomView">Show as</label>
-                                    <select id="anCustomView" onchange="customApplyView()" style="padding:6px; border-radius:4px; font-size:13px;"><option value="both">Table and chart</option><option value="table">Table only</option><option value="chart">Chart only</option></select>
                                     <span class="an-muted">You can edit the query; it is checked again before it runs. It runs on the active cohort.</span>
                                 </div>
+                            </div>
+                            <div class="cu-row">
+                                <label for="anCustomView">Show results as</label>
+                                <select id="anCustomView" onchange="customApplyView()" style="padding:6px; border-radius:4px; font-size:13px;"><option value="both">Table and chart</option><option value="table">Table only</option><option value="chart">Chart only</option></select>
                             </div>
                             <div id="anCustomStatus" class="an-muted" style="margin-top:6px; min-height:16px;"></div>
                         </details>
@@ -7899,6 +7956,7 @@ async function customGenerate() {
         const r = await anPost('/api/analytics/custom/generate', { question: q, mode });
         if (!r.success) throw new Error(r.error || 'Could not generate the query');
         Object.assign(CUSTOM, { mode: r.mode, title: r.title, question: q });
+        document.getElementById('anCustomAi').style.display = '';
         document.getElementById('anCustomTitle').textContent = r.title;
         document.getElementById('anCustomModeTag').textContent = r.mode.toUpperCase();
         document.getElementById('anCustomExpl').textContent = r.explanation || '';
@@ -7919,11 +7977,118 @@ async function customRun() {
         r.mode = r.mode || CUSTOM.mode; r.args = { question: CUSTOM.question };
         const run = anStartRun(label, { modes: [CUSTOM.mode] });
         run.add(r);
-        if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
+        if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (${document.getElementById('anCustomAi').style.display === 'none' ? 'example' : 'AI-generated'}, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
         customView(run.wrap, view); CUSTOM.wraps.push(run.wrap);
         customStatus(r.success ? 'Done. Result added to the Output; change "Show as" to switch between table and chart.' : 'The query failed (see the Output).', !r.success);
     } catch (e) { customStatus('Error: ' + e.message, true); }
 }
+
+// ---- Custom analytic: tabs, disease / department plans, examples ----
+const CUSTOM_PLAN = { kind: null, name: '', mode: null, items: [] };
+const CUSTOM_EX = { loaded: false, examples: [], ideas: { disease: [], department: [] } };
+function customTab(name) {
+    document.querySelectorAll('#cuTabs .cu-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    ['ask', 'disease', 'department', 'examples'].forEach(t => { const p = document.getElementById('cuPanel-' + t); if (p) p.hidden = t !== name; });
+    if (name === 'examples') customLoadExamples();
+    if (name === 'disease' || name === 'department') customRenderIdeas();
+}
+function customRenderIdeas() {
+    ['disease', 'department'].forEach(k => {
+        const box = document.getElementById('cu' + (k === 'disease' ? 'Disease' : 'Department') + 'Ideas');
+        const list = (CUSTOM_EX.ideas[k] && CUSTOM_EX.ideas[k].length) ? CUSTOM_EX.ideas[k] : (k === 'disease' ? ['Type 2 diabetes', 'Hypertension', 'Heart failure', 'COPD'] : ['Cardiology', 'Endocrinology', 'Nephrology', 'Emergency medicine']);
+        if (box) box.innerHTML = list.map(n => `<button type="button" class="cu-chip" data-kind="${k}" data-name="${escapeHtml(n)}">${escapeHtml(n)}</button>`).join('');
+    });
+}
+async function customLoadExamples() {
+    if (CUSTOM_EX.loaded) return;
+    const box = document.getElementById('cuExamples');
+    try {
+        const r = await (await fetch('/api/analytics/custom/examples')).json();
+        if (!r.success) throw new Error(r.error || 'Could not load examples');
+        Object.assign(CUSTOM_EX, { loaded: true, examples: r.examples, ideas: r.ideas || CUSTOM_EX.ideas });
+        customRenderIdeas();
+        let last = '';
+        box.innerHTML = r.examples.map((ex, i) => {
+            const head = ex.group !== last ? `<div class="cu-group">${escapeHtml(ex.group)}</div>` : ''; last = ex.group;
+            return `${head}<div class="cu-card"><h4>${escapeHtml(ex.title)} <span class="an-badge an-${escapeHtml(ex.mode)}">${escapeHtml(ex.mode.toUpperCase())}</span></h4>
+                <div><em>${escapeHtml(ex.question)}</em></div><div class="an-muted" style="margin-top:2px;">${escapeHtml(ex.shows)}</div>
+                <div class="cu-row"><button class="btn-primary" data-ex="${i}" data-act="load">Load query</button><button class="btn-secondary" data-ex="${i}" data-act="ask">Use as my question</button></div>
+                <details style="margin-top:6px;"><summary class="an-muted" style="cursor:pointer;">See the query</summary><pre>${escapeHtml(ex.sql)}</pre></details></div>`;
+        }).join('');
+    } catch (e) { box.innerHTML = `<span class="an-muted" style="color:#c62828;">Error: ${escapeHtml(e.message)}</span>`; }
+}
+function customSetMode(mode) {
+    const radio = document.querySelector(`input[name="analyticsMode"][value="${mode}"]`);
+    if (!radio || radio.disabled) return false;
+    if (!radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); }
+    return true;
+}
+function customShowSql(o) {   // fill the single-query editor
+    Object.assign(CUSTOM, { mode: o.mode, title: o.title, question: o.question || '' });
+    document.getElementById('anCustomTitle').textContent = o.title;
+    document.getElementById('anCustomModeTag').textContent = o.mode.toUpperCase();
+    document.getElementById('anCustomExpl').textContent = o.explanation || '';
+    document.getElementById('anCustomAi').style.display = o.ai ? '' : 'none';
+    document.getElementById('anCustomSql').value = o.sql;
+    document.getElementById('anCustomOut').style.display = 'block';
+}
+function customExample(i, act) {
+    const ex = CUSTOM_EX.examples[i]; if (!ex) return;
+    if (act === 'ask') { customTab('ask'); document.getElementById('anCustomQ').value = ex.question; document.getElementById('anCustomQ').focus(); customStatus('Edit the wording for your own data, then press Generate query.'); return; }
+    if (!customSetMode(ex.mode)) { customStatus(`This example needs ${ex.mode.toUpperCase()}, which is not available here.`, true); return; }
+    customShowSql({ mode: ex.mode, title: ex.title, question: ex.question, explanation: ex.shows, sql: ex.sql, ai: false });
+    document.getElementById('anCustomOut').scrollIntoView({ block: 'nearest' });
+    customStatus(`Example loaded in ${ex.mode.toUpperCase()}. Change codes or text in the query if you like, then press Run this query.`);
+}
+async function customPlan(kind) {
+    const input = document.getElementById(kind === 'disease' ? 'cuDisease' : 'cuDepartment'), btn = document.getElementById(kind === 'disease' ? 'cuDiseaseBtn' : 'cuDepartmentBtn');
+    const name = input.value.trim(), mode = demoMode();
+    if (name.length < 2) { customStatus(`Type a ${kind} name.`, true); return; }
+    try {
+        btn.disabled = true; customStatus(`Asking the model to plan ${mode.toUpperCase()} analytics for "${name}" (up to 90 seconds)...`);
+        const r = await anPost('/api/analytics/custom/plan', { kind, name, mode });
+        if (!r.success) throw new Error(r.error || 'Could not plan the analytics');
+        CUSTOM_PLAN.kind = kind; CUSTOM_PLAN.name = r.name; CUSTOM_PLAN.mode = r.mode; CUSTOM_PLAN.items = r.analytics;
+        document.getElementById('cuPlanTitle').textContent = `${kind === 'disease' ? 'Disease' : 'Department'}: ${r.name}`;
+        document.getElementById('cuPlanMode').textContent = r.mode.toUpperCase();
+        const dropped = (r.dropped || []).length ? ` ${r.dropped.length} planned ${r.dropped.length === 1 ? 'query was' : 'queries were'} left out because ${r.dropped.length === 1 ? 'it broke' : 'they broke'} the ${r.mode.toUpperCase()} rules.` : '';
+        document.getElementById('cuPlanNote').textContent = ((r.note || '') + dropped).trim();
+        document.getElementById('cuPlanList').innerHTML = r.analytics.map((a, i) => `<div class="cu-card"><h4>${i + 1}. ${escapeHtml(a.title)}</h4><div class="an-muted">${escapeHtml(a.explanation)}</div>
+            <details style="margin-top:6px;"><summary class="an-muted" style="cursor:pointer;">Query (editable)</summary><textarea id="cuPlanSql${i}" rows="8" spellcheck="false" style="width:100%; box-sizing:border-box; margin-top:6px; padding:8px; border-radius:4px; font-size:12.5px; font-family:ui-monospace,Consolas,monospace;">${escapeHtml(a.sql)}</textarea></details>
+            <div class="cu-row"><button class="btn-secondary" data-plan-run="${i}">Run this one</button></div></div>`).join('');
+        document.getElementById('cuPlan').style.display = 'block';
+        customStatus(`Planned ${r.analytics.length} analytics. Review them, then run one or all.`);
+    } catch (e) { customStatus('Error: ' + e.message, true); }
+    finally { btn.disabled = false; }
+}
+async function customRunPlanItem(i) {
+    const a = CUSTOM_PLAN.items[i], ta = document.getElementById('cuPlanSql' + i); if (!a || !ta) return false;
+    if (demoMode() !== CUSTOM_PLAN.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this plan was made in ${CUSTOM_PLAN.mode.toUpperCase()}: plan again so the queries follow the selected mode.`, true); return false; }
+    const q = `${CUSTOM_PLAN.kind === 'disease' ? 'Disease' : 'Department'}: ${CUSTOM_PLAN.name}`;
+    const r = await anPost('/api/analytics/custom/run', Object.assign({ sql: ta.value.trim(), mode: CUSTOM_PLAN.mode, title: a.title, question: q }, anScope()));
+    r.mode = r.mode || CUSTOM_PLAN.mode; r.args = { question: q };
+    const run = anStartRun(`${q} · ${a.title} (${CUSTOM_PLAN.mode.toUpperCase()})`, { modes: [CUSTOM_PLAN.mode] });
+    run.add(r);
+    if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-planned, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
+    customView(run.wrap, document.getElementById('anCustomView').value); CUSTOM.wraps.push(run.wrap);
+    return !!r.success;
+}
+async function customRunPlan() {
+    let ok = 0;
+    for (let i = 0; i < CUSTOM_PLAN.items.length; i++) {
+        customStatus(`Running ${i + 1} of ${CUSTOM_PLAN.items.length}...`);
+        try { if (await customRunPlanItem(i)) ok++; else if (demoMode() !== CUSTOM_PLAN.mode) return; } catch (e) { customStatus('Error: ' + e.message, true); return; }
+    }
+    customStatus(`Done: ${ok} of ${CUSTOM_PLAN.items.length} ran. Results are in the Output.`, ok < CUSTOM_PLAN.items.length);
+}
+document.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('#anCustomBox button'); if (!t) return;
+    if (t.classList.contains('cu-tab')) customTab(t.dataset.tab);
+    else if (t.classList.contains('cu-chip')) { document.getElementById(t.dataset.kind === 'disease' ? 'cuDisease' : 'cuDepartment').value = t.dataset.name; }
+    else if (t.dataset.ex !== undefined) customExample(Number(t.dataset.ex), t.dataset.act);
+    else if (t.dataset.planRun !== undefined) { t.disabled = true; customStatus('Running...'); customRunPlanItem(Number(t.dataset.planRun)).then(ok => { if (ok) customStatus('Done. Result added to the Output.'); }).catch(err => customStatus('Error: ' + err.message, true)).finally(() => { t.disabled = false; }); }
+});
+document.addEventListener('DOMContentLoaded', customRenderIdeas);
 
 async function runCatalogAll() {
     const status = document.getElementById('anStatus'), out = document.getElementById('anResults');
