@@ -3457,6 +3457,7 @@ function register(app, pool, helpers = {}) {
   require('./evidence').registerStudies(app, pool, engine, { catalog: () => CATALOG, fail, scopeOf });
   require('./knowledge').kgCohort(app, readPool, engine, { fail });                         // cohort knowledge graph: GET /api/kg/cohort
   require('./pathways')(app, readPool, engine, { fail });                                   // observed care pathways: GET /api/pathways, /api/pathways/patients
+  require('./patterns')(app, pool, { fail, readPool, engine, scopeOf, wordCase: require('./pattern-ai').makeWordCase(pool) });                      // pattern encyclopedia: /api/patterns (owner pool writes; chunk 4 runs on readPool)
   __s.readiness(app, readPool, engine, { CATALOG, scopeOf, fail });                  // analytics readiness: POST /api/readiness/*
   require('./evidence').patientExplorer(app, readPool, engine, { fail });                              // patient data explorer: GET /api/explorer/patients, /api/explorer/patient
 

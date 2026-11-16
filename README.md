@@ -12,6 +12,11 @@ One README for the whole project (it replaces README_FEATURES.md, README_ANALYTI
 | `knowledge.js` | Terminology and data-source sections (`terminology`, `snomedQuery`, `kgCohort`, `fhirConnect`; replaces `knowledge.js` (terminology section), `snomed-query.js`, `kg-cohort.js`, `fhir-connect.js`) |
 | `evidence.js` | Phase 4 tools in one file: OpenRouter settings and test, plain-English question parser, suggested PICO/PECO studies (`POST /api/pico/suggest`) and result explainer, saved PICO/PECO templates, A vs B comparison. Self-test: `node evidence.js --selftest`; smoke test: `node evidence.js --smoke`; also holds the Patient data explorer (`patientExplorer`) |
 | `pathways.js` | Care pathways (`/api/pathways`) and the whole-cohort Patient trajectory (`/api/trajectory/cohort`): one engine, two starts (a diagnosis, or each patient's first dated record) |
+| `patterns.js` | Pattern encyclopedia: spec validator, SQL builder (spec to one read-only statement), run labels, review flow (draft, reviewed, active, retired), create from one case or a few, import and export (`/api/patterns`) |
+| `pattern-ai.js` | Every model call of the Patterns tab: plain English to a draft spec (`POST /api/patterns/ai-draft`), the run explainer (`POST /api/patterns/:id/explain`) the optional wording of a single case, and the pattern assistant (`GET /api/patterns/assistant/diagnoses` lists the 100 most common diagnoses of the active cohort with patient counts; `POST /api/patterns/assistant/suggest { code }` returns a few plain-English pattern ideas for one of them, each already a checked draft that the tab opens in the form). The model never writes codes or SQL and never sees counts or patient data |
+| `patterns-ui.js` | The Patterns tab (list, form, run view, Review panel, create from a case, import and export); served by `server.js` |
+| `patterns-sql-check.js` | Optional: runs the SQL that `patterns.js` builds on real Postgres in memory (PGlite, nothing to set up) against planted patients with known answers: `npm install --no-save @electric-sql/pglite && node patterns-sql-check.js`. Not part of `npm test` and not a dependency |
+| `e2e-patterns.js` | End-to-end check of the Patterns routes against a running server: `BASE=http://localhost:3055 npm run e2e:patterns` (sign-in off or `COOKIE=...`; run and explain are skipped when there is no active cohort) |
 | `synthetic.js` | Deterministic FHIR R4 generator (`generateBundle`) |
 | `index.html` | The whole UI. Tabs: Database, Import data, Analytics (cohorts, catalog, generator, HAPI fetch, readiness, patient data explorer, PICO/PECO tools, AI settings, cohort knowledge graph), Dashboard, and the guide tabs Architecture, Capabilities and About |
 | `db-readonly.sql` | Creates the SELECT-only database role used for cohort SQL and all analytics (run once as the database owner; see Data-use and read-only safeguards) |
@@ -20,7 +25,7 @@ One README for the whole project (it replaces README_FEATURES.md, README_ANALYTI
 | `e2e-enrichment-dx.js`, `e2e-enrichment-all.js` | Real-database checks of the enrichment join (conditions, then medications, labs, procedures, allergies, immunizations): `DATABASE_URL=postgres://localhost/vr_enrich_test node e2e-enrichment-all.js`. Create their own `*_t1` / `*_t2` tables; not part of `npm test` |
 | `login.html` | Sign-in page. Public on purpose: the gate in `security.js` redirects every other page to it, so the app itself is never sent to someone who is not signed in. Do not merge it into `index.html` |
 
-Shortcuts: `npm test` runs the self-tests of `population.js` and of every section in `security.js`, `knowledge.js`, `analytics.js` and `evidence.js` (each file also runs alone: `node security.js --selftest`); `npm run smoke` runs the smoke test (server must be running, data imported).
+Shortcuts: `npm test` runs the self-tests of `population.js` and of every section in `security.js`, `knowledge.js`, `analytics.js`, `evidence.js`, `patterns.js` and `pattern-ai.js` (each file also runs alone: `node security.js --selftest`); `npm run smoke` runs the smoke test (server must be running, data imported).
 
 ## Part 1: Preprocessing tab
 
@@ -300,6 +305,32 @@ Routes: `GET /login`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api
 **Roles.** Today there is one role, `admin`, with every permission. Roles live in the `ROLES` table at the top of `security.js` (auth); `users.role` holds the name, and a user whose role is not in the table has no access. To add a role later: add an entry to `ROLES` with its permissions, and (optionally) list the routes it may not use in `ROUTE_PERMISSIONS`, for example `['POST', /^\/api\/import-fhir$/, 'data:import']`. Routes not listed need only `app:access`. User management (creating more users from the UI) is not built yet.
 
 `AUTH_DISABLED=true` turns the gate off for local development only; it is ignored when `NODE_ENV=production`.
+
+## Pattern encyclopedia (Patterns tab)
+
+A pattern is a small, reviewed statement about a sequence in the record, for example "a drug started within 90 days of a diagnosis" or "a return within 30 days of discharge". It is stored as plain JSON from a fixed vocabulary; the server turns the validated fields into one parameterized, read-only statement. No model text ever reaches SQL.
+
+- **Create:** by hand, from a plain-English description (the model picks keys from the conditions and drugs that exist in the active cohort; the server turns keys into codes; the result must pass the checker, one retry, otherwise nothing is returned), from one patient of the cohort, or from a few patients (groups under the minimum cell size are refused). Every draft is saved as a *draft* at certainty *hypothesis*; a model draft cannot be raised above that.
+- **Review:** status goes draft, reviewed, active, retired. Changing status or raising certainty needs a reason and the permission `patterns:review` (roles `reviewer` and `admin`). History rows record who, from, to and why. Only reviewed and active patterns are exported by default; imported patterns always arrive as drafts.
+- **Delete:** the Delete button next to Run removes a draft, or a retired pattern (reviewers only), with its history and saved runs. A reviewed or active pattern must be retired first. It asks for a reason and the version you saw (`POST /api/patterns/:id/delete`, body `{ note, version }`). The audit log keeps the reason, the status and how many history rows and runs went; the pattern itself cannot be recovered, so export it first if you may want it back.
+- **Run:** on the active cohort only. The answer has counts (cells under the minimum cell size are hidden), reasons, matches linked to the patient explorer, and three chips (status, certainty, reliability) with a plain sentence on what the evidence supports. A run is saved with the pattern.
+- **Explain:** the explainer states the chips first. The model sees labels only, no counts, and its text must contain no digit, number word, percent sign, causal or advice wording, link or markup, otherwise only the chips are shown.
+- **Case wording (off by default):** with `PATTERN_CASE_MODEL_WORDING=true`, "Create from a case" may send an external model day numbers, codes and code names (never an age, date, name or id) to word the statement. Never used for a rare sequence.
+
+Settings (environment variables; all optional):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PATHWAY_MIN_CELL` | 5 | Smallest group shown, for pathways and for patterns (counts under it are hidden, and a group of cases under it cannot be mined) |
+| `PATTERN_THIN_N` | 20 | A run on fewer evaluable patients is labelled *thin* |
+| `PATTERN_GAPPY_PCT` | 30 | A run where more than this percent of patients cannot be evaluated is labelled *gappy* |
+| `PATTERN_DEMO_LINKS` | 47 | A pattern that uses descendant codes is labelled *weak hierarchy* when the loaded terminology has this many is-a links or fewer (47 is the size of the demo hierarchy) |
+| `PATTERN_SECOND_REVIEWER` | `false` | `true`: the person who wrote or last edited a pattern cannot mark it reviewed |
+| `PATTERN_CASE_MODEL_WORDING` | `false` | Allows the model wording of a single case (see above) |
+
+Audit actions (category `pattern`, target = pattern id): `pattern.create`, `pattern.update`, `pattern.status`, `pattern.certainty`, `pattern.run`, `pattern.seed`, `pattern.export`, `pattern.import`, `pattern.from_case`, `pattern.from_cases`, `pattern.ai_draft`, `pattern.explain`, `pattern.delete`. Prompts, descriptions and model replies are not stored in the audit log.
+
+Tests: `node patterns.js --selftest` and `node pattern-ai.js --selftest` (no database, no network; both are in `npm test`); `npm run e2e:patterns` against a running server; optionally `node patterns-sql-check.js` for the SQL on in-memory Postgres (PGlite).
 
 ## Audit log
 

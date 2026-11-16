@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibe Rounds: pattern encyclopedia, article, plan and build chunks (11 of 13 done)</title>
+<style>
+:root{--bg:#f3f6f7;--panel:#fff;--ink:#14262b;--mute:#4c6268;--line:#c9d5d8;--teal:#0e6b73;--teal-bg:#dff0f1;--amber:#8a5a00;--amber-bg:#fbefd2;--green:#1f6b42;--green-bg:#dcf0e3;--code:#eaf0f1;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a1d;--panel:#16252a;--ink:#e3eef0;--mute:#9db4b9;--line:#2c4249;--teal:#5fc3cc;--teal-bg:#173a40;--amber:#f0c36a;--amber-bg:#3b2f12;--green:#79d19b;--green-bg:#17372a;--code:#0b1417;color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;line-height:1.2;margin:0}
+a{color:var(--teal)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.wrap{display:grid;grid-template-columns:200px minmax(0,780px);gap:48px;max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+nav{position:sticky;top:24px;align-self:start;font-size:14px}
+nav b{display:block;margin-bottom:8px;font-family:Georgia,serif;font-size:16px}
+nav a{display:block;padding:4px 0;color:var(--mute);text-decoration:none}
+nav a:hover{color:var(--teal)}
+@media (max-width:860px){.wrap{display:block}nav{display:none}}
+header{margin-bottom:36px}
+h1{font-size:clamp(30px,5vw,44px);letter-spacing:-.01em}
+.lede{font-size:18px;color:var(--mute);max-width:62ch;margin:14px 0 0}
+section{margin-top:52px;scroll-margin-top:20px}
+h2{font-size:28px;margin-bottom:12px}
+h3{font-size:19px;margin:26px 0 8px}
+p,li{max-width:70ch}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);margin:26px 0 8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.flow>div{padding:14px;border-right:1px solid var(--line);font-size:14px}
+.flow>div:last-child{border-right:0}
+.flow h3{font-size:15px;margin:0 0 6px}
+.who{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;margin-bottom:8px}
+.llm{background:var(--amber-bg);color:var(--amber)}.code{background:var(--teal-bg);color:var(--teal)}.human{background:var(--green-bg);color:var(--green)}
+.flow q{display:block;color:var(--mute);font-style:italic;quotes:none}
+@media (max-width:760px){.flow{grid-template-columns:1fr}.flow>div{border-right:0;border-bottom:1px solid var(--line)}}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--teal-bg);font-weight:600}
+.scroll{overflow-x:auto}
+.st{font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;white-space:nowrap}
+.st.ex{background:var(--green-bg);color:var(--green)}.st.pa{background:var(--amber-bg);color:var(--amber)}.st.nw{background:var(--teal-bg);color:var(--teal)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:12px 0}
+code{font:13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:4px}
+pre code{background:none;padding:0}
+.note{border-left:4px solid var(--amber);background:var(--amber-bg);padding:10px 14px;border-radius:0 8px 8px 0;margin:16px 0}
+.ok{border-left-color:var(--teal);background:var(--teal-bg)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:0 16px}
+summary{cursor:pointer;padding:12px 0;font-weight:600;font-family:Georgia,serif;font-size:17px}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+details>*:last-child{margin-bottom:14px}
+ul{padding-left:20px}li{margin:4px 0}
+.done{font-size:14.5px;color:var(--mute)}
+
+h4{font-size:16px;margin:18px 0 6px}
+.part{font-size:15px;color:var(--teal);font-weight:600;margin:40px 0 -30px}
+.atitle{font-size:24px;margin:0 0 6px}
+article h3{margin-top:30px}
+dl{margin:0}dt{font-weight:600;margin-top:8px}dd{margin:0}
+button.copy{margin:10px 0;padding:8px 14px;border:1px solid var(--teal);background:var(--teal-bg);color:var(--teal);border-radius:8px;font:inherit;font-size:14px;cursor:pointer}
+button.copy:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Sections"><b>Contents</b><a href="#now">Where you are now</a><a href="#article">A. Article</a><a href="#idea">B. Plan</a><a href="#have">What you have</a><a href="#hier">Dictionary and hierarchy</a><a href="#sources">Three ways to create</a><a href="#spec">Pattern and spec</a><a href="#exec">Executor</a><a href="#llm">LLM guardrails</a><a href="#epi">Epistemic uncertainty</a><a href="#future">Future scope</a><a href="#open">Decisions</a><a href="#facts">C. Project facts</a><a href="#chunks">Build chunks</a><a href="#uploads">Files to upload</a><a href="#log">Progress log</a></nav>
+<main>
+<header>
+<h1>Pattern encyclopedia for Vibe Rounds</h1>
+<p class="lede">One file with four parts: where you are now (progress, files, what to upload next), the article (what and why), the plan (how it fits your app), and small build chunks you can run one chat at a time.</p>
+<div class="note ok"><b>How to use:</b> open <a href="#now">Where you are now</a> first. It says which chunk is next, which files to upload and which prompt to paste. To build the next chunk, open a new chat, upload this file and the listed files, and paste the prompt. When a chunk is returned, replace this file with the new copy.</div>
+</header>
+
+<section id="now"><h2>Where you are now</h2>
+<p class="done">Last updated 16 Nov 2026. <b>13 of 13 chunks built.</b> Chunk 4 is built but one check is still open (the readmission seed has not been compared with your existing analytic). Chunks 8 and 9 are done but not yet tried on your Postgres (chunk 9 ran on in-memory Postgres, PGlite). Chunk 9 needs one line in <code>security.js</code> so the audit log names the new action (see the open items). Chunks 12 and 13 are built: the AI draft and explainer are wired, the README, About and article are updated, and <code>e2e-patterns.js</code> exists. Next: run <code>npm test</code> and <code>npm run e2e:patterns</code> on your machine, then the open Postgres checks. Chunk 10 is built and tested on the in-memory store only; the audit lines for <code>from-case</code> and <code>from-cases</code> are now in <code>security.js</code>.</p>
+
+<h3>Next chunk: what to upload</h3>
+<div class="scroll"><table><tr><th>Upload</th><th>Why</th></tr>
+<tr><td>This HTML file</td><td>The plan and the as-built facts below.</td></tr>
+<tr><td><code>patterns.js</code> (latest, 2,345 lines)</td><td>Chunk 10 adds shared-shape mining across cases and the from-cases route to it.</td></tr>
+<tr><td><code>patterns-ui.js</code> (latest, 439 lines)</td><td>Chunk 10 adds patient selection and the "create from a few cases" button to the tab.</td></tr>
+<tr><td><code>security.js</code> (optional, to close the chunk 9 audit item)</td><td>One line so <code>POST /api/patterns/from-case</code> is audited as <code>pattern.from_case</code>. I will add the same for <code>from-cases</code>.</td></tr>
+</table></div>
+<p><b>Not needed:</b> <code>index.html</code> and <code>server.js</code> (changed in chunk 6, nothing more to wire), <code>analytics.js</code>, <code>patterns-sql-check.js</code>, <code>security.js</code> unless you want the audit line (changed in chunk 8; needed again in chunk 12).</p>
+<p><b>Still open from chunk 4, tell me in the chat when you can:</b> (1) the name and count of the existing 30-day readmission analytic on your synthetic batch, with its population and cohort; (2) whether it measures the return from admission start or from discharge (<code>end_date</code>). The seed <code>readmit_30d_after_discharge</code> measures from discharge, using each patient's first inpatient stay as the index. (3) If a run says "No active cohort" while the Patterns banner shows one, paste the pathways run route from <code>analytics.js</code>: the run route assumes <code>scopeOf(req)</code> reads <code>req.query</code> and that <code>resolveScope</code> returns a falsy <code>cohort</code> when none is active.</p>
+<button class="copy" data-p="Project file attached. Do chunk 10 (Create from a few cases). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for chunk 10</button>
+
+<h3>All chunks at a glance</h3>
+<div class="scroll"><table><tr><th>Chunk</th><th>Name</th><th>Status</th><th>Files you upload for it</th></tr>
+<tr><td>1</td><td>Spec and validator</td><td><span class="st ex">Done</span></td><td>none needed</td></tr>
+<tr><td>2</td><td>Pattern store and routes</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>analytics.js</code>, <code>package.json</code></td></tr>
+<tr><td>3</td><td>Value sets and SQL builder</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code></td></tr>
+<tr><td>4</td><td>Run endpoint and three seed patterns</td><td><span class="st ex">Built</span> <span class="st pa">1 check open</span></td><td><code>patterns.js</code> (+ optional <code>patterns-sql-check.js</code>)</td></tr>
+<tr><td>5</td><td>Run labels</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code></td></tr>
+<tr><td>6</td><td>Patterns tab shell</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>index.html</code>, <code>server.js</code></td></tr>
+<tr><td>7</td><td>Run view</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code></td></tr>
+<tr><td>8</td><td>Review and certainty control</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code></td></tr>
+<tr><td>9</td><td>Create from one case</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code></td></tr>
+<tr><td>10</td><td>Create from a few cases</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code></td></tr>
+<tr><td>11</td><td>Import and export</td><td><span class="st ex">Done</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code></td></tr>
+<tr><td>12</td><td>AI draft and explainer</td><td><span class="st nw">Next</span></td><td><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code>, <code>research.js</code>, <code>evidence.js</code></td></tr>
+<tr><td>13</td><td>Docs and final checks</td><td><span class="st pa">Not started</span></td><td><code>patterns.js</code>, <code>package.json</code>, <code>README.md</code>, <code>about.html</code></td></tr>
+</table></div>
+
+<h3>Files you should have now</h3>
+<p>Replace your local copy of each file with the latest one. If a file is not on this list, it has not been changed.</p>
+<div class="scroll"><table><tr><th>File</th><th>Chunks</th><th>What it holds</th><th>Upload again?</th></tr>
+<tr><td><code>patterns.js</code> (changed, 2,345 lines)</td><td>1 to 9</td><td>Spec validator and normalizer, pattern store and routes, value-set expansion, SQL builder, reason list, the run endpoint, seed patterns, min-cell summary, run labels, review flow, case abstraction and the from-case route, 91 self-tests.</td><td>Yes, in every remaining chunk.</td></tr>
+<tr><td><code>patterns-ui.js</code> (changed, 439 lines)</td><td>6 to 9</td><td>The Patterns tab: active-cohort banner, list, create and edit form, run view, review panel, "Create from a case".</td><td>Yes, in every remaining chunk.</td></tr>
+<tr><td><code>index.html</code> (changed)</td><td>6</td><td>Three additions: a "Patterns" tab button after Research, an empty panel <code>tab11</code>, and <code>&lt;script src="/patterns-ui.js"&gt;&lt;/script&gt;</code> before <code>&lt;/body&gt;</code>.</td><td>No.</td></tr>
+<tr><td><code>server.js</code> (changed)</td><td>6</td><td>One route, <code>GET /patterns-ui.js</code>, next to the <code>/about</code> route.</td><td>No.</td></tr>
+<tr><td><code>analytics.js</code> (changed)</td><td>2</td><td>One added line after the pathways wiring: <code>require('./patterns')(app, pool, { fail, readPool, engine, scopeOf });</code></td><td>No. Check that your copy has that line.</td></tr>
+<tr><td><code>package.json</code> (changed)</td><td>2</td><td>The <code>test</code> script now ends with <code>node patterns.js --selftest</code>.</td><td>Only in chunk 13.</td></tr>
+<tr><td><code>patterns-sql-check.js</code> (changed, optional)</td><td>3, 4</td><td>Runs the generated SQL on in-memory Postgres (PGlite) against planted patients; 14 checks, including the discharge-date anchor and the three seed patterns. Not part of <code>npm test</code>, not a dependency. Run with <code>npm install --no-save @electric-sql/pglite</code> then <code>node patterns-sql-check.js</code>.</td><td>Only if you want me to extend or re-run it.</td></tr>
+<tr><td>e2e script for patterns</td><td>13</td><td>Not created yet.</td><td>No.</td></tr>
+</table></div>
+
+<h3>What was tested, and where</h3>
+<ul>
+<li><b>Tested in my sandbox:</b> <code>node patterns.js --selftest</code> passes 63 tests (validator and epistemic rules, discharge anchor, seeds, value-set and SQL-builder, routes, run endpoint, min-cell summary and run labels, on an in-memory store with a fake scope and read pool). <code>patterns-sql-check.js</code> passes 14 checks on real Postgres (PGlite). A scripted browser check of the Patterns tab (jsdom, against the real routes on the in-memory store) passed: list, seed, open, edit, create, errors, banner, run view, patient link. That script is not part of the deliverables. <code>node --check server.js</code> passes.</li>
+<li><b>Chunk 9, tested in my sandbox:</b> <code>node patterns.js --selftest</code> now passes 91 tests (14 new): no identifier, name, address, date or free text in the abstraction, the draft or the route answer; age band; the draft validates; the route (400, 404, 409, rare sequence, failed check, model wording off, wired and refused); the case statement run on real Postgres (PGlite) with integer patient ids; the new button and form flow in a scripted browser (jsdom). Not part of the deliverables.</li>
+<li><b>Not tested yet:</b> a real browser, your full <code>npm test</code> chain, the routes against your real Postgres, the run on your real cohort scope (the <code>scopeOf</code> and <code>cohort</code> assumptions below), the signed-in user name in <code>created_by</code>, and whether the readmission seed equals your existing analytic. Run the checks below on your machine.</li>
+</ul>
+
+<h3>Quick checks on your machine</h3>
+<ol>
+<li>Replace <code>patterns.js</code>, <code>index.html</code>, <code>server.js</code> and <code>patterns-sql-check.js</code>, and add <code>patterns-ui.js</code> next to <code>server.js</code>. Run <code>npm test</code>. It should end with <code>patterns.js</code> reporting 63 tests passed.</li>
+<li>Restart the server and sign in. Open the <b>Patterns</b> tab (after Research). The banner shows the active cohort, or says to create or activate one in the Analytics tab.</li>
+<li>Click "Add the three example patterns". Three drafts appear. Open one, change the wording, save: it should say version 2. Their codes are placeholders (type 2 diabetes and metformin; viral illness and amoxicillin; IMP for inpatient): check them against your data.</li>
+<li>With a cohort active, click <b>Run</b> on <code>readmit_30d_after_discharge</code>. You should see three chips, a counts table, reasons and matched patients. A count under 5 reads "fewer than 5" and hides the total. Click a matched patient: the Analytics tab opens that patient in the explorer.</li>
+<li><b>Compare</b> the matched count with your existing 30-day readmission analytic and tell me the result. If the run fails with "No active cohort" while the banner shows one, see the note above about <code>scopeOf</code>.</li>
+<li>Check <code>created_by</code> in <code>GET /api/patterns/:id</code>: it is the signed-in email (<code>req.user.email</code>, set by <code>security.js</code>). It says <code>unknown</code> only if a request arrives without a signed-in user.</li>
+<li><b>Try create from a case (chunk 9):</b> activate a cohort, open the Patterns tab, click "Create from a case", type a patient id from that cohort (as the Patient explorer shows it) and click "Draft from this case". You should see an age band, codes with day numbers (no dates, no name), a chip saying how many cohort patients share the sequence, and the form open with a draft id like <code>case_draft_1a2b3c4d</code>. Nothing is saved until you click Save draft. Check the codes and the day windows: the window is the gap seen in this one case. A patient outside the cohort gives "not in the active cohort".</li>
+<li><b>Try review (chunk 8):</b> sign in as an administrator, open a pattern, and in the Review panel write a reason and click "Mark as reviewed". The history table shows who, from, to and why; the audit log shows a <code>pattern.status</code> row. To test a non-admin reviewer, set a user's role: <code>UPDATE users SET role = 'reviewer' WHERE lower(email) = 'name@example.org';</code> and sign in again.</li>
+<li>Optional: <code>SELECT id, pattern_id, run_at, scope, result FROM pattern_runs ORDER BY id DESC LIMIT 3;</code> shows the saved runs (counts only, no patient list).</li>
+</ol>
+
+<h3>As built so far</h3>
+<p>New chats start empty, so these are the facts about the code that exists. The code itself is in <code>patterns.js</code>.</p>
+<details><summary>Module and routes (chunks 1 and 2)</summary>
+<ul>
+<li><code>module.exports</code> is the register function: <code>register(app, pool, { fail, readPool, engine, scopeOf })</code>. <code>pool</code> is the owner pool and is used for all writes. Attached to it: <code>validate</code>, <code>normalize</code>, <code>resolveValueSets</code>, <code>buildSql</code>, <code>explainReasons</code>, <code>summarize</code>, <code>runLabels</code>, <code>labelSettings</code>, <code>SEEDS</code>, <code>fakePool</code> (test helper), <code>selftest</code>, <code>constants</code>.</li>
+<li>Tables <code>patterns</code>, <code>pattern_history</code>, <code>pattern_runs</code> are created on the first request. <code>pattern_runs</code> is written by the run route (chunk 4).</li>
+<li>Routes: <code>GET /api/patterns</code> (summaries, optional <code>?status=</code>), <code>GET /api/patterns/:id</code> (spec and last 50 history rows), <code>POST /api/patterns</code> (201, 409 duplicate, 422 invalid), <code>PUT /api/patterns/:id</code> (version bump, 409 stale <code>version</code> or non-draft, 404, 400 id mismatch). The body is the bare spec or <code>{ spec, note, version }</code>.</li>
+<li>Create and edit (POST, PUT) are always saved as a non-reviewer: certainty cannot go above <code>hypothesis</code> (<code>contested</code> is allowed), the status in the body must be the current one, and only drafts can be edited. Status and raised certainty change only through the two review routes (chunk 8, below).</li>
+<li><code>actorOf(req)</code> returns <code>req.user.email</code>; <code>"dev@localhost"</code> when <code>AUTH_DISABLED=true</code> outside production; otherwise <code>"unknown"</code>.</li>
+<li>Self-test: <code>node patterns.js --selftest</code> needs <code>express</code> (already a dependency) and no database.</li>
+</ul></details>
+<details><summary>Spec rules as built (chunks 1 and 3)</summary>
+<ul>
+<li>Domains: <code>dx rx ob pr en im al</code>. Encyclopedia domains <code>en</code> take encounter classes and cannot use <code>descendants</code>. <code>al</code> has no known date column, so it cannot be used in time relations.</li>
+<li>Event picks: <code>first</code>, <code>last</code>, <code>any</code>, <code>first_on_or_after:&lt;earlier alias&gt;</code>. A reference such as <code>adm.date</code> cannot point at a <code>pick: "any"</code> event (it has no single date); <code>no_refill</code> needs a single anchoring fill.</li>
+<li>Relations: <code>within_days</code>, <code>before</code>, <code>after</code>, <code>none_in_window</code>, <code>no_refill</code>, <code>return_within_days</code>, <code>latest_value_in_window</code>, <code>count_at_least</code>. Day ranges are whole numbers from 0 to 3650. <code>return_within_days</code> takes an optional <code>from: "start" | "end"</code>; <code>"end"</code> needs an encounter (<code>en</code>) anchor and gives the reason <code>&lt;alias&gt;_end_missing</code> when the anchor stay has no discharge date.</li>
+<li>Epistemic rules: only a reviewer sets certainty above <code>hypothesis</code>; a <code>model_suggested</code> basis cannot carry <code>established</code> or <code>supported</code>; those two need a note; <code>contested</code> needs a note; a <code>causal</code> claim needs at least <code>supported</code>; up to 10 short lowercase tags.</li>
+<li><code>normalize</code> fills defaults (status <code>draft</code>, certainty <code>hypothesis</code>, <code>min_evidence</code> <code>documented</code>), builds <code>needs</code> and is idempotent.</li>
+</ul></details>
+<details><summary>How a pattern is evaluated (chunk 3)</summary>
+<ul>
+<li><code>resolveValueSets(spec, db)</code> returns <code>{ codes, added, links }</code>. Descendants come from <code>snomed_isa(child_code, parent_code)</code>, cycle safe, capped at 5,000 codes per value set (422 above that). With no links or no table, descendants equal the listed codes. <code>snomed_dictionary</code> is not used.</li>
+<li><code>buildSql(spec, { with }, resolved, { requireFollowUp = true, paramOffset = 0 })</code> returns <code>{ sql, params, columns }</code>. The SQL appends CTEs (prefixed <code>pat_</code>) to the scope WITH clause. Every code and number is a typed <code>$n</code> parameter.</li>
+<li>One row per eligible patient (at least one record of the first event's value set): <code>patient_id</code>, <code>outcome</code> (<code>matched</code>, <code>not_matched</code>, <code>cannot_evaluate</code>), <code>reasons</code> (only for cannot_evaluate), <code>records</code> (alias to FHIR resource id), <code>codes</code> (alias to matched code). Counting, min-cell hiding and saving the run are done by the run route (chunk 4).</li>
+<li>Each relation is true, false or cannot-evaluate. One false means not matched; otherwise one cannot-evaluate means cannot evaluate; otherwise matched. An event with records but no dated one is <code>&lt;alias&gt;_date_missing</code>; an event with no records is false. Only the first blocking reason per relation is reported.</li>
+<li>Absence rules (<code>none_in_window</code>, <code>no_refill</code>, a failed <code>return_within_days</code> or windowed <code>count_at_least</code>) say <code>followup_incomplete</code> while the window runs past the as-of date, and <code>&lt;alias&gt;_date_missing</code> while undated records exist.</li>
+<li><code>before</code> and <code>after</code> are strict (same day is neither). Windows include both ends. <code>return_within_days</code> counts records starting strictly after the anchor date: the start date by default, or the discharge date (<code>end_date</code>) with <code>from: "end"</code>. <code>no_refill</code> means no later record of the same value set within <code>supply_days + grace_days</code> after the picked fill. <code>latest_value_in_window</code> uses the latest dated record in the window; a non-numeric value is <code>&lt;alias&gt;_value_missing</code>.</li>
+</ul></details>
+
+<details><summary>Run endpoint, seeds and labels (chunks 4 and 5)</summary>
+<ul>
+<li><code>POST /api/patterns/:id/run</code>. Optional JSON body: <code>requireFollowUp</code> (boolean), <code>asOf</code> (<code>YYYY-MM-DD</code>, a real calendar date), <code>limit</code> (1 to 500, default 50 matches). The scope is <code>engine.resolveScope({ ...scopeOf(req), useCohort: true, asOf? })</code>. No cohort in the result gives 409 ("Create or activate a cohort in the Analytics tab"). Unknown pattern 404, retired 409, bad body 400, a query over 60 seconds 504.</li>
+<li><b>Assumptions not yet checked against <code>analytics.js</code>:</b> <code>scopeOf(req)</code> returns the scope fields (<code>batchId</code>, <code>batchGroup</code>, <code>cohortId</code>) and the UI sends them as a query string, as the pathways route does; <code>resolveScope</code> returns a falsy <code>cohort</code> when no cohort is active.</li>
+<li>The SQL runs on <code>readPool</code> inside <code>BEGIN READ ONLY</code> with <code>SET LOCAL statement_timeout = '60s'</code>. The run row is saved with <code>pool</code>: scope labels (population, cohort name, patient count, as-of date, follow-up flag) and counts, reasons, labels. It holds no patient list.</li>
+<li>Drafts, reviewed and active patterns may run on the active cohort; retired patterns may not. There is no sample-only dry run and no full-scope run yet.</li>
+<li><b>Min-cell:</b> <code>PATHWAY_MIN_CELL</code>, default 5, read by the pattern module itself (no per-run override). A count from 1 to 4 is hidden (<code>null</code>). When any outcome count is hidden, or the total itself is under the limit, the eligible total is hidden too, so a hidden count cannot be found by subtraction. Reasons are hidden by the same rule (<code>hidden: true</code>). Matches are listed only when the matched count is shown, sorted by patient id, capped by <code>limit</code> (<code>truncated</code> says if there are more). <code>match_rate</code> and <code>evaluable</code> appear only when matched and not matched are both shown.</li>
+<li>Result fields: <code>run {id, run_at}</code>, <code>pattern</code>, <code>scope</code>, <code>result</code> (<code>counts</code>, <code>reasons</code>, <code>suppressed</code>, <code>min_cell</code>, <code>evaluable</code>, <code>match_rate</code>, <code>possible_reasons</code>, <code>links</code>, <code>codes_added</code>, <code>reliability</code>, <code>evidence_mix</code>, <code>matches</code>, <code>truncated</code>), and <code>epistemic</code> (the spec's fields plus a plain-sentence <code>text</code>).</li>
+<li><code>GET /api/patterns/:id/runs</code> lists the last 20 saved runs. <code>POST /api/patterns/seed</code> stores the three seed patterns as drafts (safe to repeat): <code>drug_within_90d_of_dx</code>, <code>readmit_30d_after_discharge</code> (first inpatient stay as index, measured from discharge), <code>viral_abx_short_course</code> (phrased as an association). Their codes are examples.</li>
+<li><b>Labels (chunk 5):</b> <code>thin</code> when fewer than 20 patients could be judged (matched plus not matched); <code>gappy</code> when more than 30% of eligible patients are cannot-evaluate; <code>weak_hierarchy</code> when a value set uses descendants and there are 47 or fewer is-a links (or none). Settings: <code>PATTERN_THIN_N</code>, <code>PATTERN_GAPPY_PCT</code>, <code>PATTERN_DEMO_LINKS</code>, or <code>helpers.settings</code>. <code>evidence_mix</code>: <code>documented</code> always; <code>derived</code> when the spec uses <code>no_refill</code>; <code>inferred</code> is always false for now. Labels use the raw counts, so they still show when a count is hidden.</li>
+</ul></details>
+<details><summary>Patterns tab (chunks 6 and 7)</summary>
+<ul>
+<li><code>patterns-ui.js</code> is a self-contained script that fills <code>#tab11</code>, served at <code>/patterns-ui.js</code> (outside the sign-in gate; it holds no data). It uses only <code>/api/patterns*</code> and <code>/api/cohorts</code>, plus three globals from <code>index.html</code> when present: <code>anScope()</code>, <code>peOpen(id)</code> and <code>popLabel()</code>.</li>
+<li>Tab open and Reload: banner first (active cohort from <code>GET /api/cohorts</code>: <code>is_active</code>, <code>name</code>, <code>population_scope</code>), then the list.</li>
+<li>Form: id (read-only when editing), source kind, certainty (only <code>hypothesis</code> and <code>contested</code> selectable; the others show "needs review"), basis, claim, tags, plain statement, source note, "what changed" (edits only), and one JSON box for <code>valuesets</code>, <code>events</code> and <code>when</code> with an "Insert example" button. Edits send <code>{ spec, note, version }</code>. 422 errors are listed as path and message; 409 asks the user to reload. Patterns that are not drafts open read-only.</li>
+<li>Run view: three chips (certainty, reliability, evidence), the epistemic sentence, counts ("fewer than 5" when hidden), reasons with a plain meaning, matches with source record ids and codes. A matched patient button clicks the Analytics tab (<code>tab6</code>), opens the explorer section and calls <code>peOpen</code>. All text from the server is HTML-escaped.</li>
+</ul></details>
+<details><summary>Review and certainty (chunk 8)</summary>
+<ul>
+<li><b>Routes (reviewer only):</b> <code>POST /api/patterns/:id/status</code> body <code>{ to, note, version }</code>; <code>POST /api/patterns/:id/certainty</code> body <code>{ certainty, basis?, claim?, source_note?, note, version }</code>. <code>note</code> (a reason, 3 to 500 characters) and <code>version</code> (the version you looked at) are always required. 403 not a reviewer or no name, 400 bad value, 422 rule broken, 409 stale version or step not allowed.</li>
+<li><b>Status steps</b> (<code>TRANSITIONS</code>): draft to reviewed or retired; reviewed to active, draft or retired; active to reviewed or retired; retired to draft. A plain status change keeps the version and updates <code>spec.status</code>. Sending a pattern back to draft resets certainty supported or established to hypothesis (and a causal claim to association), adds 1 to the version and says so in the history note.</li>
+<li><b>Certainty rules:</b> raising to supported or established needs the pattern to be reviewed or active, a basis that is not <code>model_suggested</code> (so a model draft stays at hypothesis until a reviewer records the real basis), a <code>source_note</code> in the same request, and passes the same validator as every save. A retired pattern keeps its certainty. A change that changes nothing is 409.</li>
+<li><b>Who is a reviewer:</b> permission <code>patterns:review</code> in <code>security.js</code>. <code>admin</code> has it through <code>*</code>. New role <code>reviewer</code> = <code>app:access</code> + <code>patterns:review</code> (no audit log). The gate enforces it (<code>ROUTE_PERMISSIONS</code>) and <code>patterns.js</code> checks again through <code>require('./security').auth.can</code> (override with <code>helpers.can</code>). With <code>AUTH_DISABLED</code> (development only) the caller counts as a reviewer named <code>dev@localhost</code>.</li>
+<li><b>Optional four-eyes rule:</b> <code>PATTERN_SECOND_REVIEWER=true</code> (or <code>helpers.secondReviewer</code>) stops the person who created or last edited a pattern from marking it reviewed. Off by default.</li>
+<li><b>History:</b> <code>pattern_history</code> has new columns <code>from_status</code>, <code>to_status</code> (added with <code>ADD COLUMN IF NOT EXISTS</code> on first use). Actions: <code>create</code>, <code>update</code>, <code>status</code>, <code>certainty</code>. <code>GET /api/patterns/:id</code> also returns <code>review: { can_review, transitions, second_reviewer }</code>.</li>
+<li><b>Audit:</b> <code>security.js</code> classifies <code>pattern.create</code>, <code>pattern.update</code>, <code>pattern.status</code>, <code>pattern.certainty</code>, <code>pattern.run</code>, <code>pattern.seed</code> (category <code>pattern</code>, target = pattern id). A route may set <code>req.auditDetails</code> (scalars only, text clipped to 120 characters, recorded only when the call succeeded) and <code>req.auditTarget</code>. The full note is in <code>pattern_history</code>.</li>
+<li><b>Running:</b> drafts, reviewed and active patterns run on the active cohort (the only scope that exists); retired ones do not. The run answer has <code>pattern.reviewed</code>, the saved run has <code>pattern_status</code>, and the run view shows a status chip ("not reviewed" for drafts). A run on a full scope, if ever added, must require reviewed or active.</li>
+<li><b>Tests:</b> <code>node patterns.js --selftest</code> now has 77 tests (14 new); <code>node security.js --selftest</code> has new role, route-permission and audit checks. The Review panel was checked in a scripted browser (jsdom) against the real routes on the in-memory store, not yet on your Postgres.</li>
+</ul></details>
+<details><summary>Create from one case (chunk 9)</summary>
+<ul>
+<li><b>Route:</b> <code>POST /api/patterns/from-case</code>, body <code>{ patient_id, id?, wording? }</code>. It uses the same scope as the run (<code>scopeOf</code>, <code>useCohort: true</code>), so the patient must be in the active cohort (404 otherwise, 409 with no cohort). It reads one patient through the read pool in a read-only transaction with the patient id as the only parameter, abstracts the case and returns <code>{ draft, case, privacy, wording }</code>. <b>Nothing is saved:</b> the tab loads the draft into the form and Save draft uses <code>POST /api/patterns</code> as before.</li>
+<li><b>Abstraction (<code>abstractCase</code>):</b> reads only domain, code, date and end date of each record. Output: age band (ten-year bands, 80+), events as domain, code and day offset from the first dated record (end_day for encounters), a count of undated codes, a count of dropped records, span in days. A code that does not look like a code (<code>CODE_RE</code>) is dropped and counted, so free text cannot pass. Allergies are not used (no date). No patient id, name, address, birth date, calendar date or narrative is read or returned.</li>
+<li><b>Draft (<code>draftFromCase</code>):</b> one event per distinct domain and code, in order of first appearance, at most 10; each later event is <code>first_on_or_after</code> the previous one with <code>within_days</code> window <code>[0, gap]</code> (the gap seen in this case); gaps over 3,650 days end the draft. Value sets are exact, never descendants. Source <code>one_case</code> with <code>n: 1</code>, certainty <code>hypothesis</code>, basis <code>observed_in_data</code>, claim <code>descriptive</code>, tag <code>from_case</code>. The id is random (<code>case_draft_</code> plus 8 hex digits) unless you pass one. The statement is built by code from codes only; display names are not added.</li>
+<li><b>Rare sequences:</b> the draft is run on the active cohort (counts only, no patient list). If fewer patients than the min-cell share it, <code>privacy.rare_combination</code> is true, the count is hidden, the tab shows a warning chip, and model wording is refused. If the check cannot run, the draft still returns with <code>privacy.checked: false</code>.</li>
+<li><b>Model wording:</b> off by default. <code>wording: true</code> gives 403 unless <code>PATTERN_CASE_MODEL_WORDING=true</code> (or <code>helpers.caseWording</code>), and 501 unless <code>helpers.wordCase</code> is wired (chunk 12). It is refused before any patient data is read. When on, <code>wordCase</code> receives only <code>{ age_band, events: [{domain, code, day}], span_days }</code> and must return <code>{ text, model, prompt_version }</code>; the draft then records the model, the prompt version and basis <code>model_suggested</code>, and the audit details say <code>external_ai: true</code>. The tab has no wording checkbox yet.</li>
+<li><b>Audit:</b> the route sets <code>req.auditTarget</code> to the patient id (so the audit log shows who looked at whose case; the pattern never holds it) and <code>req.auditDetails</code> (events, external_ai, rare_combination). <code>security.js</code> still has to classify the path (open item below).</li>
+<li><b>Dates:</b> the case statement returns dates as <code>YYYY-MM-DD</code> text, so the server's time zone cannot shift a day.</li>
+<li><b>Settings:</b> <code>PATTERN_CASE_MODEL_WORDING</code> (default off); <code>PATHWAY_MIN_CELL</code> for the rarity limit.</li>
+</ul></details>
+
+<h3>Decisions</h3>
+<div class="scroll"><table><tr><th>Decision (from the list in Part B)</th><th>State</th><th>Where it lands</th></tr>
+<tr><td>Is a de-identified single case allowed to go to an external model?</td><td><span class="st pa">Open</span></td><td>Built in chunk 9 as an off switch (<code>PATTERN_CASE_MODEL_WORDING</code>, default off), never for a rare sequence. The decision itself is still yours; chunk 12 wires the connector.</td></tr>
+<tr><td>Who approves patterns?</td><td><span class="st pa">Open</span></td><td>Built in chunk 8: a user with the <code>patterns:review</code> permission (administrator, or the new <code>reviewer</code> role). Decide whether to switch on <code>PATTERN_SECOND_REVIEWER</code>.</td></tr>
+<tr><td>Is "no refill after supply ends plus grace" acceptable as the stop definition?</td><td><span class="st nw">Built, needs a clinical check</span></td><td>Implemented as above; confirm with your clinicians.</td></tr>
+<tr><td>Which hierarchy to load first?</td><td><span class="st pa">Open</span></td><td>The builder uses whatever is in <code>snomed_isa</code>; load a real RF2 release before relying on descendants. Runs now warn (<code>weak_hierarchy</code>) at 47 links or fewer.</td></tr>
+<tr><td>Who may raise certainty, and what counts as a source note?</td><td><span class="st pa">Open</span></td><td>Built in chunk 8: a reviewer, on a reviewed or active pattern, with a real basis and a source note given in the same request. The validator still accepts any non-empty text as the source; whether it is a real citation is the reviewer's judgement.</td></tr>
+<tr><td>Thresholds 20 (thin) and 30% (gappy)</td><td><span class="st ex">Built</span></td><td>Chunk 5, as settings (<code>PATTERN_THIN_N</code>, <code>PATTERN_GAPPY_PCT</code>); change the defaults if clinicians disagree.</td></tr>
+<tr><td>First demo: one pattern end to end</td><td><span class="st nw">Ready to try</span></td><td>Chunks 4 to 7 built. Run the quick checks, then compare the readmission count.</td></tr>
+<tr><td>Phrase the short-course result as an association</td><td><span class="st pa">Open</span></td><td>Chunk 12 (the explainer).</td></tr>
+</table></div>
+
+<h3>Carry-over notes for later chunks</h3>
+<ul>
+<li><b>Open from chunk 4:</b> compare the readmission seed with your existing analytic (count and anchor); confirm the <code>scopeOf</code> and <code>cohort</code> assumptions on your machine; decide whether the min-cell limit should be settable per run (the pathways tab has its own field; patterns use <code>PATHWAY_MIN_CELL</code> only).</li>
+<li><b>Chunk 5 follow-up:</b> <code>weak_hierarchy</code> still guesses "demo" from the link count. If your tables can mark the source (demo, CSV, RF2), tell me and I replace the guess. <code>inferred</code> evidence is never set yet; it needs a rule that infers rather than reads.</li>
+<li><b>Chunk 8 follow-up:</b> the <code>reviewer</code> role has full app access like any signed-in user; nothing in the app assigns roles yet, so use the <code>UPDATE users SET role</code> statement above. Only reviewers can change a pattern that is no longer a draft, so a non-reviewer cannot flag a reviewed pattern as contested. Decide whether you want that.</li>
+<li><b>Chunk 9 follow-up (audit):</b> add the classification of <code>POST /api/patterns/from-case</code> as <code>pattern.from_case</code> in <code>security.js</code> (not uploaded, so not done). Until then the call may not appear under a pattern action in the audit log. Upload <code>security.js</code> with chunk 10 and I add this and <code>from-cases</code> together.</li>
+<li><b>Chunk 9 follow-up (names):</b> the draft statement uses codes only because I do not know which dictionary table and column hold display names. Tell me the table and column (for example in <code>snomed_concept</code>) if you want names in the statement and the case summary.</li>
+<li><b>Chunk 10:</b> reuse <code>abstractCase</code> and the min-cell rule; a group smaller than the min-cell must not be summarized. The form loads a drafted pattern through <code>openForm(null, { draft })</code>.</li>
+<li><b>Chunk 12:</b> wire <code>helpers.wordCase</code> to the model connector (input and output as described under Create from one case); add a wording checkbox to the case box.</li>
+<li><b>Chunk 11:</b> register <code>GET /api/patterns/export</code> before <code>GET /api/patterns/:id</code>. The routes for <code>/api/patterns/seed</code> (POST) and <code>/api/patterns/:id/run</code> (POST) do not clash with it.</li>
+<li><b>Chunk 12:</b> the explainer can start from <code>epistemic.text</code> and the three chips; it must add no numbers.</li>
+<li><b>Chunk 13:</b> mention the optional <code>patterns-sql-check.js</code>, the <code>PATTERN_*</code> settings and <code>PATHWAY_MIN_CELL</code> in the README; update the article's Status paragraph, which still says the encyclopedia has not been built.</li>
+</ul>
+</section>
+<p class="part">Part A</p>
+<section id="article"><h2>The article</h2><article><h3 class="atitle">A pattern encyclopedia for clinical analytics: adding context, time and uncertainty on top of existing EHR data</h3>
+<p><em>By [author name]. Written for clinical health informatics readers.</em></p>
+<p>Most EHR data reaches analysts as flat labels: a diagnosis code, a drug code, a date. The clinical reasoning that produced those labels, such as how the diagnosis changed, which qualifiers applied and how sure anyone was, is mostly lost. This article explains the reasoning behind a design for the Vibe Rounds clinical analytics app: a <strong>clinical pattern encyclopedia</strong> that sits on top of data an institution already has, expresses clinical knowledge in plain English and in machine-readable form, runs it with deterministic code, and attaches explicit labels for uncertainty to every result.</p>
+<p><strong>Status.</strong> The analytics engine, terminology tools and review workflows described in section 7 exist in the app. The encyclopedia itself is now built as the Patterns tab: store, SQL builder, run labels, review flow, creation from cases, import and export, and the AI draft and explainer. It has been tested on synthetic data and in-memory stores, not yet on a production database or by clinical reviewers. Where this article describes planned work, it says so.</p>
+<h3 id="a1">1. The problem: a diagnosis that does not stay still</h3>
+<p>A patient arrives and is given a diagnosis. Qualifiers are added. The diagnosis is refined, sometimes replaced. Other departments join, each with its own vocabulary: pathology describes morphology, radiology describes imaging findings, primary care describes syndromes. Complexity grows with every handover.</p>
+<p>A single code at the end of the episode cannot hold this story. Yet the questions analysts and researchers ask later often depend on exactly the lost detail: which side, how severe, confirmed or only suspected, treated or not, and in what order.</p>
+<h3 id="a2">2. What SNOMED CT gives you, and what it does not</h3>
+<p>SNOMED CT is a clinical terminology, not a patient database. It contributes three things that matter here.</p>
+<ul>
+<li><strong>A hierarchy built on description logic.</strong> Concepts are linked by is-a relationships, so a query for a parent concept can include every child. A record coded with a specific disorder is still found by a query for its broader category.</li>
+<li><strong>Post-coordination.</strong> When no single concept captures the clinical meaning, a concept can be combined with attribute-value pairs such as finding site or laterality. The Machine Readable Concept Model (MRCM) defines which attributes may attach to which concepts, which in principle prevents impossible combinations.</li>
+<li><strong>History of the terminology itself.</strong> Retired or replaced concepts carry historical associations, so old records stay interpretable across releases.</li>
+</ul>
+<p>What SNOMED CT does not do is store a timeline. How a diagnosis moves from suspected to confirmed to resolved, who changed it and when, is the job of the record model. In FHIR, for example, the Condition resource has fields for clinical status, verification status, severity, body site, onset and abatement. SNOMED CT supplies the meaning of the values; the record structure supplies the time and the status.</p>
+<h3 id="a3">3. Where context gets captured</h3>
+<p>Context can be added at three points, and they are not equal.</p>
+<ul>
+<li><strong>At the point of care.</strong> The clinician chooses qualifiers in the interface and the system builds the structured record. This is a deterministic assertion: the clinician said it.</li>
+<li><strong>At mapping time.</strong> A terminologist maps local codes to concepts or expressions when legacy systems are connected.</li>
+<li><strong>Retrospectively, in an analytics layer.</strong> Code, rules or models read what exists and reconstruct context afterward. This is inference, not assertion. If laterality was never recorded, no reconstruction can supply it.</li>
+</ul>
+<p>Two storage choices follow. One is to store post-coordinated expressions as strings. The other is to decompose them into dedicated fields, such as body site, severity and verification status. Decomposed fields are far easier to index and query in a relational database without a live reasoner, which is why many pragmatic designs prefer them.</p>
+<p>A subtler problem is where the terminology ends and the data model begins. Is “suspected acute appendicitis” one concept, or appendicitis plus a verification status plus an acuity? Two hospitals can make different choices, and both can be standards-compliant. The result is data that can be exchanged but whose clinical context is not interoperable. Documentation habits add another layer: if a screen makes qualifiers easy to record, one site looks sicker than another simply because it recorded more detail.</p>
+<p>In practice, ontology-driven data entry, where the terminology itself decides which qualifiers the form asks for, is uncommon in routine clinical systems. Most deployments use templates and value sets that informaticists maintain by hand, which keeps screens predictable and fast. Specialized platforms built on FHIR questionnaires with a terminology server, and openEHR systems built on archetypes and templates, can enforce more structure, but they bring their own cost: dedicated repositories, a different query language and substantial modelling work before the first screen exists. They are powerful and heavy.</p>
+<h3 id="a4">4. Two halves of one problem</h3>
+<p>The central insight of this design is that the problem splits into two parts that need different treatment.</p>
+<p><strong>Representation</strong> is translating clinical meaning into a machine-readable form. It is an engineering problem. With good terminology, careful profiling and validation, it is solvable.</p>
+<p><strong>Epistemics</strong> is about what kind of knowledge a record holds. A serum creatinine value is a measurement. “Acute-on-chronic kidney injury secondary to sepsis” is a clinician’s synthesis that may be revised tomorrow. A working diagnosis is not a confirmed one. Two skilled clinicians document at different levels of detail. No amount of better representation removes this. It has to be carried with the data and shown to the reader.</p>
+<p>Many systems solve the first half and silently ignore the second. This design treats both as first-class.</p>
+<h3 id="a5">5. The middle-module idea</h3>
+<p>Waiting for every EHR to redesign its screens is not a plan. The alternative is a module that sits downstream of the existing registry, reads the data already there and adds meaning afterward. It needs no change to clinical workflow and works on historical data, which makes it backward compatible until systems capture richer context at source.</p>
+<p>The cost is honesty about what retrospective work can do. It is reconstruction, not assertion. So every reconstructed element needs provenance and a label that says how it was obtained. Section 10 describes those labels.</p>
+<p>A custom study pipeline solves one question at a time. The step proposed here is to make the knowledge reusable: an encyclopedia of patterns, each stored, reviewed and runnable, in the way a terminology stores concepts.</p>
+<h3 id="a6">6. Temporality: code instead of CQL, for now</h3>
+<p>Clinical Quality Language (CQL) is the standard for expressing clinical logic with time, such as “within 30 days after discharge”. Its strengths are real: portability between systems, the ability to run published quality measures, and interval operators designed for clinical time. Its costs depend on the setting. CQL is translated to an intermediate form and executed by an engine that usually evaluates one patient at a time, which adds toolchain and can be slow for population analytics.</p>
+<p>Vibe Rounds takes a different route. FHIR data is imported into PostgreSQL tables, grouped in batches and populations, and temporal logic is written as set-based SQL with an explicit as-of date. The existing analytics already compute time windows, first and last events, time to event, 30-day readmission, medication fill intervals and persistence, and landmark study designs.</p>
+<p>The decision for now is to stay with SQL and to keep the new pattern specification declarative and small, so it can later be exported to a standard format. What is given up is the ability to run third-party measures as written. If that becomes a requirement, an import path can be added.</p>
+<h3 id="a7">7. What the app already does</h3>
+<p>The encyclopedia is designed to reuse existing parts, not replace them.</p>
+<ul>
+<li><strong>Data and scope.</strong> Imported FHIR resources live in per-batch PostgreSQL tables. Populations, batches and saved cohorts define the scope of every analysis.</li>
+<li><strong>Data-quality levels.</strong> The analytics catalog runs in five modes, from text matching only, through source codes, to codes with time and reviewed enrichment. A reader can see how much each result depends on code quality.</li>
+<li><strong>Dictionary and hierarchy.</strong> A dictionary can be built from the codes actually present in the imported data. A separate hierarchy of is-a links can be loaded from a bundled demo set, a CSV file or real SNOMED CT release files. A query builder uses it to include descendants or ancestors. The dictionary alone does not create hierarchy; the loaded links do. Today only the query builder and cohort criteria use hierarchy.</li>
+<li><strong>Reviewed enrichment.</strong> Free-text entries can be proposed codes by a model, then approved, edited or rejected by a person. The record keeps assertion (confirmed, suspected, negated), confidence, model, prompt version and reviewer.</li>
+<li><strong>Guardrailed AI.</strong> A study-planning feature lets a model propose analyses from aggregate counts only. The server rebuilds every proposal from a fixed list of templates and drops unknown codes. A read-only SQL guard protects free-form queries.</li>
+<li><strong>Exploration and trace.</strong> Care pathways, a patient explorer, a cohort knowledge graph and an audit log, including a class for requests sent to an external model.</li>
+</ul>
+<p>Two limits matter for what follows. First, resolution dates, medication end dates and stop reasons are not extracted as fields, so they cannot define a pattern yet. Second, the app does not capture post-coordinated qualifiers at entry; it works with what the source data contains.</p>
+<h3 id="a8">8. The pattern encyclopedia</h3>
+<p>An entry has four parts: a plain-English statement, a machine-readable specification, epistemic labels, and a review state. Entries are data, so adding knowledge does not require adding code.</p>
+<p>The specification uses only things the app can already compute.</p>
+<ul>
+<li><strong>Value sets.</strong> Named sets of codes for conditions, medications, labs or procedures, either exact codes or a concept with its descendants, taken from the loaded hierarchy.</li>
+<li><strong>Events.</strong> For example, the first diagnosis from a value set, or the first fill of a drug on or after it.</li>
+<li><strong>Time relations.</strong> A short, fixed list: within a number of days, before, after, none in a window, no refill after the supply ends plus a grace period, return within a number of days, latest value in a window, and at least a number of occurrences. These mirror logic the analytics already run. Anything outside the list is rejected.</li>
+<li><strong>Needs.</strong> The fields a patient must have to be evaluated.</li>
+</ul>
+<p>The executor is ordinary code. It turns a validated specification into parameterized SQL over the same scoped views the analytics use. No model text ever enters SQL. A patient who lacks the needed dates is reported as “cannot evaluate”, with the reason, and is never silently counted as “no match”. Small groups are hidden using the same minimum-cell rule the care-pathway feature uses.</p>
+<h4>Three ways to create a pattern</h4>
+<p>All three produce a draft that a reviewer must approve before it can run on a full population.</p>
+<ul>
+<li><strong>From one case.</strong> A clinician picks a patient. Code abstracts the case: identifiers, names, birth date and address are removed, dates become day offsets from the first event, age becomes a band, and free-text narrative is dropped. A draft specification is built from the ordered events. A model may be used only to word the plain-English statement, and only if an explicit setting allows it and the request is audited. A single abstracted case can still be identifying when the combination of events is rare, so this is a policy decision as much as a technical one.</li>
+<li><strong>From a few cases.</strong> Code finds the codes shared by most selected patients, including descendants when a hierarchy is loaded, together with their usual order and the range of days between events. Only these aggregates are used, and groups below the minimum-cell rule are not summarized.</li>
+<li><strong>From an external library.</strong> Patterns can be imported from a file in the app’s own format, which also allows export between deployments. Every imported pattern is validated and arrives as a draft. Converters from other formats, such as OHDSI cohort definitions or CQL, are future work.</li>
+</ul>
+<h3 id="a9">9. Where AI fits</h3>
+<p>The model is a drafter and an explainer, not a source of numbers or diagnoses.</p>
+<ul>
+<li>It writes the specification as structured data, never SQL. A validator rejects unknown relations, fields and out-of-range values.</li>
+<li>Code choices come from candidate lists built from the app’s dictionary. The model may not invent codes.</li>
+<li>Every draft records the model, prompt version, time and source.</li>
+<li>A model can never raise certainty above “hypothesis”. Only a reviewer can.</li>
+<li>Counts come only from the executor. The explanation step may not add figures, and it must state the uncertainty labels first.</li>
+</ul>
+<p>This follows a pattern the app already uses for study planning: the model proposes, the server checks, and only checked output reaches the user.</p>
+<h3 id="a10">10. Epistemic uncertainty</h3>
+<p>Uncertainty lives at three layers, and each gets a few fixed labels now. A free list of tags is reserved so a broader structure can be added later without changing the specification.</p>
+<p><strong>Knowledge layer (the pattern).</strong> How well established is the clinical statement?</p>
+<ul>
+<li><em>Certainty:</em> established (a guideline or consensus states it), supported (some studies or clear expert practice), hypothesis (plausible or seen in data, not confirmed), contested (sources disagree, and a note says how).</li>
+<li><em>Basis:</em> guideline, literature, expert, observed in data, model suggested.</li>
+<li><em>Claim:</em> descriptive (what usually happens), association (two things go together), causal (one is claimed to cause the other).</li>
+</ul>
+<p><strong>Data layer (each record).</strong> How firm is the fact in the source?</p>
+<ul>
+<li><em>Assertion:</em> confirmed, suspected, negated (already in the app).</li>
+<li><em>Evidence:</em> documented (a coded field in the source), derived (computed from dates and gaps, for example “stopped” meaning no refill), inferred (from text or a model).</li>
+</ul>
+<p><strong>Run layer (this result).</strong> Can this run be trusted as it stands? Code computes these from numbers alone.</p>
+<ul>
+<li><em>Thin:</em> fewer eligible patients than a low-number limit, or matches below the minimum-cell rule.</li>
+<li><em>Gappy:</em> a large share of eligible patients cannot be evaluated because data is missing.</li>
+<li><em>Weak hierarchy:</em> the pattern uses descendants but only demo links, or none, are loaded.</li>
+</ul>
+<p>Several rules keep the labels honest. Model drafts and patterns mined from cases start at “hypothesis”. “Established” and “supported” require a source note. A causal claim requires at least “supported”, otherwise it is rejected and the result is treated as an association. Suspected and negated records are not counted as confirmed unless the pattern says so. Every change of certainty is written to the audit log with who, when, from, to and why.</p>
+<p>Every result carries three chips: knowledge, data and run. For example: <em>Knowledge: hypothesis, observed in data. Data: 70% documented, 30% derived. Run: thin, gappy.</em> A reader sees at a glance how much weight the result can bear.</p>
+<h3 id="a11">11. A worked example</h3>
+<p>Take the plain-English statement: viral fever patients were given antibiotics for five days, but the illness resolved in three days, so they stopped the medication.</p>
+<p>The sentence mixes three kinds of meaning. The concepts (viral illness, antibacterial drug) belong to the terminology. The timing (given for five days, resolved in three) belongs to temporal logic. The causal clause (so they stopped) is an interpretation that no database field can confirm.</p>
+<p>In the app today there is no resolution date and no medication end date as fields. The pattern is therefore written with definitions derived from what exists:</p>
+<ul>
+<li>the illness is “resolved” when there is no further record of it within a window after the first diagnosis;</li>
+<li>the antibiotic is “stopped” when there is no refill after the supply period plus a grace period;</li>
+<li>the antibiotic starts within a few days of diagnosis.</li>
+</ul>
+<p>The run reports how many patients match, how many could not be evaluated and why, and how much of the evidence was derived. The pattern is labeled as an association at the “hypothesis” level.</p>
+<p>The reading of such a result needs care. A missing record does not prove recovery: the patient may have gone elsewhere, or the first diagnosis may have been wrong. That is why derived evidence and the claim type are shown next to the count, and why the explanation is limited to “is associated with”.</p>
+<h3 id="a12">12. Limits and open questions</h3>
+<ul>
+<li><strong>Derived is not documented.</strong> Absence of a record is not absence of an event. Derived definitions should be replaced by documented fields when the data allows.</li>
+<li><strong>Retrospective work cannot create context that was never recorded.</strong> The design reports gaps; it does not fill them with guesses.</li>
+<li><strong>Hierarchy quality depends on what is loaded.</strong> Real descendants need a real terminology release, and its licence terms must be checked for the deployment’s country.</li>
+<li><strong>Documentation bias remains.</strong> A pattern may look rare because one site rarely records the needed fields. A per-site completeness report is planned.</li>
+<li><strong>Privacy of single cases</strong> is reduced by abstraction but not eliminated.</li>
+<li><strong>Not decision support.</strong> Patterns are for exploration, research and review, not for guiding treatment.</li>
+<li><strong>Prior art exists.</strong> Cohort and phenotype definitions in the OHDSI community already store concept sets with descendants and temporal criteria in a structured format. What this design adds is the combination: a plain-English encyclopedia, a validated compile-and-review loop, and uncertainty labels that travel with every result.</li>
+<li><strong>It needs evaluation.</strong> Clinician agreement with drafted patterns, and the accuracy of derived definitions against documented ones, should be measured on real data.</li>
+</ul>
+<h3 id="a13">13. Roadmap</h3>
+<p>The build is split into small chunks, each tested on synthetic data (see Part C): spec and validator, store and routes, value sets and SQL builder, run endpoint with seed patterns, run labels, a Patterns tab, a run view, review and certainty control, creation from one case and from a few cases, library import and export, AI drafting and explanation, and documentation.</p>
+<p>Future development covers: reading resolution, stop and status fields from the source, using the hierarchy throughout the analytics catalog, loading SNOMED attributes for constraint queries, hierarchies for drugs and labs, post-coordinated qualifiers as fields, pattern discovery from frequent sequences, converters for other pattern formats, other source formats such as openEHR, per-site documentation-bias reports, pattern sharing with versioning, and a broader uncertainty structure with graded evidence and listed supporting and conflicting sources.</p>
+<h3 id="a14">14. Conclusion</h3>
+<p>The design rests on a simple separation. Terminologies such as SNOMED CT give machines a precise language. Record standards such as FHIR give that language a time and a status. A deterministic engine gives questions a reliable answer. And an explicit uncertainty layer keeps anyone, human or model, from mistaking an inference for a fact.</p>
+<p>Building this as a middle module over existing data means the approach can start small, with a few patterns and a few dozen patients, and grow with the data and the institution. The most important feature is not any one pattern. It is that every result says what kind of knowledge it is, where it came from and how far it can be trusted.</p>
+<h3 id="afeedback">Where feedback would help</h3>
+<ul>
+<li>Are four certainty labels and three claim types the right size to start with, or are they too coarse?</li>
+<li>Which derived definitions, such as “resolved” or “stopped”, would your clinicians accept before documented fields exist?</li>
+<li>What would you need to see before trusting a pattern drafted from a single abstracted case?</li>
+</ul></article></section>
+<p class="part">Part B</p>
+<section id="idea">
+<h2>The idea</h2>
+<ul>
+<li><b>Two problems kept apart.</b> Representation (clinical thinking into machine form) is engineering. Uncertainty (suspected, inferred, missing, biased) never disappears, so results must carry it.</li>
+<li><b>A middle module.</b> It reads the data you already imported and adds meaning afterward. No EMR change.</li>
+<li><b>An encyclopedia.</b> Patterns are saved, reviewed, reusable entries, not one-off queries.</li>
+<li><b>Temporality in your app code and SQL.</b> This is what the app does today, so CQL is not needed.</li>
+<li><b>The LLM drafts and explains; code counts.</b> Numbers never come from the model.</li>
+</ul>
+</section>
+<section id="have">
+<h2>What you have today</h2>
+<p>Verified by reading your files (not by running the app). Each row is something this plan reuses.</p>
+<div class="scroll"><table>
+<tr><th>Capability</th><th>Where</th><th>Used by this plan for</th></tr>
+<tr><td>Imported FHIR in per-batch tables with code, date and raw <code>json_content</code></td><td><code>server.js</code>, <code>population.js</code></td><td>The data patterns run on</td></tr>
+<tr><td>Scope: population, batch, active cohort, as-of date (<code>ref</code>)</td><td><code>analytics.js</code> engine</td><td>Every pattern run uses the same scope</td></tr>
+<tr><td>Scoped views <code>p, dx, ob, rx, pr, en, al, im</code> with code, date columns</td><td><code>analytics.js</code></td><td>Event sources for the spec</td></tr>
+<tr><td>Time logic: windows, first/last, time to event, 30-day readmission, fill intervals, persistence, landmark design</td><td><code>analytics.js</code>, <code>pathways.js</code></td><td>Template for each time relation</td></tr>
+<tr><td>Data quality levels V1 to V5 and reviewed code enrichment</td><td><code>code_enrichment</code>, <code>concept_overrides</code></td><td>Evidence level of a match</td></tr>
+<tr><td>Assertion: confirmed, suspected, negated; status; confidence; model; prompt version; reviewer</td><td><code>code_enrichment</code></td><td>Model for pattern review fields</td></tr>
+<tr><td>LLM proposes, server validates and rebuilds</td><td><code>research.js</code>, <code>evidence.js</code></td><td>Pattern drafting guardrail</td></tr>
+<tr><td>Plain-English question to a read-only query</td><td>Custom analytic + <code>sqlGuard</code></td><td>Kept as a separate, unreviewed escape hatch</td></tr>
+<tr><td>Saved parameter templates</td><td><code>pico_templates</code></td><td>Style of the pattern store</td></tr>
+<tr><td>Profile validate / normalize</td><td><code>diseases.js</code></td><td>Style of the spec validator</td></tr>
+<tr><td>One patient's full record, de-identification not included</td><td>Patient explorer (<code>/api/explorer/patient</code>)</td><td>Source for "create from one case"</td></tr>
+<tr><td>Fetch data from a FHIR server into a batch</td><td><code>knowledge.js</code> (<code>/api/ehr/*</code>)</td><td>Test imported patterns on other data</td></tr>
+<tr><td>Min-cell rule for small groups</td><td><code>pathways.js</code> (<code>PATHWAY_MIN_CELL</code>, default 5)</td><td>Small-number protection in results and model input</td></tr>
+<tr><td>Sign-in, roles, audit log with an "external AI request" class</td><td><code>security.js</code></td><td>Review roles and audit of new AI calls</td></tr>
+</table></div>
+</section>
+<section id="hier">
+<h2>Your question: is the hierarchy working?</h2>
+<div class="note ok"><b>Short answer:</b> yes, but only as far as you load it. Building the dictionary from your data does not create hierarchy. It lists the codes your data contains. Hierarchy comes from the is-a links you load.</div>
+<div class="scroll"><table>
+<tr><th>Part</th><th>What it does</th><th>Limit</th></tr>
+<tr><td>Dictionary (from your data)</td><td>Per domain (conditions, procedures, medications, observations, allergies, immunizations): the distinct codes in the scoped batches with patient and record counts, and a roll-up count when hierarchy exists.</td><td>Only codes seen in your data.</td></tr>
+<tr><td>Hierarchy (is-a links)</td><td>Loaded from the bundled demo links (47 links), a CSV of child and parent codes, or real SNOMED CT RF2 files (relationships and descriptions). Stored in <code>snomed_isa</code> and <code>snomed_concept</code>.</td><td>With demo links only, "descendants" covers a few dozen concepts. With a real RF2 release it covers the whole is-a tree. Is-a only: no attributes such as finding site.</td></tr>
+<tr><td>Use today</td><td>"Build SNOMED CT Query" (exact, descendants, ancestors) and cohort criteria. A stale flag tells you to re-prepare the dictionary after the hierarchy changes.</td><td>The analytics catalog and research plans do not use the hierarchy yet. They use code lists and the bundled dictionary.</td></tr>
+</table></div>
+<p>How to check: in the SNOMED query modal, the line "Hierarchy: N is-a links" shows what is loaded. If it says "none loaded" or only demo, load your RF2 files first. Real descendants need that step, and it is a one-time load. This plan uses the same <code>expand</code> logic for pattern value sets, so a pattern written against a parent concept will match child codes once a real hierarchy is loaded.</p>
+<p>Because you can load a real SNOMED dictionary yourself, the plan does <b>not</b> build a hierarchy. It reads whatever you load, and warns when a pattern uses descendants while only demo links exist. Check the SNOMED CT licence terms for your country before loading a release.</p>
+</section>
+<section id="sources">
+<h2>Three ways to create a pattern</h2>
+<p>All three produce the same thing: a draft pattern (plain text plus spec) that a reviewer must approve before it can run on a full scope.</p>
+<div class="scroll"><table>
+<tr><th>Source</th><th>How it works</th><th>What may reach a model</th></tr>
+<tr><td><b>One case</b> from the database</td><td>Pick a patient in the explorer. Code abstracts the case: remove id, name, birth date and address; show dates as day offsets from the first event and age as a band; keep codes and dictionary display names. It drafts the spec as an ordered list of events with gaps. An LLM may then write the plain-English text.</td><td>The abstracted case only, and only if an explicit setting allows it. Free-text narrative is never sent. This is the only mode that sends case-level data, so audit it as its own action.</td></tr>
+<tr><td><b>A few cases</b></td><td>Select 2 or more patients, or a cohort filtered by concept. Code finds codes shared by most (using descendants if a hierarchy is loaded), their usual order, and the gap range (minimum, median, maximum days) between events. It drafts a spec from that shared shape.</td><td>Aggregates only: codes, counts, gap ranges. Groups smaller than the min-cell rule are not summarized.</td></tr>
+<tr><td><b>An external library</b></td><td>Import a file of patterns in this app's own pattern JSON (also usable for export between deployments or colleagues). Each imported pattern goes through the same validator and arrives as a draft.</td><td>Nothing. Validation and review are local.</td></tr>
+</table></div>
+<div class="note"><b>Note:</b> your FHIR server connector brings patient data into a batch. It is not a pattern library. Converters from other library formats (OHDSI cohort JSON, CQL) are in the future scope.</div>
+</section>
+<section id="spec">
+<h2>The pattern and its spec</h2>
+<p>The spec only uses fields your views already have: <code>dx.onset_date</code>, <code>rx.prescribed_date</code>, <code>ob.effective_date</code> and value, <code>pr.performed_date</code>, <code>en.start_date</code> / <code>end_date</code> and class, <code>im.occurrence_date</code>. Your example sentence needs a "resolved" date, which no column holds. This version defines resolved from the data as no further record of the condition within a window (derived evidence).</p>
+<pre><code>{
+  "id": "viral_abx_short_course",
+  "plain": "Viral illness treated with antibiotics; no further record of the illness soon after, antibiotic not refilled.",
+  "source": { "kind": "few_cases", "n": 12 },        // one_case | few_cases | library
+  "status": "draft",                                  // draft | reviewed | active | retired
+  "valuesets": {
+    "viral":   { "domain": "dx", "codes": ["..."], "mode": "descendants" },
+    "antibac": { "domain": "rx", "codes": ["..."], "mode": "exact" }
+  },
+  "events": [
+    { "as": "dx",  "valueset": "viral",   "pick": "first" },
+    { "as": "abx", "valueset": "antibac", "pick": "first_on_or_after:dx" }
+  ],
+  "when": [
+    { "rel": "within_days", "a": "abx.date", "of": "dx.date", "range": [0, 3] },
+    { "rel": "none_in_window", "event": "dx", "after": "dx.date", "range": [7, 30] },
+    { "rel": "no_refill", "event": "abx", "supply_days": 5, "grace_days": 45 }
+  ],
+  "epistemic": {
+    "certainty": "hypothesis",         // established | supported | hypothesis | contested
+    "basis": "observed_in_data",       // guideline | literature | expert | observed_in_data | model_suggested
+    "claim": "association",            // descriptive | association | causal
+    "note": "Seen in 12 synthetic cases; no source yet.",
+    "tags": []                         // free labels, reserved for later
+  },
+  "needs": ["dx.date", "rx.date"],
+  "min_evidence": "documented",
+  "spec_version": 1
+}</code></pre>
+<p>Start with relations your code already computes: <code>within_days</code>, <code>before</code>, <code>after</code>, <code>none_in_window</code>, <code>no_refill</code> (from the adherence logic), <code>return_within_days</code> (from readmission), <code>latest_value_in_window</code>, <code>count_at_least</code>. Anything else is rejected by the validator.</p>
+</section>
+<section id="exec">
+<h2>The executor</h2>
+<p>A new file <code>patterns.js</code>, wired like <code>pathways.js</code>. It reuses the scope and as-of date from the analytics engine and the dictionary and hierarchy lookup from <code>expand</code>.</p>
+<ul>
+<li><b>Spec to SQL by fixed code.</b> Every value is a parameter. No model text ever goes into SQL.</li>
+<li><b>Value sets</b> resolve to codes that exist in the scoped dictionary, using descendants when selected.</li>
+<li><b>Missing data is a result.</b> A patient without the needed dates goes to "cannot evaluate" with the reason, never into "no match".</li>
+<li><b>Small cells hidden</b> with the same rule as care pathways.</li>
+</ul>
+<pre><code>{ pattern_id, spec_version, scope, as_of, mode, hierarchy: "demo | csv | rf2 | none",
+  epistemic: { certainty, basis, claim },          // copied from the pattern
+  reliability: ["thin", "gappy"],                  // computed by code (see Epistemic uncertainty)
+  evidence_mix: { documented: 0.7, derived: 0.3 },
+  counts: { eligible, matched, cannot_evaluate, not_matched },
+  cannot_evaluate_reasons: { dx_date_missing: 4, rx_date_missing: 9 },
+  matches: [{ patient_id, records: { dx: "resource id", abx: "resource id" },
+              evidence: { dx: "source code", abx: "source code" }, flags: [] }] }</code></pre>
+<p>Endpoints: <code>GET/POST/PUT /api/patterns</code>, <code>/validate</code>, <code>/run</code>, <code>/review</code>, <code>/import</code>, <code>/export</code>, and <code>/api/patterns/from-case</code>, <code>/from-cases</code>.</p>
+</section>
+<section id="llm">
+<h2>LLM guardrails</h2>
+<ul>
+<li><b>The model writes spec JSON, never SQL.</b> The validator rejects unknown relations, domains, fields and out-of-range numbers, and drops codes that no scoped patient has (same rule as <code>research.js</code>).</li>
+<li><b>Code choices come from your dictionary</b> (candidates list), as in code enrichment. The model may not invent codes.</li>
+<li><b>Every draft stores</b> model, prompt version, time and source kind, like the enrichment table.</li>
+<li><b>Add audit rules</b> in <code>security.js</code> for the new AI endpoints. The case mode gets its own class because it is the only one that sends case-level data.</li>
+<li><b>Only reviewed patterns run on a full scope.</b> Drafts can only run as a dry run on a small sample.</li>
+<li><b>A model can never set certainty above <code>hypothesis</code>.</b> Its drafts are stored as <code>model_suggested</code>; only a reviewer can raise the label.</li>
+<li><b>The result explainer must state the labels first</b> and use "may" or "is associated with" wording for <code>hypothesis</code> and <code>contested</code>. It gives no treatment advice for those.</li>
+<li>The plain-English custom analytic stays as it is, labeled unreviewed.</li>
+</ul>
+</section>
+<section id="epi">
+<h2>Epistemic uncertainty</h2>
+<p>Uncertainty exists at three layers. Each gets a few fixed labels now. A free <code>tags</code> list is reserved so a broader structure can be added later without changing the spec.</p>
+<div class="scroll"><table>
+<tr><th>Layer</th><th>Question</th><th>Labels</th><th>Set by</th></tr>
+<tr><td><b>Knowledge</b> (the pattern)</td><td>How well established is this clinical statement?</td><td><code>certainty</code>: established, supported, hypothesis, contested<br><code>basis</code>: guideline, literature, expert, observed_in_data, model_suggested<br><code>claim</code>: descriptive, association, causal</td><td>A reviewer. Model drafts are forced to hypothesis and model_suggested.</td></tr>
+<tr><td><b>Data</b> (each record)</td><td>How firm is this fact in the source?</td><td><code>assertion</code> (exists now): confirmed, suspected, negated<br><code>evidence</code>: documented, derived, inferred</td><td>Import and reviewed enrichment; code marks derived.</td></tr>
+<tr><td><b>Run</b> (this result)</td><td>Can this run be trusted as it stands?</td><td><code>reliability</code> (one or more): ok, thin, gappy, weak_hierarchy</td><td>Code only, from numbers.</td></tr>
+</table></div>
+<h3>What the labels mean</h3>
+<ul>
+<li><b>established:</b> a guideline or consensus states it. <b>supported:</b> some studies or clear expert practice. <b>hypothesis:</b> plausible or seen in data, not confirmed. <b>contested:</b> sources disagree; the note says how.</li>
+<li><b>descriptive:</b> what usually happens. <b>association:</b> two things go together. <b>causal:</b> one is claimed to cause the other.</li>
+<li><b>documented:</b> a coded field in the source. <b>derived:</b> computed from dates and gaps (for example, stopped = no refill). <b>inferred:</b> from text or a model.</li>
+<li><b>thin:</b> fewer eligible patients than the low-number limit (reuse <code>LOW_N</code> from <code>research.js</code>, 20) or matches below the min-cell rule. <b>gappy:</b> more than 30% of eligible patients cannot be evaluated for missing data (a setting). <b>weak_hierarchy:</b> the spec uses descendants but only demo links, or none, are loaded.</li>
+</ul>
+<h3>Rules the validator and code enforce</h3>
+<ul>
+<li>Model drafts and patterns mined from cases start at <code>hypothesis</code>. Only a reviewer raises the label.</li>
+<li><code>established</code> and <code>supported</code> need a source note (a guideline name or citation). <code>contested</code> needs a note on the disagreement.</li>
+<li>A <code>causal</code> claim needs certainty of at least <code>supported</code>. Otherwise the validator rejects it, and the explainer treats the result as association.</li>
+<li>Suspected and negated records are not counted as confirmed unless the pattern says so.</li>
+<li>Every certainty change is written to the audit log (who, when, from, to, note) and kept as a short history on the pattern.</li>
+</ul>
+<h3>How it shows</h3>
+<p>Every run, explanation and export carries three chips:</p>
+<p><span class="st pa">Knowledge: hypothesis, observed_in_data</span> <span class="st nw">Data: 70% documented, 30% derived</span> <span class="st pa">Run: thin, gappy</span></p>
+<p>Also shown: the mode used (V2, V4, V5), the hierarchy source, and the provenance (resource ids, batch, spec version, model, reviewer, time).</p>
+<h3>Tags, for later</h3>
+<p><code>tags</code> takes up to 10 short lowercase strings and has no behaviour yet. It lets you try new ideas, such as a setting or a specialty, before deciding whether they become fixed labels. See the future scope for a broader structure.</p>
+</section>
+<section id="future">
+<h2>Future development scope</h2>
+<p>These are not in your app today. They are valuable, but the plan above does not depend on them.</p>
+<div class="scroll"><table>
+<tr><th>Item</th><th>Why it matters</th><th>Note</th></tr>
+<tr><td>Resolution, stop and status fields (abatement date, medication end date, intended duration, stop reason, verification status)</td><td>Lets patterns use documented resolution and stopping instead of derived guesses.</td><td>Not read anywhere in your code today. First option: read them from <code>json_content</code> inside the pattern SQL. Later: extract into columns at import.</td></tr>
+<tr><td>Hierarchy used by the analytics catalog and research plans</td><td>Analytics would count child codes automatically.</td><td>Today only the SNOMED query builder and cohort criteria use it.</td></tr>
+<tr><td>SNOMED attributes and ECL (finding site, morphology, causative agent)</td><td>Enables constraints such as "all disorders of the lower limb", not just parent and child.</td><td>Your RF2 loader reads only is-a links. Needs the attribute relationships loaded and a query layer.</td></tr>
+<tr><td>Hierarchy for drugs and labs (RxNorm, ATC, LOINC groups)</td><td>"Any antibacterial" without listing codes.</td><td>The link table can hold any CSV of child and parent codes, so a first version may only need data files.</td></tr>
+<tr><td>Post-coordinated qualifiers (severity, laterality, body site, acuity, certainty) as fields</td><td>Context that defines a pattern, such as "severe" or "left".</td><td>Decompose into fields; avoid storing raw SNOMED expression strings first.</td></tr>
+<tr><td>Pattern discovery</td><td>Propose new draft patterns from frequent sequences in care pathways and the knowledge graph.</td><td>Drafts only. The existing care pathways and graph are the starting point.</td></tr>
+<tr><td>External library converters</td><td>Import or export OHDSI cohort JSON or CQL, so patterns travel between systems.</td><td>Keeps the engine in SQL.</td></tr>
+<tr><td>External terminology server</td><td>Live expansion instead of loaded release files.</td><td>Only if loading releases becomes a burden.</td></tr>
+<tr><td>Other source formats (openEHR, research CSV)</td><td>More data into the same scoped views.</td><td>Needs adapters that produce the existing tables.</td></tr>
+<tr><td>Broader uncertainty structure</td><td>Graded evidence (for example GRADE-style levels), numeric confidence or intervals for a claim, supporting and conflicting sources listed per claim, and uncertainty carried across linked patterns.</td><td>Start from what people actually put in <code>tags</code> and <code>note</code>, then promote the useful ones to fixed fields.</td></tr>
+<tr><td>Documentation-bias report per batch or site</td><td>Shows when a pattern is rare only because a site does not record the data.</td><td>Extends the readiness card.</td></tr>
+<tr><td>Pattern sharing and versioning across sites</td><td>Safe reuse of reviewed patterns.</td><td>Needs signed exports and spec migration rules.</td></tr>
+</table></div>
+</section>
+<section id="open">
+<h2>Decisions before Chunk 1</h2>
+<ul>
+<li><b>Is a de-identified single case allowed to go to an external model</b> at all? If not, keep "one case" fully deterministic and let a person write the plain text.</li>
+<li><b>Who approves patterns?</b> Reuse your existing roles or add a clinical reviewer role.</li>
+<li><b>Is "no refill after supply ends plus grace" acceptable as the stop definition</b> until documented stop dates exist?</li>
+<li><b>Which hierarchy will you load first?</b> A real RF2 release is recommended before descendants are used in patterns.</li>
+<li><b>Who may raise certainty</b> to <code>established</code> or <code>supported</code>, and what counts as a valid source note?</li>
+<li><b>Thresholds:</b> keep 20 for thin and 30% for gappy, or change them?</li>
+<li><b>First demo:</b> one pattern end to end, then widen.</li>
+</ul>
+<p>The short-course example shows an association between early stopping and recovery, not a cause. Phrase its explanation that way.</p>
+</section>
+<p class="part">Part C</p>
+
+<section id="facts"><h2>Project facts for every new chat</h2>
+<p>A new chat knows nothing about your code. These facts come from your files, so I do not need to read the big ones again.</p>
+<ul>
+<li><b>Stack:</b> Node 18 or later, Express 5, <code>pg</code>. No new dependencies. (The optional <code>patterns-sql-check.js</code> uses PGlite installed with <code>--no-save</code>; it is not a dependency.)</li>
+<li><b>Pattern module so far:</b> see <a href="#now">Where you are now</a>, section "As built so far".</li>
+<li><b>Two database pools:</b> <code>pool</code> (owner, writes) and <code>readPool</code> (SELECT-only role from <code>db-readonly.sql</code>). Pattern tables are written with <code>pool</code>; pattern runs use <code>readPool</code>. New tables are readable by the read-only role through default privileges.</li>
+<li><b>Scope:</b> <code>engine.resolveScope({ batchId, batchGroup, cohortId, useCohort: true, asOf })</code> returns <code>{ with, suffixes, population, cohort, asOf, patients, enrich }</code>. <code>ctx.with</code> is a WITH clause that defines the views <code>p(patient_id, gender, birth_date, pj)</code>, <code>dx(patient_id, code, code_system, onset_date, j)</code>, <code>ob(patient_id, code, code_system, value, unit, effective_date, j)</code>, <code>rx(patient_id, code, prescribed_date, j)</code>, <code>pr(patient_id, code, performed_date, j)</code>, <code>en(patient_id, cls, start_date, end_date, j)</code>, <code>al(...)</code>, <code>im(patient_id, code, occurrence_date, j)</code> and <code>ref(d)</code>. The FHIR resource id of a record is <code>j-&gt;&gt;'id'</code>.</li>
+<li><b>Your workflow:</b> create or activate a cohort in the Analytics tab; the Patterns tab always uses that active cohort (same rule as care pathways). It has no scope picker of its own.</li>
+<li><b>Module convention:</b> a file exporting <code>register(app, ...)</code>, a header comment, <code>module.exports.selftest</code>, run with <code>--selftest</code> and added to <code>npm test</code>.</li>
+<li><b>Hierarchy tables:</b> <code>snomed_isa(child_code, parent_code)</code>, <code>snomed_concept</code>, <code>snomed_dictionary(domain, code, in_data, patients)</code>. Demo links number 47.</li>
+<li><b>Static files:</b> the app has no static folder. The sign-in gate covers <code>/</code>, <code>/index.html</code> and <code>/api/*</code>, so each new page or script needs its own route (<code>/patterns-ui.js</code> has one, added in chunk 6).</li>
+<li><b>Limits to respect:</b> min-cell 5 (<code>PATHWAY_MIN_CELL</code>), low number 20 (<code>research.js</code>); no abatement, end-date or stop-reason fields yet.</li>
+<li><b>Files you uploaded last:</b> <code>login.html</code>, <code>db-readonly.sql</code>, <code>drop-disease-tables.sql</code> and a second copy of the e2e script need no changes. The disease and department tables are no longer used, so never upload <code>diseases.js</code>.</li>
+</ul></section>
+
+<section id="chunks"><h2>Build chunks</h2>
+<p>Each chunk is one chat. They refine the six phases of the plan into smaller steps. Open a new chat, upload this file and every file the chunk lists (including <code>patterns.js</code> and <code>patterns-ui.js</code> from earlier chunks, because a new chat starts empty), then paste the copied prompt.</p>
+<div class="note ok"><b>Rule in every prompt:</b> one chunk only, edit uploaded files in place, return full updated files, then stop.</div>
+<details><summary>Chunk 1: Spec and validator <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>package.json</code></dd><dt>I build</dt><dd>New <code>patterns.js</code> (relation list, value-set shape, epistemic fields and rules, validate / normalize, <code>--selftest</code>).</dd><dt>I return</dt><dd><code>patterns.js</code> (new), <code>package.json</code> (test script updated).</dd><dt>Done when</dt><dd><code>node patterns.js --selftest</code> passes: valid and invalid specs, one test per epistemic rule.</dd><dt>Status</dt><dd>Done 15 Nov 2026. Returned <code>patterns.js</code> (new). <code>package.json</code> was not needed in this chunk. 22 tests at the time.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 1 (Spec and validator). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 2: Pattern store and routes <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>analytics.js</code> (358K; I search it, I do not read all of it)</dd><dt>I build</dt><dd>Tables <code>patterns</code>, <code>pattern_history</code>, <code>pattern_runs</code> created on first use with the owner pool; routes <code>GET/POST/PUT /api/patterns</code>, <code>GET /api/patterns/:id</code>; one wiring line in <code>analytics.js</code>.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>analytics.js</code>.</dd><dt>Done when</dt><dd>Create, list and edit a pattern with curl; an invalid spec is rejected with 422.</dd><dt>Status</dt><dd>Done 15 Nov 2026. Returned <code>patterns.js</code>, <code>analytics.js</code> (one added line), <code>package.json</code> (test script). Tested on an in-memory store, not yet on your Postgres.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 2 (Pattern store and routes). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 3: Value sets and SQL builder <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code></dd><dt>I build</dt><dd>Pure functions: value set to code list (<code>snomed_isa</code>, <code>snomed_dictionary</code>), spec to parameterized SQL over the views, cannot-evaluate reasons.</dd><dt>I return</dt><dd><code>patterns.js</code>, plus an optional real-Postgres check script.</dd><dt>Done when</dt><dd>Self-test: only <code>$n</code> parameters; descendants expand; missing dates land in cannot evaluate.</dd><dt>Status</dt><dd>Done 15 Nov 2026. Returned <code>patterns.js</code> and the optional <code>patterns-sql-check.js</code>. 50 self-tests; 12 real-Postgres checks. The validator was also tightened (no references to <code>pick: "any"</code> events; <code>no_refill</code> needs a single fill).</dd></dl><button class="copy" data-p="Project file attached. Do chunk 3 (Value sets and SQL builder). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 4: Run endpoint and three seed patterns <span class="st ex">Built</span> <span class="st pa">1 check open</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code> (latest). Optional: <code>patterns-sql-check.js</code>. Tell me the readmission analytic count on your synthetic batch, and whether it measures from admission start or from discharge (<code>end_date</code>). No <code>analytics.js</code> needed: it already wires <code>patterns.js</code>.</dd><dt>I build</dt><dd><code>POST /api/patterns/:id/run</code> with scope = active cohort; counts, reasons, matches with the source record id; saves a run. Seeds: drug within 90 days of diagnosis, return within 30 days of discharge, short-course antibiotic.</dd><dt>I return</dt><dd><code>patterns.js</code> (and <code>patterns-sql-check.js</code> if extended).</dd><dt>Done when</dt><dd>The readmission pattern equals the existing analytic count.</dd><dt>Status</dt><dd>Built 15 Nov 2026. Returned <code>patterns.js</code> and <code>patterns-sql-check.js</code>. Added <code>from: "end"</code> (discharge anchor) to <code>return_within_days</code>. Not yet confirmed: the readmission seed against your existing analytic. See <a href="#now">Where you are now</a>.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 4 (Run endpoint and three seed patterns). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 5: Run labels <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code></dd><dt>I build</dt><dd><code>reliability</code> (thin, gappy, weak_hierarchy), <code>evidence_mix</code>, epistemic copy in every run result; thresholds 20 and 30 as settings.</dd><dt>I return</dt><dd><code>patterns.js</code>.</dd><dt>Done when</dt><dd>Self-test for each label, including demo-only hierarchy. (See the carry-over note: how to tell demo links from real ones.)</dd><dt>Status</dt><dd>Done 15 Nov 2026. Returned <code>patterns.js</code>. 63 self-tests then. Demo-versus-real hierarchy is guessed from the link count (47 or fewer).</dd></dl><button class="copy" data-p="Project file attached. Do chunk 5 (Run labels). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 6: Patterns tab shell <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>index.html</code> (795K), <code>server.js</code> (75K)</dd><dt>I build</dt><dd>New <code>patterns-ui.js</code> (list, create and edit form with the epistemic fields); tab button, panel and script tag in <code>index.html</code>; a route for <code>/patterns-ui.js</code> in <code>server.js</code>.</dd><dt>I return</dt><dd><code>patterns-ui.js</code> (new), <code>index.html</code>, <code>server.js</code>, <code>patterns.js</code> if changed.</dd><dt>Done when</dt><dd>The Patterns tab opens and lists patterns. After this, <code>index.html</code> is not needed again.</dd><dt>Status</dt><dd>Done 16 Nov 2026. Returned <code>patterns-ui.js</code> (new), <code>index.html</code>, <code>server.js</code>, <code>patterns.js</code> (test helper export only). Checked in a scripted browser (jsdom), not yet in a real one. <code>index.html</code> is not needed again.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 6 (Patterns tab shell). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 7: Run view <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code></dd><dt>I build</dt><dd>Banner with the active cohort and population (none: "Create or activate a cohort in the Analytics tab"), run button, three chips, counts, reasons, matches with a link to the patient explorer.</dd><dt>I return</dt><dd><code>patterns-ui.js</code>.</dd><dt>Done when</dt><dd>Create a cohort in Analytics, open Patterns, run a pattern, see chips and counts.</dd><dt>Status</dt><dd>Done 16 Nov 2026. Returned <code>patterns-ui.js</code>. Checked in a scripted browser (jsdom), not yet on your cohort.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 7 (Run view). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 8: Review and certainty control <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code> (75K)</dd><dt>I build</dt><dd>Status flow draft, reviewed, active, retired; only reviewed or active run on a full scope; certainty change with required note, history and audit rules.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code>.</dd><dt>Done when</dt><dd>A model draft cannot be set above hypothesis; each change shows in history and the audit log. Also: the changed-by name comes from the sign-in layer; the status lock in the routes is replaced by this flow.</dd><dt>Status</dt><dd>Done 16 Nov 2026. Returned <code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code>. 77 self-tests in <code>patterns.js</code>; new checks in <code>security.js</code>; Review panel checked in a scripted browser (jsdom), not yet on your Postgres.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 8 (Review and certainty control). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 9: Create from one case <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code></dd><dt>I build</dt><dd>Case abstraction (no ids, names, birth date, address, narrative; day offsets; age band), draft spec, <code>POST /api/patterns/from-case</code>, button in the tab. Model wording off by default.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>.</dd><dt>Done when</dt><dd>Self-test proves no identifier or free text survives abstraction.</dd><dt>Status</dt><dd>Done on 16 Nov 2026. Audit line in <code>security.js</code> still to add.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 9 (Create from one case). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 10: Create from a few cases <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>, and optionally <code>security.js</code> (audit line)</dd><dt>I build</dt><dd>Shared codes, order and gap ranges across selected patients, min-cell protected; <code>POST /api/patterns/from-cases</code>.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>.</dd><dt>Done when</dt><dd>A pattern drafted from planted synthetic cases recovers the planted rule.</dd><dt>Status</dt><dd>Done 16 Nov 2026. <code>mineCases</code>, <code>POST /api/patterns/from-cases</code>, "Create from a few cases" in the tab, audit lines for <code>from-case</code> and <code>from-cases</code> in <code>security.js</code>. 96 self-tests.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 10 (Create from a few cases). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 11: Import and export <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code></dd><dt>I build</dt><dd>Export reviewed patterns to JSON; import validates each and stores a draft.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>.</dd><dt>Done when</dt><dd>Round trip keeps specs identical; a tampered file is rejected. The export route is registered before <code>GET /api/patterns/:id</code>.</dd><dt>Status</dt><dd>Done 16 Nov 2026. <code>GET /api/patterns/export</code> (reviewed and active by default, <code>?status=</code> for one status), <code>POST /api/patterns/import</code> (<code>{ bundle, note? }</code>), Export and Import buttons, audit actions <code>pattern.export</code> and <code>pattern.import</code>. The file checksum detects edits and damage; it is not a signature, so every pattern is re-validated and arrives as a draft at hypothesis. 102 tests.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 11 (Import and export). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details open><summary>Chunk 12: AI draft and explainer <span class="st ex">Done</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code>, <code>research.js</code> (17K), <code>evidence.js</code> (208K; I search it for the model-call helpers)</dd><dt>I build</dt><dd>Plain English to spec JSON through the existing model settings; explainer that states the three chips first; audit class.</dd><dt>I return</dt><dd><code>patterns.js</code>, <code>patterns-ui.js</code>, <code>security.js</code>.</dd><dt>Done when</dt><dd>A bad model reply is rejected; the explainer adds no numbers.</dd><dt>Status</dt><dd>Done 16 Nov 2026. <code>pattern-ai.js</code> (draft, explainer, case wording; self-tests pass), wired in <code>server.js</code> and <code>analytics.js</code>; audit rules <code>pattern.ai_draft</code> and <code>pattern.explain</code> in <code>security.js</code>. Not yet tried with a live model key or on your Postgres.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 12 (AI draft and explainer). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+<details><summary>Chunk 13: Docs and final checks <span class="st ex">Done</span> <span class="st pa">checks open</span></summary><dl><dt>Upload</dt><dd><code>patterns.js</code>, <code>package.json</code>, <code>README.md</code>, <code>about.html</code></dd><dt>I build</dt><dd>README rows, an About paragraph, an end-to-end script for patterns, final <code>npm test</code> chain.</dd><dt>I return</dt><dd><code>README.md</code>, <code>about.html</code>, <code>package.json</code>, new e2e script.</dd><dt>Done when</dt><dd><code>npm test</code> passes and the e2e script passes on a running server. The article's Status paragraph is updated.</dd><dt>Status</dt><dd>Done 16 Nov 2026. README (files, Pattern encyclopedia section, settings, audit actions), About paragraph, <code>e2e-patterns.js</code>, <code>npm test</code> now includes <code>pattern-ai.js</code>. Open: run <code>npm test</code> and <code>npm run e2e:patterns</code> on your machine.</dd></dl><button class="copy" data-p="Project file attached. Do chunk 13 (Docs and final checks). Do only this chunk. Edit the uploaded files in place and return the full updated files; I make no hand edits. Search the files for what you need instead of reading them whole. Then stop.">Copy prompt for this chunk</button></details>
+</section>
+
+<section id="uploads"><h2>Files to upload</h2>
+<ul>
+<li><b>Every chunk:</b> this HTML file, plus the files listed in that chunk. Always include the latest <code>patterns.js</code> (and <code>patterns-ui.js</code> once it exists) that I gave you, because each chat starts empty. For the current chunk, see <a href="#now">Where you are now</a>.</li>
+<li><b>Big files appear only once or twice:</b> <code>analytics.js</code> (chunk 2, already used), <code>index.html</code> and <code>server.js</code> (chunk 6, already used), <code>security.js</code> (chunks 8 and 12), <code>evidence.js</code> and <code>research.js</code> (chunk 12), <code>README.md</code> and <code>about.html</code> (chunk 13).</li>
+<li><b>Optional:</b> <code>patterns-sql-check.js</code>, only when I should re-run or extend the real-Postgres check.</li>
+<li><b>Never upload:</b> <code>diseases.js</code>, <code>knowledge.js</code>, <code>synthetic.js</code>, <code>terminology.js</code>, <code>login.html</code>, the SQL files and the e2e script.</li>
+<li><b>Save my output:</b> replace your local copy of each file I return before the next chunk.</li>
+</ul></section>
+
+<section id="log"><h2>Progress log</h2>
+<p>I update this table when you return a chunk. Replace this file with the new copy each time. Dates are the dates the chunk was returned.</p>
+<div class="scroll"><table><tr><th>Chunk</th><th>Date</th><th>Result</th><th>Notes</th></tr><tr><td>1 Spec and validator</td><td>15 Nov 2026</td><td>Done</td><td><code>patterns.js</code> created. Validator, normalizer and epistemic rules; 22 tests then.</td></tr><tr><td>2 Store and routes</td><td>15 Nov 2026</td><td>Done</td><td>Tables, four routes, one line in <code>analytics.js</code>, test script updated. 35 tests then. Checked on an in-memory store only. Status locked to draft; all saves non-reviewer until chunk 8.</td></tr><tr><td>3 Value sets and SQL builder</td><td>15 Nov 2026</td><td>Done</td><td><code>resolveValueSets</code>, <code>buildSql</code>, <code>explainReasons</code>. 50 tests; 12 checks on real Postgres (PGlite). Found and fixed a bug (unused parameters with the follow-up check off). Validator tightened for <code>pick: "any"</code>.</td></tr><tr><td>4 Run endpoint and seeds</td><td>15 Nov 2026</td><td>Built, 1 check open</td><td><code>POST /api/patterns/:id/run</code>, <code>GET /api/patterns/:id/runs</code>, <code>POST /api/patterns/seed</code>, min-cell summary, saved runs, discharge anchor (<code>from: "end"</code>). 61 tests; 14 checks on real Postgres (PGlite). Open: readmission seed not yet compared with your analytic; <code>scopeOf</code> assumption unchecked.</td></tr><tr><td>5 Run labels</td><td>15 Nov 2026</td><td>Done</td><td><code>thin</code>, <code>gappy</code>, <code>weak_hierarchy</code>, <code>evidence_mix</code>, epistemic sentence; thresholds as settings. 63 tests.</td></tr><tr><td>6 Patterns tab shell</td><td>16 Nov 2026</td><td>Done</td><td><code>patterns-ui.js</code> new; tab, panel and script tag in <code>index.html</code>; <code>/patterns-ui.js</code> route in <code>server.js</code>. Scripted-browser check passed.</td></tr><tr><td>7 Run view</td><td>16 Nov 2026</td><td>Done</td><td>Active-cohort banner, Run button, three chips, counts, reasons, matches linked to the patient explorer. Scripted-browser check passed.</td></tr><tr><td>8 Review and certainty control</td><td>16 Nov 2026</td><td>Done</td><td>Status flow draft, reviewed, active, retired with history; certainty control with reason, real basis and source; <code>reviewer</code> role and <code>patterns:review</code> permission; pattern audit actions; Review panel in the tab; status chip in the run view. 77 tests. Optional second-reviewer setting. Scripted-browser check passed.</td></tr><tr><td>9 Create from one case</td><td>16 Nov 2026</td><td>Done</td><td><code>patterns.js</code> and <code>patterns-ui.js</code> changed. Abstraction, draft, <code>POST /api/patterns/from-case</code>, rare-sequence flag, model wording off by default, "Create from a case" in the tab. 91 tests then (14 new). Case statement checked on PGlite; tab flow checked in jsdom. Not yet tried on your Postgres. Open: audit line in <code>security.js</code>; display names.</td></tr><tr><td>10 Create from a few cases</td><td>16 Nov 2026</td><td>Done</td><td><code>mineCases</code> (codes shared by max(min-cell, half) of the patients, median order, longest gap; groups under the min-cell refused), <code>POST /api/patterns/from-cases</code> (draft only, no model), tab section, audit lines. 96 tests. Not yet tried on your Postgres.</td></tr><tr><td>11 Import and export</td><td>16 Nov 2026</td><td>Done</td><td>Export route registered before <code>/:id</code>; import validates the file checksum and every pattern, skips invalid ones, leaves existing ids alone, and stores drafts at hypothesis (a sender's certainty, status or model source is not carried over; a causal claim becomes an association). Export and Import buttons in the tab; audit rules in <code>security.js</code>. 102 tests. Not yet tried on your Postgres or in a real browser.</td></tr></table></div></section>
+
+</main>
+</div>
+<script>
+document.querySelectorAll('button.copy').forEach(function(b){b.addEventListener('click',function(){
+  var t=b.getAttribute('data-p');
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied'}).catch(function(){window.prompt('Copy this prompt:',t)});
+  setTimeout(function(){b.textContent='Copy prompt for this chunk'},2000);});});
+</script>
+</body>
+</html>

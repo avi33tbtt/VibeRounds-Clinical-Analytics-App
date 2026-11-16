@@ -1501,6 +1501,7 @@ label{color:var(--ink-2)}
         <button class="tab" data-tab="tab6">Analytics</button>
         <button class="tab" data-tab="tab7">Dashboard</button>
         <button class="tab" data-tab="tab10">Research</button>
+        <button class="tab" data-tab="tab11">Patterns</button>
         <button class="tab" data-tab="tab9" id="auditTab" style="display:none">Audit log</button>
         <span class="tab-sep" aria-hidden="true"></span>
         <button class="tab is-guide" data-tab="tab2">Architecture</button>
@@ -3764,6 +3765,8 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
         </div>
 
         <!-- Tab 9: Audit log (admin only) -->
+        <div class="tab-panel" id="tab11"></div>
+
         <div class="tab-panel" id="tab9">
             <div class="page-head"><h2>Audit log</h2></div>
             <p>Who signed in, imported, deleted or changed data, which patient-level records were opened, and what was sent to an external AI model. Entries cannot be edited or deleted, and each one is chained to the one before it. Request bodies, passwords and keys are never stored.</p>
@@ -10946,5 +10949,6 @@ async function enBulk() {
   });
 })();
 </script>
+<script src="/patterns-ui.js"></script>
 </body>
 </html>

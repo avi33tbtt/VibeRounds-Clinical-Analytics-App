@@ -191,7 +191,10 @@ const scrypt = promisify(crypto.scrypt);
 // ---- roles ---------------------------------------------------------------------------------------------------
 // permission '*' = everything. 'app:access' is the base permission the gate requires for any /api/* call.
 const ROLES = {
-  admin: { label: 'Administrator', permissions: ['*'] }
+  admin: { label: 'Administrator', permissions: ['*'] },
+  // Clinical reviewer: everything an ordinary signed-in user can do (app:access) plus review of patterns
+  // (patterns:review = change a pattern's status and raise or lower its certainty). It cannot read the audit log.
+  reviewer: { label: 'Clinical reviewer', permissions: ['app:access', 'patterns:review'] }
 };
 const DEFAULT_ROLE = 'admin';
 
@@ -200,7 +203,8 @@ const DEFAULT_ROLE = 'admin';
 //   ['POST', /^\/api\/(import-fhir|init-schema)$/, 'data:import'],
 //   ['DELETE', /^\/api\/(batches|batch-groups|cohorts)\//, 'data:delete'],
 const ROUTE_PERMISSIONS = [
-  ['*', /^\/api\/audit(\/|$)/, 'audit:read']           // the audit log: admin only today (admin has '*')
+  ['*', /^\/api\/audit(\/|$)/, 'audit:read'],          // the audit log: admin only today (admin has '*')
+  ['POST', /^\/api\/patterns\/[^/]+\/(status|certainty)$/, 'patterns:review']   // pattern review: reviewer or admin (patterns.js checks again)
 ];
 
 function can(user, permission) {
@@ -482,6 +486,11 @@ module.exports.selftest = () => {
     assert.deepStrictEqual(parseCookies('a=1; vr_session=abc%3D; b=2'), { a: '1', vr_session: 'abc=', b: '2' });
     assert.ok(can({ role: 'admin' }, 'anything') && !can({ role: 'nope' }, 'app:access') && !can(null, 'app:access'));
     assert.strictEqual(requiredPermission('GET', '/api/cohorts'), 'app:access');
+    assert.strictEqual(requiredPermission('POST', '/api/patterns/p_one/status'), 'patterns:review');
+    assert.strictEqual(requiredPermission('POST', '/api/patterns/p_one/certainty'), 'patterns:review');
+    assert.strictEqual(requiredPermission('POST', '/api/patterns/p_one/run'), 'app:access'); assert.strictEqual(requiredPermission('PUT', '/api/patterns/p_one'), 'app:access');
+    assert.ok(can({ role: 'reviewer' }, 'app:access') && can({ role: 'reviewer' }, 'patterns:review') && !can({ role: 'reviewer' }, 'audit:read'));
+    assert.strictEqual(requiredPermission('GET', '/api/audit'), 'audit:read');
     let clock = 0; const th = makeThrottle({ max: 3, windowMs: 1000, now: () => clock });
     th.fail('k'); th.fail('k'); assert.ok(!th.blocked('k')); th.fail('k'); assert.ok(th.blocked('k')); clock = 2000; assert.ok(!th.blocked('k'));
 
@@ -671,6 +680,21 @@ const RULES = [
   ['POST',   /^\/api\/analytics\/catalog\/(?:compare|compare-modes)$/, 'analytics.compare', 'analytics', { capture: 'analytic' }],
   ['POST',   /^\/api\/analytics\/custom\/run$/, 'analytics.custom_sql', 'analytics', { capture: 'sql' }],
   ['POST',   /^\/api\/readiness\/check$/, 'readiness.check', 'analytics'],
+  // pattern encyclopedia: who created, edited, reviewed, changed certainty of, or ran which pattern (target = pattern id).
+  // patterns.js adds the from/to values and the reason through req.auditDetails; the full note is in pattern_history.
+  ['POST',   /^\/api\/patterns$/, 'pattern.create', 'pattern'],
+  ['POST',   /^\/api\/patterns\/seed$/, 'pattern.seed', 'pattern'],
+  ['GET',    /^\/api\/patterns\/export$/, 'pattern.export', 'pattern'],                // a file of reviewed patterns leaves the app
+  ['POST',   /^\/api\/patterns\/import$/, 'pattern.import', 'pattern'],              // a file of patterns comes in, as drafts
+  ['POST',   /^\/api\/patterns\/from-case$/, 'pattern.from_case', 'pattern'],      // reads one patient of the active cohort (target = patient id)
+  ['POST',   /^\/api\/patterns\/from-cases$/, 'pattern.from_cases', 'pattern'],    // reads a group of cases; aggregates only (target = count)
+  ['POST',   /^\/api\/patterns\/ai-draft$/, 'pattern.ai_draft', 'pattern'],       // plain English to a draft spec through the model (names only, no patient data)
+  ['PUT',    /^\/api\/patterns\/([^/]+)$/, 'pattern.update', 'pattern'],
+  ['POST',   /^\/api\/patterns\/([^/]+)\/status$/, 'pattern.status', 'pattern'],
+  ['POST',   /^\/api\/patterns\/([^/]+)\/certainty$/, 'pattern.certainty', 'pattern'],
+  ['POST',   /^\/api\/patterns\/([^/]+)\/run$/, 'pattern.run', 'pattern'],
+  ['POST',   /^\/api\/patterns\/([^/]+)\/delete$/, 'pattern.delete', 'pattern'],  // draft or retired pattern removed with its history and runs (reason in the details)
+  ['POST',   /^\/api\/patterns\/([^/]+)\/explain$/, 'pattern.explain', 'pattern'],  // model-worded explanation of a saved run (labels only, no counts)
   ['POST',   /^\/api\/ehr\/test$/, 'ehr.test', 'data'],
   // reads of aggregate data (counts, code lists): recorded, at most once per person and path every 30 s
   ['GET',    /^\/api\/(?:demographics\/population-details|analytics\/demographics|concepts|enrichment\/coverage|db-overview)$/, 'data.view', 'access', { query: true, throttle: 30000 }],
@@ -840,6 +864,7 @@ function setup(app, getPool, { store: injected, env = process.env, logger = cons
     const details = { ms };
     if (sel.target) details.target = sel.target;
     else if (req.auditTarget) details.target = String(req.auditTarget);       // a route that knows its own target (a create) names it
+    if (req.auditDetails && status < 400) Object.assign(details, scalars(req.auditDetails));   // a route that knows what it changed (from / to values), set only on success
     const b = req.body;
     if (b && typeof b === 'object' && !Array.isArray(b)) {
       for (const k of BODY_KEYS) if (typeof b[k] === 'string' || typeof b[k] === 'number') details[k] = b[k];
@@ -950,6 +975,14 @@ module.exports.selftest = () => {
     assert.strictEqual(classify('POST', '/api/enrichment/propose').action, 'ai.request');
     assert.ok(classify('POST', '/api/enrichment/candidates').ignore);
     assert.strictEqual(classify('GET', '/api/hello'), null);
+    assert.deepStrictEqual(['POST /api/patterns', 'PUT /api/patterns/p_one', 'POST /api/patterns/p_one/status', 'POST /api/patterns/p_one/certainty', 'POST /api/patterns/p_one/run', 'POST /api/patterns/seed']
+      .map(x => { const [m, p] = x.split(' '); const c = classify(m, p); return c.action + ':' + c.category + ':' + c.target; }),
+      ['pattern.create:pattern:null', 'pattern.update:pattern:p_one', 'pattern.status:pattern:p_one', 'pattern.certainty:pattern:p_one', 'pattern.run:pattern:p_one', 'pattern.seed:pattern:null']);
+    assert.strictEqual(classify('GET', '/api/patterns'), null);
+    assert.strictEqual(classify('GET', '/api/patterns/export').action, 'pattern.export'); assert.strictEqual(classify('POST', '/api/patterns/import').action, 'pattern.import');
+    assert.strictEqual(classify('POST', '/api/patterns/from-case').action, 'pattern.from_case'); assert.strictEqual(classify('POST', '/api/patterns/from-cases').action, 'pattern.from_cases');
+    assert.strictEqual(classify('POST', '/api/patterns/p_one/delete').action, 'pattern.delete'); assert.strictEqual(classify('POST', '/api/patterns/p_one/delete').target, 'p_one');
+    assert.strictEqual(classify('POST', '/api/patterns/ai-draft').action, 'pattern.ai_draft'); assert.strictEqual(classify('POST', '/api/patterns/p_one/explain').action, 'pattern.explain'); assert.strictEqual(classify('POST', '/api/patterns/p_one/explain').target, 'p_one');
     const n1 = normalize({ ts: 't', action: 'x', outcome: 'success', details: { z: 1, a: 'x\u0000y' } });
     assert.strictEqual(n1.details.a, 'xy'); assert.strictEqual(n1.status, null);
     assert.notStrictEqual(hashRow(GENESIS, n1), hashRow(GENESIS, Object.assign({}, n1, { path: '/x' })));
@@ -988,6 +1021,8 @@ module.exports.selftest = () => {
     app.get('/api/explorer/patient', (req, res) => res.json({ success: true }));
     app.get('/api/ping', (req, res) => res.json({ success: true }));
     app.post('/api/brand-new-write', (req, res) => res.json({ success: true }));
+    app.post('/api/patterns/p_one/status', (req, res) => { req.auditDetails = { from_status: 'draft', to_status: 'reviewed', note: 'checked against the guideline', nested: { x: 1 } }; res.json({ success: true }); });
+    app.post('/api/patterns/p_two/status', (req, res) => { req.auditDetails = { to_status: 'active' }; res.status(409).json({ success: false }); });
     await audit.ready(); await auth.ready();
     const srv = await new Promise(r => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
     const port = srv.address().port;
@@ -1009,6 +1044,8 @@ module.exports.selftest = () => {
       await call('GET', '/api/explorer/patient?id=p-123&batchId=b1', { cookie });
       await call('GET', '/api/ping', { cookie });
       await call('POST', '/api/brand-new-write', { cookie, body: {} });
+      await call('POST', '/api/patterns/p_one/status', { cookie, body: {} });
+      await call('POST', '/api/patterns/p_two/status', { cookie, body: {} });
       await call('POST', '/api/auth/change-password', { cookie, body: { currentPassword: 'a very long password', newPassword: 'another long password' } });
       await audit.flush();
 
@@ -1044,6 +1081,18 @@ module.exports.selftest = () => {
       users[0].role = 'viewer';
       r = await call('GET', '/api/audit', { cookie }); assert.strictEqual(r.status, 403);
       await audit.flush(); assert.ok(find('access.denied').length >= 1, 'refusals are recorded');
+      users[0].role = 'admin';
+
+      // pattern review: the audit row names the pattern and what changed; a failed call records no change; roles decide who may review
+      const ps = find('pattern.status');
+      assert.strictEqual(ps.length, 2);
+      assert.ok(ps[0].details.target === 'p_one' && ps[0].details.from_status === 'draft' && ps[0].details.to_status === 'reviewed' && ps[0].details.note === 'checked against the guideline' && !('nested' in ps[0].details) && ps[0].outcome === 'success' && ps[0].category === 'pattern');
+      assert.ok(ps[1].details.target === 'p_two' && ps[1].outcome === 'failure' && !('to_status' in ps[1].details), 'a refused change is not recorded as a change');
+      users[0].role = 'reviewer';
+      r = await call('POST', '/api/patterns/p_one/status', { cookie, body: {} }); assert.strictEqual(r.status, 200, 'a reviewer may review');
+      r = await call('GET', '/api/audit', { cookie }); assert.strictEqual(r.status, 403, 'a reviewer may not read the audit log');
+      users[0].role = 'viewer';
+      r = await call('POST', '/api/patterns/p_one/status', { cookie, body: {} }); assert.strictEqual(r.status, 403);
       users[0].role = 'admin';
     } finally { srv.close(); }
     console.log('audit.js self-test: all checks passed');

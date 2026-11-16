@@ -44,6 +44,7 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 .about-body section{padding:0 0 28px;margin:0 0 28px;border-bottom:1px solid var(--line);scroll-margin-top:120px}
 .about-body section:last-child{border:0}
 .about-body h3{margin-top:0!important}
+.about-body h4{margin:16px 0 6px;font-size:1em}
 .about-body p,.about-body li{max-width:74ch;line-height:1.65}
 .about-body p.about-callout{background:var(--tint);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-md);padding:12px 16px;font-size:15px;max-width:none}
 .about-flow{margin:0 0 28px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
@@ -84,7 +85,7 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <div class="page-head"><h2>About Vibe Rounds</h2><p>Ask better questions of clinical data, and know how far to trust the answers. An AI research assistant for FHIR data that shows its working.</p></div>
 <div class="about">
 <nav class="about-toc" aria-label="On this page">
-<a href="#ab-why">Why it exists</a><a href="#ab-what">What it does</a><a href="#ab-loop">How a research session works</a><a href="#ab-enrich">Code enrichment</a><a href="#ab-who">Who it benefits</a><a href="#ab-use">Use cases</a><a href="#ab-fit">Where it fits</a><a href="#ab-notfor">When not to use it</a><a href="#ab-purpose">Scope and intent</a>
+<a href="#ab-why">Why it exists</a><a href="#ab-what">What it does</a><a href="#ab-loop">How a research session works</a><a href="#ab-enrich">Code enrichment</a><a href="#ab-research">Research tab</a><a href="#ab-patterns">Patterns tab</a><a href="#ab-who">Who it benefits</a><a href="#ab-use">Use cases</a><a href="#ab-fit">Where it fits</a><a href="#ab-notfor">When not to use it</a><a href="#ab-purpose">Scope and intent</a>
 </nav>
 <div class="about-body">
 <figure class="about-flow" aria-label="Two ways to get from FHIR data to analytics">
@@ -123,6 +124,8 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <p><strong>Or let it run several rounds for you: the AI researcher.</strong> Set a number of rounds (1 to 20) and start from either the analytic you selected or a plain-English question. Each round runs an analytic on the chosen population and active cohort, asks the model for an insight on the result, asks for suggested next analytics, writes a short summary, and runs the top suggestion as the next round. You can stop after any step, continue from where it ended, and optionally pause to review and edit any AI-written query before it runs. It can only choose catalog analytics or plain-English questions, so the same limits apply as for the assistant, but it does chain steps without a click from you, so check the log before trusting the trail it followed.</p>
 <p><strong>You can look at the data itself, not only at results.</strong> The <em>Patient data explorer</em> lists the patients of the current scope and opens any one of them with their conditions, medications, lab series, procedures, encounters, allergies and raw FHIR resource. The <em>Cohort knowledge graph</em> is built from the active cohort: conditions, drugs, labs and procedures as nodes, and links where they occur in the same patients, with lift, which one usually comes first and the typical gap in days. Links that terminology.js already knows (for example a condition and its usual drug) are tagged, including known links that never appear in this cohort. These are co-occurrence counts, not clinical claims.</p>
 <p><strong>Text with no code can be coded, with a person in the loop.</strong> Some records carry only text, such as a diagnosis written "sugar diabetes" with no code. Code-based methods cannot see them. <em>Code enrichment</em> lets the model propose a code for each distinct string, you approve, edit or reject it, and the enriched methods (V3 and V5) then count the approved codes. Details are in the <a href="#ab-enrich">Code enrichment</a> section below.</p>
+<p><strong>Plan a study before you run it: the Research tab.</strong> It profiles the active cohort, lists standard study designs that open the matching analytic, and can ask the model for a few short study plans that are rebuilt from fixed templates before anything runs. Details are in the <a href="#ab-research">Research tab</a> section below.</p>
+<p><strong>Keep a reviewed library of care patterns: the Patterns tab.</strong> A pattern is a small, checked statement about a sequence in the record, such as a drug started soon after a diagnosis. You can write one, draft it from plain English, from one or a few patients, or pick a common diagnosis and let the assistant suggest patterns for it. Details are in the <a href="#ab-patterns">Patterns tab</a> section below.</p>
 <p><strong>It is kept on a short leash by design.</strong> The model can only choose from the analytics catalog and the settings each analytic offers, or, for enrichment, from real candidate codes found in reference tables. It never runs SQL and never touches the database. The one place it writes a query is the <em>custom analytic</em>: it drafts a single read-only SELECT, you review and can edit it, and only then does it run as fixed SQL. That query runs on the plain scoped views, so it is offered for V1, V2 and V4 only. Every figure comes from a deterministic analytic or a query you approved, not from the model.</p></section>
 
 <section id="ab-loop"><h3>How a research session works</h3>
@@ -133,7 +136,9 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <li><strong>Get a read.</strong> Ask for insights on one run or all runs, or press the suggestion button for flagged findings and proposed next steps. Results can also be explained in plain words.</li>
 <li><strong>Steer.</strong> Run, skip, mark important or dismiss. Each step builds on your earlier decisions. Or start the <em>AI researcher</em> to chain a few rounds automatically and read the log afterwards.</li>
 <li><strong>Fill coding gaps.</strong> Where records have text but no code, review proposed codes in the Enrichment panel, then use <em>Compare V2 / V3</em> or <em>Compare V4 / V5</em> to see what approved enrichment changed.</li>
-<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph.</li></ol>
+<li><strong>Go deeper.</strong> Browse individual patients and the cohort knowledge graph.</li>
+<li><strong>Plan a study.</strong> In the Research tab, check the profile of your data, open a study design, or run an AI study plan step by step and download the results.</li>
+<li><strong>Keep what you learn.</strong> In the Patterns tab, turn a sequence you care about into a pattern, run it on the cohort, and move it through review.</li></ol>
 <p>The assistant works with your own OpenRouter key and a model you choose. It is optional: every analytic, cohort tool and export works without it.</p></section>
 
 <section id="ab-enrich"><h3>Code enrichment (V3 and V5)</h3>
@@ -146,6 +151,45 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <li><strong>Use and compare.</strong> V3 and V5 count approved and edited, confirmed codes. Results carry a banner showing how much of each domain was coded by enrichment and how many uncoded strings nobody has reviewed. The comparison buttons show the difference against V2 or V4.</li>
 <li><strong>Check the AI.</strong> The <em>Reviewer vs AI agreement</em> report shows, for strings you decided one by one, how often you kept the model's code, split by the model's confidence, with the disagreements listed.</li></ol>
 <p>The rules are simple. Source codes always win over enriched ones. Enrichment adds codes, never dates, so V5 only helps records that already have a date. Proposed, rejected, suspected and negated rows count nowhere. V2 and V4 never read enrichment. Every review is written to the audit log.</p></section>
+
+<section id="ab-research"><h3>Research tab: plan a study</h3>
+<p>The Research tab helps you decide what to study before you open the Analytics tab. It does not add a new calculation engine. Every number still comes from the same tested analytics, run on the active cohort.</p>
+<table><thead><tr><th>Part</th><th>What it does</th></tr></thead><tbody>
+<tr><td><strong>Your data</strong></td><td>A profile of the active cohort: who is in it and what the data holds, so you can see what a study can and cannot use.</td></tr>
+<tr><td><strong>Study templates</strong></td><td>A list of standard study designs: treatment comparison and exposure-outcome studies, time to event, care pathways, readmission risk and control of a chronic disease. Each one opens the matching analytic in the Analytics tab. Designs the app cannot run yet are listed as not available, so the list does not promise more than it does.</td></tr>
+<tr><td><strong>AI study plans</strong></td><td>The model proposes up to three plans of up to five steps each, built only from those templates. It sees the names of the allowed conditions and drugs with patient counts, never patient rows. The server then rebuilds every step from the fixed templates, limits numbers to allowed ranges, and drops any step whose codes no patient in the active cohort has. The dropped steps are listed, so you can see what was removed.</td></tr>
+<tr><td><strong>Run this plan</strong></td><td>Runs the plan one step at a time. Each step is checked again and then run as the normal V4 (codes with dates) analytic on the active cohort. Results appear as they arrive, you can stop at any point, and the collected results download as a JSON file.</td></tr>
+<tr><td><strong>Insights (AI)</strong></td><td>Each step has an insights button, and there is one for all the output together. They work the same way as in the Analytics tab: result tables only, with the number of rows capped.</td></tr></tbody></table>
+<p><strong>How to use it:</strong> start with <em>Your data</em>, pick a template or ask for plans, run the plan, then read the insights and take what looks interesting back to the Analytics tab. Plans and insights need the OpenRouter key and model set under AI settings. The profile, templates and analytics work without them.</p>
+<p><strong>What to keep in mind:</strong> a plan is a set of leads, not a protocol. Plans use method V4 only, results are descriptive and unadjusted, and a step that was dropped is a sign that the cohort has no patients for it, not that the idea is wrong.</p></section>
+
+<section id="ab-patterns"><h3>Patterns tab: a reviewed library of care patterns</h3>
+<p>A pattern is a small, reviewed statement about a sequence in the record, for example <em>a drug started within 90 days of a diagnosis</em> or <em>a return within 30 days of discharge</em>. It is stored as plain JSON from a fixed vocabulary, and the server turns the checked fields into one read-only, parameterized query. No model text ever reaches SQL.</p>
+
+<h4>Five ways to create a pattern</h4>
+<table><thead><tr><th>Way</th><th>How it works</th></tr></thead><tbody>
+<tr><td><strong>By hand</strong></td><td>Fill in the form: a plain statement, the conditions and drugs involved, the events and the time windows between them.</td></tr>
+<tr><td><strong>From a description</strong></td><td>Write the pattern in plain English. The model picks keys from the conditions and drugs that exist in the active cohort and the server turns the keys into codes. The result must pass the checker. If it does not, the model gets one more try, and after that nothing is returned.</td></tr>
+<tr><td><strong>Pattern assistant</strong></td><td>Pick a diagnosis from the 100 most common in the active cohort, with the number of patients for each. The model then suggests three or four patterns worth looking at for that diagnosis, in plain English, such as a treatment started soon after diagnosis, a drug not filled again, or a return to hospital within 30 days. Each suggestion is already turned into a checked draft. Suggestions that fail the checker, or that do not use the diagnosis you chose, are dropped and counted. Choose one and it opens in the form, unsaved.</td></tr>
+<tr><td><strong>From one patient</strong></td><td>Start from the sequence in a single patient of the cohort and generalize it.</td></tr>
+<tr><td><strong>From a few patients</strong></td><td>Find what a few patients have in common. Groups smaller than the minimum cell size are refused, so a pattern cannot be mined from a handful of people.</td></tr></tbody></table>
+<p>Every model-made draft is saved as a <em>draft</em> at certainty <em>hypothesis</em>, and a model draft cannot be raised above that. For the assistant, the model sees the diagnosis name and the names of conditions, drugs, labs and encounter types in the cohort. It never sees counts or patient data, and it never writes a code or a query.</p>
+
+<h4>Review: draft, reviewed, active, retired</h4>
+<ul>
+<li>A pattern moves through four statuses, in order. Each change, and each rise in certainty, needs a written reason and the review permission. The history records who, from what, to what and why.</li>
+<li>An optional setting stops the person who wrote or last edited a pattern from marking it reviewed.</li>
+<li>Only reviewed and active patterns are exported by default, and imported patterns always arrive as drafts. A damaged export file is refused whole.</li>
+<li>A draft or a retired pattern can be deleted by a reviewer, with a reason. A reviewed or active pattern must be retired first. The audit log keeps the reason, but the pattern itself cannot be recovered, so export it first if you may want it back.</li></ul>
+
+<h4>Run and explain</h4>
+<ul>
+<li><strong>Run</strong> works on the active cohort. You get counts (groups under the minimum cell size are hidden), the reasons patients did or did not match, matches linked to the patient explorer, and a saved run kept with the pattern.</li>
+<li><strong>Three chips</strong> sit above every answer: <em>status</em> (where the pattern is in review), <em>certainty</em> (how well established it is) and <em>reliability</em>. Reliability can say <em>thin</em> (few patients could be evaluated), <em>gappy</em> (many patients could not be evaluated) or <em>weak hierarchy</em> (the pattern relies on descendant codes but the loaded terminology has few links). A plain sentence says what the evidence supports.</li>
+<li><strong>Explain</strong> states the chips first. The model sees labels only, never counts, and its text is dropped if it contains a digit, a number word, a percent sign, causal or advice wording, a link or markup. In that case only the chips are shown.</li></ul>
+
+<h4>What it is for, and what it is not</h4>
+<p>Use it to keep a shared, reviewable list of care sequences, to check how often one occurs in a cohort, and to hand a reviewed definition to someone else. A pattern is an association in the record. It does not show a cause, and it gives no advice about treatment. Patterns are not validated phenotypes, and a model-suggested one is a hypothesis until a person has read it and moved it through review.</p></section>
 
 <section id="ab-who"><h3>Who it benefits</h3>
 <table><thead><tr><th>Who</th><th>What they get</th></tr></thead><tbody>
@@ -162,6 +206,9 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <li><strong>Turn a question into a study.</strong> Write the question in plain English, or ask for a few suggested studies on a topic, review the PICO or PECO form it fills in, run it, and have the result explained.</li>
 <li><strong>Assess a FHIR export before an ETL project.</strong> Run Analytics readiness and the data quality analytic and see coding coverage, unrecognised code systems and date problems.</li>
 <li><strong>See what a cohort looks like.</strong> Open the cohort knowledge graph to see which conditions, drugs and labs travel together, then open individual patients in the explorer to check a pattern against the record.</li>
+<li><strong>Plan a study in the Research tab.</strong> Check what the cohort holds, ask for a few study plans, run one step by step and download the results as JSON, then take the interesting steps back to Analytics.</li>
+<li><strong>Find patterns worth checking for a diagnosis.</strong> Open the Pattern assistant, pick a common diagnosis, read the suggested patterns in plain English, open one as a draft, then save it and run it on the cohort.</li>
+<li><strong>Keep a library of care patterns.</strong> Write a pattern in plain English or draft it from one or a few patients, run it on a cohort, and move it from draft to reviewed with a named reviewer and a recorded reason. Every run shows how well the evidence supports it, hides small groups, and says that a pattern is an association, not a cause. A model can help draft and explain, but it never writes the query, never sees counts or patient records, and cannot mark anything as reviewed.</li>
 <li><strong>Try it on a public FHIR server.</strong> Fetch a few dozen patients from the HAPI test server and use Analytics readiness to see how much, or how little, their data supports. Test data only, never real patients.</li>
 <li><strong>Try enrichment on data with missing codes.</strong> Generate a batch with codes set to <em>partly uncoded</em> for a real-world mix of coded and text-only records, or <em>fully uncoded</em> to start from zero, then open the Enrichment panel and code the strings.</li>
 <li><strong>Measure what coding gaps cost.</strong> Review the proposed codes for conditions, then compare V2 with V3 to see how many more patients an analytic finds once text-only records are coded, and use the agreement report to judge how far to trust the model.</li>
@@ -188,10 +235,12 @@ main.wrap{max-width:1180px;margin:0 auto;padding:28px}
 <li>Treating the assistant's output as findings. Its flags and suggestions, and the path the AI researcher follows across rounds, are AI-generated leads to check against the underlying tables. Results are descriptive and unadjusted.</li>
 <li>Real patient data without your organization's approval. The app has sign-in, an audit log and a SELECT-only database role, but it has one role (admin), no federation and no regulatory certification, and it is not a validated clinical system. The assistant sends result tables, with patient-id columns removed and large tables cut, to a third-party model provider, so use it only if sending de-identified aggregates fits your policy. Enrichment sends only distinct strings and candidate codes, but a record's own text can still be sensitive, so apply the same policy.</li>
 <li>Multi-site studies, formal phenotype validation or publication-grade inference. Counts are descriptive, the bundled terminology is demo content, and there is no peer-reviewed validation of the methods.</li>
+<li>Treating a pattern or an AI study plan as validated. A model-suggested pattern is a hypothesis, a run is a descriptive count in one cohort, and review status shows that someone read it, not that it was tested.</li>
 <li>Very large datasets. Import is chunked and bulk-loaded, but it is still a single PostgreSQL instance, some analytics take minutes at thousands of patients, and the knowledge graph shows only the top concepts per type.</li></ul></section>
 
 <section id="ab-purpose"><h3>Scope and intent</h3>
 <p>Vibe Rounds is a research and teaching workbench with an AI assistant on top. It loads FHIR R4 data into PostgreSQL, lets you define cohorts, and runs a catalog of clinical analytics in five methods that differ in what evidence they use: narrative text (V1), source codes (V2), source codes plus approved enrichment codes (V3), codes plus time (V4), and enriched codes plus time (V5). Enrichment gives codes to text that has none: a model may only choose among real candidate codes from reference tables, a person approves, edits or rejects every proposal, and only approved codes count. Source codes always win, and enrichment adds codes, never dates. The assistant helps you read the results and decide what to ask next. Its central question is practical: how much do results change depending on whether you read the notes, trust the codes, fill the coding gaps, or reason over dates?</p>
+<p>Two further tabs build on the same analytics. The <em>Research</em> tab profiles the cohort and runs short study plans that the server rebuilds from fixed templates. The <em>Patterns</em> tab keeps a reviewed library of care patterns, created by hand, from plain English, from patients or with the pattern assistant. In both, the model only chooses from the conditions and drugs found in your cohort, never writes a code or a query, and every number comes from a checked analytic or a checked pattern.</p>
 <p><strong>It is not</strong> a medical device, a clinical decision support system, or a certified terminology service. It is not an OMOP CDM implementation and does not transform data into one. Outputs are descriptive counts and associations for exploration, method comparison and education, and the human analyst stays in charge of every step.</p></section>
 </div></div>
 </main>

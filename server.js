@@ -1381,6 +1381,9 @@ require('./analytics')(app, pool, { sanitizeBatchId, readPool });
 // Research tab: AI study plans (checked against the templates and the codes in the active cohort) and a step runner
 require('./research')(app, pool);
 
+// Patterns tab: AI draft from plain English and the run explainer (model calls live in pattern-ai.js; the case-wording connector is wired in analytics.js)
+require('./pattern-ai')(app, pool);
+
 // OpenRouter settings (key stays on the server)
 require('./evidence').registerAi(app, pool);
 
@@ -1398,6 +1401,8 @@ const path = require('path');
 app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 // Public About page: no sign-in needed (the auth gate only guards /, /index.html and /api/*), so it is open to signed-in and signed-out visitors alike.
 app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
+// Patterns tab script (no data in it; the data comes from the signed-in /api/patterns routes)
+app.get('/patterns-ui.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'patterns-ui.js')));
 
 // Initialize database schema on server start (creates tables if they don't exist)
 async function initializeDatabaseSchema() {
