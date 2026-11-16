@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EMR Enhancer</title><style>
+:root{--bg:#fff;--fg:#1d2433;--mu:#5b6578;--cd:#f5f7fb;--bd:#d9dfeb;--ac:#0b6e5f;--r:#c0392b;--a:#d68910;--g:#1e8449}
+@media(prefers-color-scheme:dark){:root{--bg:#121722;--fg:#e6eaf2;--mu:#98a2b8;--cd:#1a2130;--bd:#2c364b;--ac:#4cc9b0;--r:#ff6b5b;--a:#f0b050;--g:#5fd08a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif}
+header{padding:10px 16px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ban{background:#fff3cd;color:#664d03;padding:5px 16px;font-size:12px}
+nav button{background:none;border:0;padding:8px 14px;cursor:pointer;color:var(--mu);border-bottom:2px solid transparent}nav button.on{color:var(--ac);border-color:var(--ac)}
+main{max-width:900px;margin:auto;padding:14px}.pane{display:none}.pane.on{display:block}
+input,select,textarea{width:100%;padding:7px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{min-height:70px}label{display:block;margin:10px 0 3px;font-weight:600}button.b{background:var(--ac);color:var(--bg);border:0;border-radius:6px;padding:7px 14px;cursor:pointer;margin:8px 6px 0 0}
+.cd{background:var(--cd);border:1px solid var(--bd);border-radius:8px;padding:12px;margin:10px 0}.mu{color:var(--mu);font-size:12px}
+.bd{display:inline-block;padding:1px 9px;border-radius:99px;color:#fff;font-size:12px;margin-left:6px}pre{overflow:auto;font-size:12px;background:var(--cd);padding:8px;border-radius:6px}
+#set{display:none}#toast{color:var(--r);min-height:20px}</style></head><body>
+<div class="ban">Not for clinical use – synthetic data only. Codes from an LLM are unverified until checked.</div>
+<header><b>EMR Enhancer</b><span class="mu">context-aware fields · FHIR · SNOMED/LOINC</span><span style="flex:1"></span><button class="b" onclick="tg('set')">Settings</button></header>
+<div id="set" class="cd" style="margin:10px 16px"><label>Provider</label><select id="prov"><option value="or">OpenRouter</option><option value="an">Anthropic</option></select>
+<label>Model</label><input id="model" placeholder="e.g. anthropic/claude-sonnet-4.5 (OpenRouter) or claude-sonnet-4-5"><label>API key (stored in this browser only)</label><input id="key" type="password">
+<label><input type="checkbox" id="demo" style="width:auto"> Demo mode (no key, snake envenomation schema)</label><button class="b" onclick="saveSet()">Save</button>
+<hr><button class="b" onclick="exp()">Export all data</button> <label style="display:inline">Import <input type="file" id="imp" accept=".json" style="width:auto" onchange="imp(this.files[0])"></label> <button class="b" style="background:var(--r)" onclick="wipe()">Delete all data</button>
+<div class="mu">Export contains cases, schemas and your verified codes; the API key is never exported.</div></div>
+<nav><button class="on" data-t="in">Input</button><button data-t="fm">Form</button><button data-t="fh">FHIR &amp; Codes</button><button data-t="an">Analytics</button></nav>
+<main><div id="toast"></div>
+<div class="pane on" id="in"><label>Primary diagnosis</label><input id="dx" value="Snake envenomation (hemotoxic)"><div class="mu">Any diagnosis works with a model key. Examples: <a href="#" onclick="return ex(this)">Acute ischemic stroke</a> · <a href="#" onclick="return ex(this)">Dengue fever</a> · <a href="#" onclick="return ex(this)">Sepsis</a> · <a href="#" onclick="return ex(this)">Acute myocardial infarction</a> · <a href="#" onclick="return ex(this)">Organophosphate poisoning</a> · <a href="#" onclick="return ex(this)">Pre-eclampsia</a></div>
+<label>Clinical vignette (optional)</label><textarea id="vg"></textarea><label>Custom instructions (optional)</label><textarea id="ins" placeholder="e.g. focus on coagulopathy markers"></textarea>
+<button class="b" id="go" onclick="gen()">Generate schema</button><details><summary class="mu">Raw JSON</summary><pre id="raw"></pre></details></div>
+<div class="pane" id="fm"><div id="form" class="mu">Generate a schema first.</div></div>
+<div class="pane" id="fh"><div class="cd"><b>Code validation</b><div id="sum" class="mu">Generate a schema first.</div><div id="ctab"></div>
+<button class="b" onclick="liveCheck()">Verify live (tx.fhir.org)</button>
+<div class="mu" style="margin-top:8px">Add a code you verified yourself in the SNOMED / LOINC browsers:</div>
+<select id="asys" style="width:110px"><option>snomed</option><option>loinc</option></select> <input id="acode" placeholder="code" style="width:130px"> <input id="adisp" placeholder="display (as in browser)" style="width:260px"> <button class="b" onclick="addCode()">Add</button></div>
+<div class="cd"><b>FHIR R4 bundle</b> <span class="mu">(from current form values; unverified codes are left out, text kept)</span><br>
+<button class="b" onclick="bundle()">Build bundle</button><button class="b" onclick="navigator.clipboard.writeText($('bj').textContent)">Copy</button><button class="b" onclick="dl()">Download</button>
+<div id="bchk" class="mu"></div><pre id="bj"></pre></div></div>
+<div class="pane" id="an"><div class="cd"><button class="b" onclick="synth()">Load 12 synthetic cases</button><button class="b" onclick="clearSyn()">Clear synthetic</button><span id="acnt" class="mu"></span>
+<div class="mu">Synthetic cases are random with a built-in delay/outcome relationship; they demonstrate the dashboard, not real clinical findings.</div></div>
+<div id="adash"></div></div></main>
+<script>
+const $=i=>document.getElementById(i);let SCHEMA=null;
+const DEMO={diagnosis:{text:"Snake envenomation (hemotoxic)",snomed:{code:"",display:""}},sections:[
+{title:"Time-critical",fields:[
+{id:"bite",label:"Time of bite",type:"datetime",required:true,rationale:"Anchor for every interval."},
+{id:"arr",label:"Hospital arrival time",type:"datetime",required:true,rationale:"Pre-hospital delay."},
+{id:"asv",label:"ASV first dose time",type:"datetime",required:true,rationale:"Delay to antivenom drives outcome."},
+{id:"gap",label:"Bite to ASV (min)",type:"duration_min",rationale:"Key prognostic interval.",derived:{from:["bite","asv"],op:"minutes_between",flag:[60,240]}}]},
+{title:"Severity",fields:[
+{id:"wbct",label:"20-min whole blood clotting test",type:"select",options:["Clotted","Unclotted","Not done"],rationale:"Detects venom-induced coagulopathy."},
+{id:"swell",label:"Local swelling grade",type:"select",options:["0","1","2","3"],rationale:"Progression marker."},
+{id:"neuro",label:"Neurotoxic signs (ptosis, bulbar)",type:"boolean",rationale:"Needs ventilation planning."}]},
+{title:"Therapy & outcome",fields:[
+{id:"vials",label:"Initial ASV vials",type:"integer",rationale:"Dose tracking."},
+{id:"rxn",label:"Acute reaction to ASV",type:"boolean",rationale:"Safety monitoring."},
+{id:"out",label:"Outcome",type:"select",options:["Recovered","AKI","Amputation","Death"],rationale:"Outcome for analytics."}]}]};
+const SYS=`You are a clinical informatics assistant. Return ONLY valid JSON (no prose, no markdown) for the diagnosis given: {"diagnosis":{"text","snomed":{"code","display"}},"sections":[{"title","fields":[{"id","label","type":"datetime|duration_min|number|integer|select|boolean|text","unit","options":[],"required":false,"rationale","coding":{"system":"snomed|loinc","code","display"},"fhir":{"resource","valueType"},"derived":{"from":["id_a","id_b"],"op":"minutes_between","flag":[60,240]}}]}]}. 8-14 fields. Prioritise time-critical intervals, severity, therapy, complications. If unsure of a code, leave it empty. Use unique snake_case ids. Use select only with an options list. For time-sensitive diseases include timestamp fields and a derived interval whose flag thresholds [amber_after_minutes, red_after_minutes] fit that disease. Use the diagnosis exactly as the user wrote it. Work for any disease, common or rare.`;
+function tg(i){const e=$(i);e.style.display=e.style.display=='block'?'none':'block'}
+function toast(m){$('toast').textContent=m}
+function loadSet(){const s=JSON.parse(localStorage.getItem('set')||'{}');$('prov').value=s.p||'or';$('model').value=s.m||'';$('key').value=s.k||'';$('demo').checked=s.d!==false&&!s.k}
+function saveSet(){try{localStorage.setItem('set',JSON.stringify({p:$('prov').value,m:$('model').value,k:$('key').value,d:$('demo').checked}))}catch(e){}tg('set')}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.pane').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on');if(b.dataset.t=='an')ana()});
+async function callLLM(u){const s=JSON.parse(localStorage.getItem('set')||'{}');if(!s.k||!s.m)throw Error('Any diagnosis needs a model: set provider, model and key in Settings. (Demo mode only has snake envenomation and DKA.)');
+let r;if(s.p=='an'){r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:AbortSignal.timeout(60000),headers:{'content-type':'application/json','x-api-key':s.k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:s.m,max_tokens:3000,system:SYS,messages:[{role:'user',content:u}]})});const j=await r.json();if(!r.ok)throw Error(j.error?.message||r.status);return j.content[0].text}
+r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',signal:AbortSignal.timeout(60000),headers:{'content-type':'application/json',Authorization:'Bearer '+s.k},body:JSON.stringify({model:s.m,max_tokens:3000,messages:[{role:'system',content:SYS},{role:'user',content:u}]})});
+const j=await r.json();if(!r.ok)throw Error(j.error?.message||r.status);return j.choices[0].message.content}
+function parse(t){return JSON.parse(t.replace(/```json|```/g,'').trim())}
+async function gen(){toast('');const b=$('go');b.disabled=true;b.textContent='Generating…';
+try{let sc;const ds=/dka|ketoacid/i.test($('dx').value)?DEMO2:/snake|envenom/i.test($('dx').value)?DEMO:null;if($('demo').checked&&ds){sc=ds}else{const u=`Diagnosis: ${$('dx').value}\nVignette: ${$('vg').value}\nExtra instructions: ${$('ins').value}`;let t=await callLLM(u);try{sc=parse(t)}catch(e){t=await callLLM(u+'\nReturn ONLY JSON.');sc=parse(t)}}
+sc=norm(sc);SCHEMA=sc;$('raw').textContent=JSON.stringify(sc,null,1);render(sc);codesUI();document.querySelector('[data-t=fm]').click()}
+catch(e){toast(e.name=='TimeoutError'?'Error: LLM call timed out (60 s). Try again or a faster model.':'Error: '+e.message)}b.disabled=false;b.textContent='Generate schema'}
+function inp(f){const i='f_'+f.id,o=f.options||[];
+if(f.type=='select')return`<select id="${i}"><option value="">—</option>${o.map(x=>`<option>${x}</option>`).join('')}</select>`;
+if(f.type=='boolean')return`<select id="${i}"><option value="">—</option><option>Yes</option><option>No</option></select>`;
+if(f.type=='datetime')return`<input id="${i}" type="datetime-local">`;
+if(f.type=='text')return`<input id="${i}">`;
+return`<input id="${i}" type="number" ${f.derived?'readonly':''}>`}
+function render(sc){let h=`<div class="mu">${sc.diagnosis?.text||''}</div>`;
+sc.sections.forEach(s=>{h+=`<div class="cd"><b>${s.title}</b>`;s.fields.forEach(f=>{h+=`<label>${f.label}${f.required?' *':''}${f.unit?' ('+f.unit+')':''}<span id="bg_${f.id}"></span></label>${inp(f)}<div class="mu">${f.rationale||''}</div>`});h+='</div>'});
+h+='<button class="b" onclick="calc()">Recalculate</button><button class="b" onclick="save()">Save case</button>';$('form').innerHTML=h;
+sc.sections.forEach(s=>s.fields.forEach(f=>{const e=$('f_'+f.id);if(e)e.oninput=calc}))}
+function calc(){SCHEMA.sections.forEach(s=>s.fields.forEach(f=>{if(f.derived?.op!='minutes_between')return;
+const[a,b]=f.derived.from.map(x=>$('f_'+x)?.value);const t=$('f_'+f.id),g=$('bg_'+f.id);if(!a||!b){t.value='';g.innerHTML='';return}
+const m=Math.round((new Date(b)-new Date(a))/60000);t.value=m;const[l,h]=f.derived.flag||[60,240];
+const c=m<l?'--g':m<=h?'--a':'--r';g.innerHTML=`<span class="bd" style="background:var(${c})">${m<l?'<1h':m<=h?'1–4h':'>4h'}</span>`}))}
+function save(){const v={};SCHEMA.sections.forEach(s=>s.fields.forEach(f=>v[f.id]=$('f_'+f.id)?.value||''));
+try{const c=JSON.parse(localStorage.getItem('cases')||'[]');c.push({saved:new Date().toISOString(),dx:SCHEMA.diagnosis,v,schema:SCHEMA});localStorage.setItem('cases',JSON.stringify(c));toast('Saved ('+c.length+' cases)')}catch(e){toast('Save failed: '+e.message)}}
+const SYSU={snomed:'http://snomed.info/sct',loinc:'http://loinc.org'};
+const codes=()=>{try{return JSON.parse(localStorage.getItem('codes')||'{}')}catch(e){return{}}};
+const ck=c=>c.system+'|'+c.code;
+function st(f){const c=f.coding;if(!c||!c.code)return'missing';const d=codes()[ck(c)];return d?'verified':'unverified'}
+const COL={verified:'--g',unverified:'--a',missing:'--r'};
+function codesUI(){if(!SCHEMA)return;const n={verified:0,unverified:0,missing:0};let rows='';
+SCHEMA.sections.forEach(s=>s.fields.forEach(f=>{const t=st(f);n[t]++;const e=$('bg_'+f.id);
+if(e)e.insertAdjacentHTML('beforeend',`<span class="bd" style="background:var(${COL[t]})">${t}</span>`);
+rows+=`<tr><td>${f.label}</td><td>${f.coding?.system||''} ${f.coding?.code||''}</td><td>${f.coding?.display||''}</td><td><span class="bd" style="background:var(${COL[t]})">${t}</span></td></tr>`}));
+const tot=n.verified+n.unverified+n.missing;$('sum').innerHTML=`Ontology binding rate: <b>${Math.round(100*n.verified/tot)}%</b> verified (${n.verified}/${tot}) · ${n.unverified} unverified · ${n.missing} missing`;
+$('ctab').innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><tr><th>Field</th><th>Code</th><th>Display</th><th>Status</th></tr>${rows}</table>`}
+function addCode(){const c={system:$('asys').value,code:$('acode').value.trim()},d=$('adisp').value.trim();if(!c.code||!d)return toast('Code and display needed');
+const t=codes();t[ck(c)]=d;try{localStorage.setItem('codes',JSON.stringify(t))}catch(e){}toast('');codesUI()}
+async function liveCheck(){if(!SCHEMA)return;const t=codes();let ok=0,bad=0;
+for(const s of SCHEMA.sections)for(const f of s.fields){const c=f.coding;if(!c||!c.code||t[ck(c)])continue;
+try{const r=await fetch(`https://tx.fhir.org/r4/CodeSystem/$lookup?system=${encodeURIComponent(SYSU[c.system])}&code=${encodeURIComponent(c.code)}&_format=json`);
+const j=await r.json();const d=(j.parameter||[]).find(p=>p.name=='display')?.valueString;
+if(r.ok&&d){t[ck(c)]=d;ok++;f.coding.live_display=d}else bad++}catch(e){bad++}}
+try{localStorage.setItem('codes',JSON.stringify(t))}catch(e){}toast(`Live check: ${ok} confirmed, ${bad} not found/unreachable. Still compare displays: a valid code can be the wrong concept.`);codesUI()}
+function vals(){const v={};SCHEMA.sections.forEach(s=>s.fields.forEach(f=>v[f.id]=$('f_'+f.id)?.value||''));return v}
+function bundle(){if(!SCHEMA)return toast('Generate a schema first');const v=vals(),pid='urn:uuid:'+crypto.randomUUID(),E=[];
+E.push({fullUrl:pid,resource:{resourceType:'Patient',identifier:[{value:'SYNTHETIC-001'}]},request:{method:'POST',url:'Patient'}});
+const dx=SCHEMA.diagnosis||{},dc=dx.snomed&&dx.snomed.code&&codes()['snomed|'+dx.snomed.code]?{coding:[{system:SYSU.snomed,code:dx.snomed.code,display:dx.snomed.display}],text:dx.text}:{text:dx.text};
+E.push({fullUrl:'urn:uuid:'+crypto.randomUUID(),resource:{resourceType:'Condition',subject:{reference:pid},code:dc,clinicalStatus:{coding:[{system:'http://terminology.hl7.org/CodeSystem/condition-clinical',code:'active'}]}},request:{method:'POST',url:'Condition'}});
+let sk=0;SCHEMA.sections.forEach(s=>s.fields.forEach(f=>{const x=v[f.id];if(x==='')return;
+const code=st(f)=='verified'?{coding:[{system:SYSU[f.coding.system],code:f.coding.code,display:f.coding.display}],text:f.label}:{text:f.label};
+const rt=f.fhir?.resource||'Observation',dt=f.type=='datetime';const iso=dt?new Date(x).toISOString():null;let r;
+if(rt=='Procedure')r={resourceType:'Procedure',status:'completed',code,subject:{reference:pid}},dt&&(r.performedDateTime=iso);
+else if(rt=='MedicationAdministration')r={resourceType:'MedicationAdministration',status:'completed',medicationCodeableConcept:code,subject:{reference:pid},effectiveDateTime:new Date().toISOString(),note:[{text:f.label+': '+x}]};
+else{r={resourceType:'Observation',status:'final',code,subject:{reference:pid}};
+if(dt)r.valueDateTime=iso;else if(f.type=='duration_min')r.valueQuantity={value:+x,unit:'min',system:'http://unitsofmeasure.org',code:'min'};
+else if(f.type=='integer')r.valueInteger=+x;else if(f.type=='number')r.valueQuantity={value:+x,unit:f.unit||''};
+else if(f.type=='boolean')r.valueBoolean=x=='Yes';else r.valueString=x}
+E.push({fullUrl:'urn:uuid:'+crypto.randomUUID(),resource:r,request:{method:'POST',url:rt}});if(st(f)!='verified')sk++}));
+const B={resourceType:'Bundle',type:'transaction',entry:E};$('bj').textContent=JSON.stringify(B,null,1);
+const bad=E.filter(e=>!e.resource.resourceType||(e.resource.resourceType=='Observation'&&!e.resource.code)).length;
+$('bchk').textContent=`${E.length} entries · ${sk} resources without verified coding (text only) · structural problems: ${bad}. Run through a FHIR validator before real use.`}
+function dl(){const t=$('bj').textContent;if(!t)return toast('Build a bundle first');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='bundle.json';a.click()}
+const getC=()=>{try{return JSON.parse(localStorage.getItem('cases')||'[]')}catch(e){return[]}};
+const setC=c=>{try{localStorage.setItem('cases',JSON.stringify(c))}catch(e){toast('Storage full/blocked')}};
+function synth(){let x=42;const R=()=>(x=(x*1664525+1013904223)%4294967296)/4294967296;const base=new Date('2026-01-10T08:00');
+const out=getC().filter(c=>!c.syn);const loc=n=>new Date(n-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
+for(let i=0;i<12;i++){const gap=Math.round(25+Math.pow(R(),1.6)*560),bite=+base+i*864e5*2+R()*36e5*6,p=gap/600,r=R();
+const o=r<p*.12?'Death':r<p*.35?'Amputation':r<p*.75?'AKI':'Recovered';const b=(a)=>R()<.1?'':a;
+const v={bite:loc(bite),arr:loc(bite+gap*.55*6e4),asv:loc(bite+gap*6e4),gap:String(gap),wbct:b(R()<.3+p*.5?'Unclotted':'Clotted'),swell:b(String(Math.min(3,Math.floor(R()*2+p*2.5)))),neuro:b(R()<.2?'Yes':'No'),vials:b(String(Math.round(8+R()*12))),rxn:b(R()<.15?'Yes':'No'),out:o};
+out.push({syn:true,saved:new Date(+base+i*864e5*2).toISOString(),dx:DEMO.diagnosis,v,schema:DEMO})}
+setC(out);ana()}
+function clearSyn(){setC(getC().filter(c=>!c.syn));ana()}
+const fl=c=>c.schema.sections.flatMap(s=>s.fields);
+const med=a=>{if(!a.length)return null;a=[...a].sort((p,q)=>p-q);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2};
+const qt=(a,q)=>{a=[...a].sort((p,r)=>p-r);return a[Math.min(a.length-1,Math.floor(q*a.length))]};
+function gapOf(c){let g=parseFloat(c.v.gap);if(isNaN(g)&&c.v.bite&&c.v.asv)g=Math.round((new Date(c.v.asv)-new Date(c.v.bite))/6e4);return isNaN(g)?null:g}
+function ana(){const C=getC();$('acnt').textContent=' '+C.length+' cases ('+C.filter(c=>c.syn).length+' synthetic)';
+if(!C.length){$('adash').innerHTML='<p class="mu">No cases yet. Save a case from the Form tab or load synthetic ones.</p>';return}
+const cov=C.map(c=>{const f=fl(c).filter(x=>!x.derived);return f.filter(x=>c.v[x.id]!=='').length/f.length}),ov=Math.round(100*cov.reduce((a,b)=>a+b,0)/cov.length);
+const gaps=C.map(gapOf).filter(g=>g!=null);let tm='<div class="mu">No timing data.</div>';
+if(gaps.length)tm=`<b>${Math.round(med(gaps))} min</b> median (IQR ${Math.round(qt(gaps,.25))}–${Math.round(qt(gaps,.75))}) · ${Math.round(100*gaps.filter(g=>g<=60).length/gaps.length)}% within 60 min · ${Math.round(100*gaps.filter(g=>g>240).length/gaps.length)}% over 240 min`;
+let bind='n/a';if(SCHEMA){const f=fl({schema:SCHEMA});bind=Math.round(100*f.filter(x=>st(x)=='verified').length/f.length)+'% verified (current schema)'}else bind='generate a schema to compute';
+const bands=[['<1h',g=>g<60],['1–4h',g=>g>=60&&g<=240],['>4h',g=>g>240]].map(([n,t])=>{const m=C.filter(c=>{const g=gapOf(c);return g!=null&&c.v.out&&t(g)});const bad=m.filter(c=>c.v.out!='Recovered').length;return{n,k:m.length,pct:m.length?100*bad/m.length:0}});
+const bars=bands.map((b,i)=>`<rect x="${60+i*110}" y="${130-b.pct*1.1}" width="70" height="${b.pct*1.1}" fill="var(--ac)"/><text x="${95+i*110}" y="${125-b.pct*1.1}" text-anchor="middle" font-size="12" fill="currentColor">${Math.round(b.pct)}% (n=${b.k})</text><text x="${95+i*110}" y="148" text-anchor="middle" font-size="12" fill="currentColor">${b.n}</text>`).join('');
+const opts=C.map((c,i)=>`<option value="${i}">${c.syn?'[syn] ':''}${i+1} · ${c.saved.slice(0,10)}</option>`).join('');
+$('adash').innerHTML=`<div class="cd"><b>Data coverage</b><br>Overall: <b>${ov}%</b> of high-yield fields filled (across ${C.length} cases)</div>
+<div class="cd"><b>Time to ASV</b><br>${tm}</div><div class="cd"><b>Ontology binding</b><br>${bind}</div>
+<div class="cd"><b>Adverse outcome rate by delay band</b> <span class="mu">(AKI, amputation or death)</span><svg viewBox="0 0 400 160" style="width:100%;max-width:420px"><line x1="40" y1="130" x2="390" y2="130" stroke="currentColor" opacity=".3"/>${bars}</svg>
+<div class="mu">Small numbers per band: descriptive only, no causal claim.</div></div>
+<div class="cd"><b>Single case</b> <select id="cs" style="width:auto" onchange="one()">${opts}</select><div id="one"></div></div>`;one()}
+function one(){const c=getC()[+$('cs').value];if(!c)return;const miss=fl(c).filter(x=>!x.derived&&c.v[x.id]==='').map(x=>x.label),g=gapOf(c);
+$('one').innerHTML=`<p>Bite → ASV: <b>${g==null?'unknown':g+' min'}</b> ${g==null?'':g<60?'(within 1h)':g<=240?'(1–4h)':'(over 4h: delayed)'} · Outcome: ${c.v.out||'—'}</p><p class="mu">Missing fields: ${miss.length?miss.join(', '):'none'}</p>`}
+const DEMO2={diagnosis:{text:"Diabetic ketoacidosis",snomed:{code:"",display:""}},sections:[
+{title:"Time-critical",fields:[
+{id:"arr",label:"ED arrival time",type:"datetime",required:true,rationale:"Start of treatment clock."},
+{id:"ins",label:"Insulin infusion start",type:"datetime",required:true,rationale:"Delay to insulin after fluids/potassium check."},
+{id:"gap",label:"Arrival to insulin (min)",type:"duration_min",rationale:"Process-of-care interval.",derived:{from:["arr","ins"],op:"minutes_between",flag:[60,180]}}]},
+{title:"Severity at presentation",fields:[
+{id:"glu",label:"Blood glucose",type:"number",unit:"mg/dL",rationale:"Severity context."},
+{id:"ph",label:"Venous pH",type:"number",rationale:"Defines DKA severity."},
+{id:"hco3",label:"Bicarbonate",type:"number",unit:"mmol/L",rationale:"Severity."},
+{id:"k",label:"Potassium before insulin",type:"number",unit:"mmol/L",rationale:"Insulin is held if low; critical safety value."},
+{id:"ket",label:"Ketones",type:"select",options:["Negative","Trace","Moderate","Large"],rationale:"Confirms ketosis."},
+{id:"gcs",label:"GCS",type:"integer",rationale:"Mental status."}]},
+{title:"Therapy & outcome",fields:[
+{id:"fl",label:"IV fluid in first hour",type:"integer",unit:"mL",rationale:"Resuscitation adequacy."},
+{id:"edema",label:"Cerebral edema",type:"boolean",rationale:"Key complication."},
+{id:"out",label:"Outcome",type:"select",options:["Recovered","ICU stay","Death"],rationale:"Outcome."}]}]};
+function dlf(n,t){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download=n;a.click()}
+function exp(){dlf('enhancer-data.json',JSON.stringify({v:1,cases:getC(),codes:codes()}))}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.cases))throw Error('no cases array');
+setC(getC().concat(j.cases));localStorage.setItem('codes',JSON.stringify(Object.assign(codes(),j.codes||{})));toast('Imported '+j.cases.length+' cases');ana()}catch(e){toast('Import failed: '+e.message)}};r.readAsText(f)}
+function wipe(){if(confirm('Delete all saved cases and codes in this browser?')){localStorage.removeItem('cases');localStorage.removeItem('codes');toast('Deleted');ana()}}
+function norm(sc){if(!sc||!Array.isArray(sc.sections))throw Error('Model did not return a sections list');
+const T=['datetime','duration_min','number','integer','select','boolean','text'],seen=new Set(),map={};let n=0;
+sc.sections=sc.sections.filter(s=>s&&Array.isArray(s.fields)).map(s=>({title:String(s.title||'Fields'),fields:s.fields.filter(f=>f&&f.label&&n++<16).map(f=>{
+let id=String(f.id||f.label).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||'f',b=id,k=2;while(seen.has(id))id=b+'_'+k++;seen.add(id);if(f.id)map[f.id]=id;
+const o=Object.assign({},f,{id,label:String(f.label),type:T.includes(f.type)?f.type:'text'});if(o.type=='select'&&!(Array.isArray(o.options)&&o.options.length))o.type='text';return o})})).filter(s=>s.fields.length);
+if(!sc.sections.length)throw Error('Model returned no usable fields');
+sc.sections.forEach(s=>s.fields.forEach(f=>{const d=f.derived;if(!d)return;if(Array.isArray(d.from))d.from=d.from.map(x=>map[x]||x);
+if(d.op!=='minutes_between'||!Array.isArray(d.from)||d.from.length!=2||!d.from.every(x=>seen.has(x))){delete f.derived;if(f.type=='duration_min')f.type='number'}else{f.type='duration_min';if(!Array.isArray(d.flag)||d.flag.length!=2)d.flag=[60,240]}}));
+sc.diagnosis=sc.diagnosis||{text:$('dx').value};return sc}
+function ex(a){$('dx').value=a.textContent;return false}
+loadSet();
+</script></body></html>
