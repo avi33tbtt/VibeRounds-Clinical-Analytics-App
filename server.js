@@ -1403,12 +1403,6 @@ app.get(['/', '/index.html'], (req, res) => res.sendFile(path.join(__dirname, 'i
 app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
 // Patterns tab script (no data in it; the data comes from the signed-in /api/patterns routes)
 app.get('/patterns-ui.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'patterns-ui.js')));
-// EMR Enhancer plugin (standalone demo pages kept in the repo root). Public like /about: they hold no data and make no calls to this server.
-// Only these named files are served, never the whole root (that would expose server.js and .env).
-['enhancer.html', 'enhancer-smart.html', 'smart-launch.html'].forEach((f) => {
-  app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f)));
-});
-
 // Initialize database schema on server start (creates tables if they don't exist)
 async function initializeDatabaseSchema() {
   try {
