@@ -251,6 +251,55 @@ const EXAMPLES = [
 const DISEASE_IDEAS = ['Type 2 diabetes', 'Hypertension', 'Heart failure', 'Chronic kidney disease', 'COPD', 'Asthma', 'Depression', 'Atrial fibrillation'];
 const DEPARTMENT_IDEAS = ['Cardiology', 'Endocrinology', 'Nephrology', 'Pulmonology', 'Emergency medicine', 'Psychiatry', 'Oncology', 'Primary care'];
 
+// ---- drill-down: turn "count by group" SQL into a companion query that also lists the case (patient) ids ----
+const ddClean = v => (typeof v === 'bigint' ? Number(v) : v instanceof Date ? v.toISOString().slice(0, 10) : v);
+const DD_CAP = 500, DD_MAX_GROUPS = 200;
+// Scan the SQL at nesting depth 0 (ignoring strings, comments and anything in parentheses). Returns { sql, countCols } or { error }.
+function drilldownSql(sql) {
+  const t = String(sql || '').trim().replace(/;+\s*$/, ''), n = t.length, kw = [];
+  let depth = 0, i = 0, itemStart = -1, selIdx = -1, fromIdx = -1; const commas = [];
+  while (i < n) {
+    const ch = t[i];
+    if (ch === "'" || ch === '"') { const q = ch; i++; while (i < n && !(t[i] === q && t[i + 1] !== q)) i += (t[i] === q ? 2 : 1); i++; continue; }
+    if (ch === '-' && t[i + 1] === '-') { while (i < n && t[i] !== '\n') i++; continue; }
+    if (ch === '/' && t[i + 1] === '*') { const e = t.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue; }
+    if (ch === '(') { depth++; i++; continue; }
+    if (ch === ')') { depth--; i++; continue; }
+    if (depth === 0 && /[A-Za-z_]/.test(ch) && !/[A-Za-z0-9_.]/.test(t[i - 1] || ' ')) {
+      let j = i; while (j < n && /[A-Za-z0-9_]/.test(t[j])) j++;
+      const w = t.slice(i, j).toLowerCase();
+      if (w === 'select') { if (selIdx >= 0) return { error: 'more than one top-level SELECT' }; selIdx = j; }
+      else if (w === 'union' || w === 'intersect' || w === 'except') return { error: 'set operations are not supported' };
+      else if (w === 'from' && selIdx >= 0 && fromIdx < 0) fromIdx = i;
+      kw.push(w); i = j; continue;
+    }
+    if (ch === ',' && depth === 0 && selIdx >= 0 && fromIdx < 0) commas.push(i);
+    i++;
+  }
+  if (selIdx < 0 || fromIdx < 0) return { error: 'no SELECT ... FROM found' };
+  const list = t.slice(selIdx, fromIdx);
+  if (/^\s*distinct\b/i.test(list)) return { error: 'SELECT DISTINCT is not supported' };
+  const bounds = [selIdx, ...commas, fromIdx], items = [];
+  for (let k = 0; k < bounds.length - 1; k++) items.push(t.slice(k === 0 ? bounds[k] : bounds[k] + 1, bounds[k + 1]).trim());
+  const countCols = [];
+  for (const it of items) {
+    const m = /^count\s*\([\s\S]*\)\s*(?:::\s*\w+\s*)?(?:(?:as\s+)?("?)(\w+)\1)?$/i.exec(it);
+    if (m) countCols.push(m[2] && !/^(over|filter)$/i.test(m[2]) ? m[2] : 'count');
+  }
+  if (!countCols.length) return { error: 'no count(...) column to drill into' };
+  return { sql: `${t.slice(0, fromIdx).trimEnd()}, (array_agg(DISTINCT patient_id::text))[1:${DD_CAP}] AS __dd_ids, count(DISTINCT patient_id)::int AS __dd_n ${t.slice(fromIdx)}`, countCols };
+}
+
+function drilldownMatch(rows, dd, ddRows) {
+  const keyOf = (row, skip) => JSON.stringify(Object.keys(row).filter(k => !skip.has(k) && k !== '__dd_ids' && k !== '__dd_n').map(k => ddClean(row[k])));
+  const skip = new Set(dd.countCols), map = new Map();
+  for (const r of ddRows) map.set(keyOf(r, skip), { ids: (r.__dd_ids || []).map(String), total: Number(r.__dd_n) || 0 });
+  return rows.slice(0, DD_MAX_GROUPS).map(row => {
+    const hit = map.get(keyOf(row, skip));
+    return hit ? { ids: hit.ids, total: hit.total, truncated: hit.total > hit.ids.length } : null;
+  });
+}
+
 // ---- Express wiring ----------------------------------------------------------------------------------------------
 function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askModel, getConfig, fetchImpl }) {
   const clean = v => (typeof v === 'bigint' ? Number(v) : v instanceof Date ? v.toISOString().slice(0, 10) : v);
@@ -306,54 +355,6 @@ function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askM
     res.json({ success: true, examples: EXAMPLES, ideas: { disease: DISEASE_IDEAS, department: DEPARTMENT_IDEAS } });
   });
 
-
-  // ---- drill-down: turn "count by group" SQL into a companion query that also lists the case (patient) ids ----
-  const DD_CAP = 500, DD_MAX_GROUPS = 200;
-  // Scan the SQL at nesting depth 0 (ignoring strings, comments and anything in parentheses). Returns { sql, countCols } or { error }.
-  function drilldownSql(sql) {
-    const t = String(sql || '').trim().replace(/;+\s*$/, ''), n = t.length, kw = [];
-    let depth = 0, i = 0, itemStart = -1, selIdx = -1, fromIdx = -1; const commas = [];
-    while (i < n) {
-      const ch = t[i];
-      if (ch === "'" || ch === '"') { const q = ch; i++; while (i < n && !(t[i] === q && t[i + 1] !== q)) i += (t[i] === q ? 2 : 1); i++; continue; }
-      if (ch === '-' && t[i + 1] === '-') { while (i < n && t[i] !== '\n') i++; continue; }
-      if (ch === '/' && t[i + 1] === '*') { const e = t.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue; }
-      if (ch === '(') { depth++; i++; continue; }
-      if (ch === ')') { depth--; i++; continue; }
-      if (depth === 0 && /[A-Za-z_]/.test(ch) && !/[A-Za-z0-9_.]/.test(t[i - 1] || ' ')) {
-        let j = i; while (j < n && /[A-Za-z0-9_]/.test(t[j])) j++;
-        const w = t.slice(i, j).toLowerCase();
-        if (w === 'select') { if (selIdx >= 0) return { error: 'more than one top-level SELECT' }; selIdx = j; }
-        else if (w === 'union' || w === 'intersect' || w === 'except') return { error: 'set operations are not supported' };
-        else if (w === 'from' && selIdx >= 0 && fromIdx < 0) fromIdx = i;
-        kw.push(w); i = j; continue;
-      }
-      if (ch === ',' && depth === 0 && selIdx >= 0 && fromIdx < 0) commas.push(i);
-      i++;
-    }
-    if (selIdx < 0 || fromIdx < 0) return { error: 'no SELECT ... FROM found' };
-    const list = t.slice(selIdx, fromIdx);
-    if (/^\s*distinct\b/i.test(list)) return { error: 'SELECT DISTINCT is not supported' };
-    const bounds = [selIdx, ...commas, fromIdx], items = [];
-    for (let k = 0; k < bounds.length - 1; k++) items.push(t.slice(k === 0 ? bounds[k] : bounds[k] + 1, bounds[k + 1]).trim());
-    const countCols = [];
-    for (const it of items) {
-      const m = /^count\s*\([\s\S]*\)\s*(?:::\s*\w+\s*)?(?:(?:as\s+)?("?)(\w+)\1)?$/i.exec(it);
-      if (m) countCols.push(m[2] && !/^(over|filter)$/i.test(m[2]) ? m[2] : 'count');
-    }
-    if (!countCols.length) return { error: 'no count(...) column to drill into' };
-    return { sql: `${t.slice(0, fromIdx).trimEnd()}, (array_agg(DISTINCT patient_id::text))[1:${DD_CAP}] AS __dd_ids, count(DISTINCT patient_id)::int AS __dd_n ${t.slice(fromIdx)}`, countCols };
-  }
-
-  function drilldownMatch(rows, dd, ddRows) {
-    const keyOf = (row, skip) => JSON.stringify(Object.keys(row).filter(k => !skip.has(k) && k !== '__dd_ids' && k !== '__dd_n').map(k => clean(row[k])));
-    const skip = new Set(dd.countCols), map = new Map();
-    for (const r of ddRows) map.set(keyOf(r, skip), { ids: (r.__dd_ids || []).map(String), total: Number(r.__dd_n) || 0 });
-    return rows.slice(0, DD_MAX_GROUPS).map(row => {
-      const hit = map.get(keyOf(row, skip));
-      return hit ? { ids: hit.ids, total: hit.total, truncated: hit.total > hit.ids.length } : null;
-    });
-  }
 
   async function runOne(x) {
     const mode = String(x.mode || '').toLowerCase(), c = checkQuery(x.sql, mode);
