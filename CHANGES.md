@@ -97,3 +97,12 @@ Not changed: index.html (the chat screen is 4B), database, environment variables
 Tests: node analytics.js --selftest and node security.js --selftest pass. Not run against a real model or server. Try with curl once signed in, for example:
   curl -b cookies.txt -H 'content-type: application/json' -d '{"mode":"v1","intent":"plan","messages":[{"role":"user","content":"What can I ask about asthma?"}]}' http://localhost:PORT/api/analytics/custom/chat
 Note: /custom/plan is not in the ai.request audit rule (only generate was); worth adding later.
+
+# Chunk 4B (chat UI for custom analytics, "run query" mode)
+
+Edited:
+- index.html: the "Ask a question" panel is now a chat. A scrolling message list shows your questions and the assistant's answers (query title, mode tag, explanation); the input box sends on Enter (Shift+Enter = new line) and has Send and New chat buttons; a "Asking the model..." bubble shows while it works. The generated SQL still appears in the review box below with the existing "Run this query" button, so review, edit and run work as before. `customGenerate()` now calls `POST /api/analytics/custom/chat` (intent `query`) with the conversation so far, so follow-ups such as "now split that by gender" work. Only the last 19 messages are sent (server limit 20). A question that fails is given back to the input box and is not kept in the conversation. The mode used is the one chosen above, at the time of each message.
+- README.md: one sentence about the chat.
+Not changed: the By disease / By department / Examples tabs (Examples' "Use as my question" still fills the input). The "Help me plan" mode is 4C; chat history in saved sessions is 4D (the conversation is kept in memory only, so it is lost when the page reloads).
+Tests: all inline scripts in index.html pass a syntax check; the panel and chat code were run in jsdom with a fake server call (Enter vs Shift+Enter, loading bubble, follow-up context, error hand-back, history limit, New chat). Not tested in a real browser or with a real model.
+New database tables: none. New environment variables: none. Deleted files: none.

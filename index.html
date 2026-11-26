@@ -2981,11 +2981,23 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                             </div>
 
                             <div class="cu-panel" id="cuPanel-ask">
-                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
-                                    <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
-                                    <button id="anCustomGenBtn" class="btn-secondary" onclick="customGenerate()">Generate query</button>
+                                <style>
+                                    .cu-chat-log { border:1px solid var(--line, #ddd); border-radius:6px; padding:8px; max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; font-size:13px; }
+                                    .cu-chat-log:empty::before { content:'Ask a question about the data to start. Follow-up questions can refer to the earlier ones (for example: "now split that by gender").'; color:#777; font-size:12px; }
+                                    .cu-msg { max-width:88%; padding:6px 9px; border-radius:8px; line-height:1.35; white-space:pre-wrap; word-break:break-word; }
+                                    .cu-msg.user { align-self:flex-end; background:#e8f0fe; }
+                                    .cu-msg.assistant { align-self:flex-start; background:#f3f3f3; }
+                                    .cu-msg.error { align-self:flex-start; background:#fdecea; color:#c62828; }
+                                    .cu-msg.pending { align-self:flex-start; background:#f3f3f3; color:#777; font-style:italic; }
+                                    .cu-msg .cu-msg-note { display:block; margin-top:3px; font-size:11.5px; color:#777; }
+                                </style>
+                                <div id="cuChatLog" class="cu-chat-log" role="log" aria-live="polite" aria-label="Conversation with the query assistant"></div>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:8px;">
+                                    <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="Type your question and press Enter (Shift+Enter for a new line), e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" onkeydown="customChatKey(event)" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
+                                    <button id="anCustomGenBtn" class="btn-primary" onclick="customGenerate()">Send</button>
+                                    <button id="cuChatNew" class="btn-secondary" onclick="customChatReset()" title="Forget the conversation so far and start a new one">New chat</button>
                                 </div>
-                                <div class="an-muted" style="margin-top:6px;">Follows the mode chosen above: <strong>V1</strong> matches text only (no codes, no dates), <strong>V2</strong> uses codes but no dates, <strong>V4</strong> uses codes and dates. A query that breaks the rules of its mode is refused. Only your question is sent to the model, never patient data.</div>
+                                <div class="an-muted" style="margin-top:6px;">Chat with the assistant. It follows the mode chosen above: <strong>V1</strong> matches text only (no codes, no dates), <strong>V2</strong> uses codes but no dates, <strong>V4</strong> uses codes and dates. A query that breaks the rules of its mode is refused. Only your question is sent to the model, never patient data.</div>
                             </div>
 
                             <div class="cu-panel" id="cuPanel-disease" hidden>
@@ -8062,12 +8074,38 @@ function customApplyView() {
     CUSTOM.wraps = CUSTOM.wraps.filter(w => document.body.contains(w));
     CUSTOM.wraps.forEach(w => customView(w, v));
 }
+// Chat (4B): the page keeps the conversation and sends all of it to /api/analytics/custom/chat each time (the server keeps nothing).
+// CHAT.msgs is the API form (role + text); CHAT.log is what is drawn. Only successful turns are kept.
+const CHAT = { msgs: [], log: [], busy: false };
+const CHAT_MAX_SENT = 19;   // the server accepts 20 messages: the last 19 plus the new question
+function chatDraw(entry) {
+    const box = document.getElementById('cuChatLog'); if (!box) return null;
+    const el = document.createElement('div'); el.className = 'cu-msg ' + entry.role;
+    if (entry.role === 'assistant' && entry.title) { const t = document.createElement('strong'); t.textContent = entry.title; el.appendChild(t); if (entry.mode) { const g = document.createElement('span'); g.className = 'an-tag'; g.style.marginLeft = '6px'; g.textContent = entry.mode.toUpperCase(); el.appendChild(g); } el.appendChild(document.createElement('br')); }
+    el.appendChild(document.createTextNode(entry.text || ''));
+    if (entry.note) { const n = document.createElement('span'); n.className = 'cu-msg-note'; n.textContent = entry.note; el.appendChild(n); }
+    box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
+}
+function chatAdd(entry) { CHAT.log.push(entry); return chatDraw(entry); }
+function chatRedraw() { const box = document.getElementById('cuChatLog'); if (box) box.innerHTML = ''; CHAT.log.forEach(chatDraw); }
+function customChatKey(ev) { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); customGenerate(); } }
+function customChatReset() {
+    if (CHAT.busy) return;
+    CHAT.msgs = []; CHAT.log = []; chatRedraw();
+    const q = document.getElementById('anCustomQ'); if (q) { q.value = ''; q.focus(); }
+    customStatus('');
+}
 async function customGenerate() {
-    const btn = document.getElementById('anCustomGenBtn'), mode = demoMode(), q = document.getElementById('anCustomQ').value.trim();
+    if (CHAT.busy) return;
+    const btn = document.getElementById('anCustomGenBtn'), qEl = document.getElementById('anCustomQ'), mode = demoMode(), q = qEl.value.trim();
     if (q.length < 5) { customStatus('Write your question in a few words.', true); return; }
+    CHAT.busy = true; btn.disabled = true;
+    chatAdd({ role: 'user', text: q }); qEl.value = '';
+    const pending = chatDraw({ role: 'pending', text: `Asking the model for a ${mode.toUpperCase()} query (up to a minute)...` });
+    customStatus(`Asking the model for a ${mode.toUpperCase()} query (up to a minute)...`);
     try {
-        btn.disabled = true; customStatus(`Asking the model for a ${mode.toUpperCase()} query (up to a minute)...`);
-        const r = await anPost('/api/analytics/custom/generate', { question: q, mode });
+        const messages = CHAT.msgs.slice(-CHAT_MAX_SENT).concat([{ role: 'user', content: q }]);
+        const r = await anPost('/api/analytics/custom/chat', { messages, mode, intent: 'query' });
         if (!r.success) throw new Error(r.error || 'Could not generate the query');
         Object.assign(CUSTOM, { mode: r.mode, title: r.title, question: q });
         document.getElementById('anCustomAi').style.display = '';
@@ -8076,9 +8114,20 @@ async function customGenerate() {
         document.getElementById('anCustomExpl').textContent = r.explanation || '';
         document.getElementById('anCustomSql').value = r.sql;
         document.getElementById('anCustomOut').style.display = 'block';
+        // what the assistant "said", as the model will see it next time: the explanation and the query (clipped to the server's limit for assistant turns)
+        const said = ((r.explanation ? r.explanation + '\n' : '') + 'SQL: ' + r.sql).slice(0, 2900);
+        CHAT.msgs.push({ role: 'user', content: q }, { role: 'assistant', content: said });
+        if (pending) pending.remove();
+        chatAdd({ role: 'assistant', title: r.title, mode: r.mode, text: r.explanation || 'Here is a query for that question.', note: 'The query is in the box below: review or edit it, then press Run this query.' });
         customStatus('Review the query, then run it.');
-    } catch (e) { customStatus('Error: ' + e.message, true); }
-    finally { btn.disabled = false; }
+    } catch (e) {
+        if (pending) pending.remove();
+        chatAdd({ role: 'error', text: 'Error: ' + e.message });
+        qEl.value = q;   // give the question back so it can be edited or sent again
+        CHAT.log.splice(CHAT.log.length - 2, 1);   // the failed question is not part of the conversation (it is back in the box)
+        chatRedraw();
+        customStatus('Error: ' + e.message, true);
+    } finally { CHAT.busy = false; btn.disabled = false; qEl.focus(); }
 }
 // ---- Drill-down (custom query results): case IDs behind each group count ----
 const ANDD = { on: false };
@@ -8130,7 +8179,7 @@ function anDrillAttach(run, r) {
 async function customRun() {
     const sql = document.getElementById('anCustomSql').value.trim();
     if (!CUSTOM.mode || !sql) { customStatus('Generate a query first.', true); return; }
-    if (demoMode() !== CUSTOM.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this ${CUSTOM.mode.toUpperCase()} query was written: press "Generate query" again so the query follows the selected mode.`, true); return; }
+    if (demoMode() !== CUSTOM.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this ${CUSTOM.mode.toUpperCase()} query was written: send your question again so the query follows the selected mode.`, true); return; }
     try {
         customStatus('Running...');
         const view = document.getElementById('anCustomView').value, label = `Custom: ${CUSTOM.title} (${CUSTOM.mode.toUpperCase()})`;
@@ -8196,7 +8245,7 @@ function customShowSql(o) {   // fill the single-query editor
 }
 function customExample(i, act) {
     const ex = CUSTOM_EX.examples[i]; if (!ex) return;
-    if (act === 'ask') { customTab('ask'); document.getElementById('anCustomQ').value = ex.question; document.getElementById('anCustomQ').focus(); customStatus('Edit the wording for your own data, then press Generate query.'); return; }
+    if (act === 'ask') { customTab('ask'); document.getElementById('anCustomQ').value = ex.question; document.getElementById('anCustomQ').focus(); customStatus('Edit the wording for your own data, then press Send.'); return; }
     if (!customSetMode(ex.mode)) { customStatus(`This example needs ${ex.mode.toUpperCase()}, which is not available here.`, true); return; }
     customShowSql({ mode: ex.mode, title: ex.title, question: ex.question, explanation: ex.shows, sql: ex.sql, ai: false });
     document.getElementById('anCustomOut').scrollIntoView({ block: 'nearest' });
