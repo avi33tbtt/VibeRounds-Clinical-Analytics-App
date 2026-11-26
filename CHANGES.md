@@ -115,3 +115,15 @@ Edited:
 Not changed: server code (the plan intent came with 4A). Chat history is still lost on reload until 4D.
 Tests: inline scripts pass a syntax check; the chat code was run in jsdom with a fake server (plan reply with and without a proposal, Use this query fills the editor, a proposal alone does not, switching back to Run query keeps the conversation, previous 4B checks). Not tested in a real browser or with a real model.
 New database tables: none. New environment variables: none. Deleted files: none.
+
+# Chunk 4D (chat history in sessions)
+
+Edited:
+- index.html:
+  - Save session now stores the chat in the session payload (`payload.chat = { msgs, log }`: the conversation sent to the model, and the drawn messages including any plan proposals; last 60 / 100 entries; error and "thinking" bubbles are not kept). A session with only a chat and no runs can now be saved.
+  - Open saved session restores it (`chatRestore`, which reads the payload defensively: known roles and shapes only, text clipped to the live limits, always inserted as text, never as HTML). Sessions saved before 4D have no chat: the chat on the page is left as it is. If a chat is on the page and the session brings its own, the "replaces the runs now in Output" question also mentions the chat.
+  - Restored plan proposals get their **Use this query** button back. A "Run query" answer now stores its query too, and when restored it shows **Put this query back in the editor** (the review box itself is not part of the session). Restoring never touches the editor on its own.
+  - The conversation stays on the page while you work (until New chat or a reload, or until a session is opened); it is now saved only when you save a session.
+Not changed: server and database (the payload is JSONB; `saved_sessions` as in Chunk 2). Output JSON downloads do not include the chat.
+Tests: inline scripts pass a syntax check; jsdom round trip with a fake server (chat in both modes, snapshot as JSON, reset, restore, buttons, follow-up carries restored context, malformed and hostile payloads ignored or clipped, text never parsed as HTML). Not tested in a real browser or against a real database. Please try: chat in both modes, Save session, reload the page, Open the session.
+New database tables: none. New environment variables: none. Deleted files: none.

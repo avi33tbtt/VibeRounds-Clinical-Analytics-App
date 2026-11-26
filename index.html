@@ -7852,10 +7852,10 @@ function ansStatus(text, cls) { const st = document.getElementById('anUploadStat
 function ansSnapshot(name, id) {
     const steps = CAT.research.steps.map(s => { const c = Object.assign({}, s); delete c.el; c.at = (s.at instanceof Date ? s.at : new Date(s.at)).toISOString(); return c; });
     const data = JSON.parse(JSON.stringify({ runs: anSerializeRuns(), steps, decisions: CAT.research.decisions }));   // plain copy: later changes to the page cannot alter it
-    return Object.assign({ id, name, saved_at: new Date().toISOString(), cohort: anActiveCohortName(), population: anPopulationLabel(), run_count: data.runs.length, step_count: steps.length, drilldown: { on: ANDD.on === true } }, data);   // the case IDs themselves are already inside the saved run items
+    return Object.assign({ id, name, saved_at: new Date().toISOString(), cohort: anActiveCohortName(), population: anPopulationLabel(), run_count: data.runs.length, step_count: steps.length, drilldown: { on: ANDD.on === true }, chat: chatSnapshot() }, data);   // the case IDs themselves are already inside the saved run items
 }
 async function anSessionSave() {
-    if (!CAT.history.length) { ansStatus('There is nothing to save yet: run an analytic first.', 'error'); return; }
+    if (!CAT.history.length && !CHAT.msgs.length) { ansStatus('There is nothing to save yet: run an analytic or chat with the assistant first.', 'error'); return; }
     const btn = document.getElementById('anSessSave');
     try {
         const sessions = (await ansApi('GET', '/api/sessions')).sessions;   // names only (no payloads)
@@ -7868,7 +7868,7 @@ async function anSessionSave() {
         const snap = ansSnapshot(name, same ? same.id : null);   // same payload shape as before; the server assigns the id
         if (same) await ansApi('PUT', '/api/sessions/' + same.id, { name, payload: snap });
         else await ansApi('POST', '/api/sessions', { name, payload: snap });
-        ansStatus(`Saved session "${name}" (${snap.run_count} run${snap.run_count === 1 ? '' : 's'}${snap.step_count ? `, ${snap.step_count} assistant step${snap.step_count === 1 ? '' : 's'}` : ''}) to the database.`, 'success');
+        ansStatus(`Saved session "${name}" (${snap.run_count} run${snap.run_count === 1 ? '' : 's'}${snap.chat.msgs.length ? `, chat of ${snap.chat.msgs.length} message${snap.chat.msgs.length === 1 ? '' : 's'}` : ''}${snap.step_count ? `, ${snap.step_count} assistant step${snap.step_count === 1 ? '' : 's'}` : ''}) to the database.`, 'success');
         if (!document.getElementById('anSessPanel').hidden) anSessionRenderPanel();
     } catch (e) { ansStatus('Could not save the session: ' + e.message, 'error'); }
     finally { btn.disabled = false; }
@@ -7911,7 +7911,7 @@ async function anSessionOpenById(meta) {
 }
 function anSessionOpen(s) {
     if (!s || !Array.isArray(s.runs)) { ansStatus('That saved session is damaged and cannot be opened.', 'error'); return; }
-    if (CAT.history.length && !confirm(`Opening "${s.name}" replaces the ${CAT.history.length} run${CAT.history.length === 1 ? '' : 's'} now in the Output section. Save the current output first if you want to keep it. Continue?`)) return;
+    if (CAT.history.length && !confirm(`Opening "${s.name}" replaces the ${CAT.history.length} run${CAT.history.length === 1 ? '' : 's'} now in the Output section${s.chat && CHAT.msgs.length ? ' and the chat' : ''}. Save the current output first if you want to keep it. Continue?`)) return;
     try {
         anResetOutput();
         ANDD.on = !!(s.drilldown && s.drilldown.on); { const t = document.getElementById('anDrillToggle'); if (t) t.checked = ANDD.on; }   // sessions saved before 3D have no drilldown field: toggle off
@@ -7921,11 +7921,12 @@ function anSessionOpen(s) {
             const step = JSON.parse(JSON.stringify(st)); step.at = isNaN(new Date(st.at)) ? new Date() : new Date(st.at);
             CAT.research.steps.push(step); asRenderStep(step);
         });
+        const chatN = s.chat ? chatRestore(s.chat) : 0;   // sessions saved before 4D have no chat: the current one is left as it is
         anReorder();
         const box = document.getElementById('anAssist'); if (box && CAT.research.steps.length) box.hidden = false;
         document.getElementById('anSessPanel').hidden = true;
         const osec = document.getElementById('outputSection'); if (osec && osec.tagName === 'DETAILS') osec.open = true;
-        ansStatus(`Opened session "${s.name}": ${n} run${n === 1 ? '' : 's'}${CAT.research.steps.length ? `, ${CAT.research.steps.length} assistant step${CAT.research.steps.length === 1 ? '' : 's'}` : ''}${bad ? ` (${bad} skipped)` : ''}.`, 'success');
+        ansStatus(`Opened session "${s.name}": ${n} run${n === 1 ? '' : 's'}${CAT.research.steps.length ? `, ${CAT.research.steps.length} assistant step${CAT.research.steps.length === 1 ? '' : 's'}` : ''}${chatN ? `, chat of ${chatN} message${chatN === 1 ? '' : 's'}` : ''}${bad ? ` (${bad} skipped)` : ''}.`, 'success');
     } catch (err) { ansStatus('Could not open the session: ' + err.message, 'error'); }
 }
 
@@ -8118,8 +8119,40 @@ function chatDraw(entry) {
         use.onclick = () => { customShowQuery({ mode: pr.mode, title: pr.title, explanation: pr.explanation, sql: pr.sql, question: pr.question || pr.title }); customStatus('The proposed query is in the box below: review or edit it, then press Run this query.'); const o = document.getElementById('anCustomOut'); if (o && o.scrollIntoView) o.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
         el.appendChild(use);
     }
+    if (entry.query && entry.restored) {   // an answer that came back with a saved session: its query is no longer in the editor
+        const qq = entry.query, b = document.createElement('button'); b.type = 'button'; b.className = 'btn-secondary cu-msg-use'; b.textContent = 'Put this query back in the editor';
+        b.onclick = () => { customShowQuery(qq); customStatus('The query is in the box below: review or edit it, then press Run this query.'); };
+        el.appendChild(b);
+    }
     if (entry.note) { const n = document.createElement('span'); n.className = 'cu-msg-note'; n.textContent = entry.note; el.appendChild(n); }
     box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
+}
+// Saved with a session (4D): the conversation sent to the model and the one drawn. Errors and "thinking" bubbles are not kept; only the latest part is.
+function chatSnapshot() {
+    const copy = v => JSON.parse(JSON.stringify(v));
+    return { msgs: copy(CHAT.msgs.slice(-60)), log: copy(CHAT.log.filter(e => e && (e.role === 'user' || e.role === 'assistant')).slice(-100)) };
+}
+// Read a saved chat defensively (the payload comes from the database): only known shapes and clipped text are taken. Returns the number of messages restored.
+function chatRestore(c) {
+    if (CHAT.busy || !c || typeof c !== 'object') return 0;
+    const str = (v, n) => typeof v === 'string' ? v.slice(0, n) : '';
+    const qOk = q => q && typeof q === 'object' && typeof q.sql === 'string' && q.sql.trim() && typeof q.mode === 'string' && /^v[1-5]$/.test(q.mode)
+        ? { title: str(q.title, 80) || 'Custom analytic', explanation: str(q.explanation, 500), sql: q.sql.slice(0, 8000), mode: q.mode, question: str(q.question, 600) } : null;
+    const msgs = (Array.isArray(c.msgs) ? c.msgs : []).slice(-60).filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim()).map(m => ({ role: m.role, content: m.content.slice(0, m.role === 'user' ? 600 : 3000) }));
+    const log = (Array.isArray(c.log) ? c.log : []).slice(-100).filter(e => e && (e.role === 'user' || e.role === 'assistant')).map(e => {
+        const out = { role: e.role, text: str(e.text, 3000) };
+        if (e.role === 'assistant') {
+            if (typeof e.title === 'string') out.title = str(e.title, 80);
+            if (typeof e.mode === 'string' && /^v[1-5]$/.test(e.mode)) out.mode = e.mode;
+            if (typeof e.note === 'string') out.note = str(e.note, 500);
+            const pr = qOk(e.proposal), qq = qOk(e.query);
+            if (pr) out.proposal = pr;
+            if (qq) { out.query = qq; out.restored = true; out.note = ''; }
+        }
+        return out;
+    });
+    CHAT.msgs = msgs; CHAT.log = log; chatRedraw();
+    return msgs.length;
 }
 function chatAdd(entry) { CHAT.log.push(entry); return chatDraw(entry); }
 function chatRedraw() { const box = document.getElementById('cuChatLog'); if (box) box.innerHTML = ''; CHAT.log.forEach(chatDraw); }
@@ -8154,7 +8187,7 @@ async function customGenerate() {
             customShowQuery({ mode: r.mode, title: r.title, explanation: r.explanation, sql: r.sql, question: q });
             // what the assistant "said", as the model will see it next time: the explanation and the query
             CHAT.msgs.push({ role: 'user', content: q }, { role: 'assistant', content: ((r.explanation ? r.explanation + '\n' : '') + 'SQL: ' + r.sql).slice(0, 2900) });
-            chatAdd({ role: 'assistant', title: r.title, mode: r.mode, text: r.explanation || 'Here is a query for that question.', note: 'The query is in the box below: review or edit it, then press Run this query.' });
+            chatAdd({ role: 'assistant', title: r.title, mode: r.mode, text: r.explanation || 'Here is a query for that question.', note: 'The query is in the box below: review or edit it, then press Run this query.', query: { title: r.title, explanation: r.explanation || '', sql: r.sql, mode: r.mode, question: q } });
             customStatus('Review the query, then run it.');
         }
     } catch (e) {
