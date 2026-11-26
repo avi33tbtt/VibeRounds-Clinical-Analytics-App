@@ -2990,8 +2990,15 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                                     .cu-msg.error { align-self:flex-start; background:#fdecea; color:#c62828; }
                                     .cu-msg.pending { align-self:flex-start; background:#f3f3f3; color:#777; font-style:italic; }
                                     .cu-msg .cu-msg-note { display:block; margin-top:3px; font-size:11.5px; color:#777; }
+                                    .cu-msg .cu-msg-use { display:block; margin-top:6px; }
+                                    .cu-msg pre { white-space:pre-wrap; font-size:11.5px; margin:6px 0 0; padding:6px; background:#fff; border-radius:4px; max-height:140px; overflow:auto; }
                                 </style>
                                 <div id="cuChatLog" class="cu-chat-log" role="log" aria-live="polite" aria-label="Conversation with the query assistant"></div>
+                                <div id="cuChatModes" role="radiogroup" aria-label="What the assistant should do" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:8px; font-size:13px;">
+                                    <label title="The assistant writes one query for your question, ready to review and run"><input type="radio" name="cuChatMode" value="query" checked onchange="customChatModeChanged()"> <strong>Run query</strong></label>
+                                    <label title="Talk through what to ask first: the assistant suggests questions this data can answer and can propose a query for you to use"><input type="radio" name="cuChatMode" value="plan" onchange="customChatModeChanged()"> <strong>Help me plan</strong></label>
+                                    <span id="cuChatModeHint" class="an-muted"></span>
+                                </div>
                                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:8px;">
                                     <textarea id="anCustomQ" rows="2" maxlength="600" placeholder="Type your question and press Enter (Shift+Enter for a new line), e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?" onkeydown="customChatKey(event)" style="flex:1; min-width:260px; padding:7px; border-radius:4px; font-size:13px; font-family:inherit;"></textarea>
                                     <button id="anCustomGenBtn" class="btn-primary" onclick="customGenerate()">Send</button>
@@ -8078,11 +8085,39 @@ function customApplyView() {
 // CHAT.msgs is the API form (role + text); CHAT.log is what is drawn. Only successful turns are kept.
 const CHAT = { msgs: [], log: [], busy: false };
 const CHAT_MAX_SENT = 19;   // the server accepts 20 messages: the last 19 plus the new question
+const CHAT_HINTS = { query: 'The assistant writes one query for each question; it appears in the box below for you to run.',
+    plan: 'Talk it through: ask what this data can answer. When the assistant proposes a query, press Use this query to move it into the box below.' };
+const CHAT_HOLD = { query: 'Type your question and press Enter (Shift+Enter for a new line), e.g. By year, how many patients with diabetes had an HbA1c above 8, split by gender?',
+    plan: 'What are you trying to find out? e.g. What could I look at to understand asthma care in this data?' };
+function chatIntent() { const r = document.querySelector('input[name=cuChatMode]:checked'); return r && r.value === 'plan' ? 'plan' : 'query'; }
+function customChatModeChanged() {
+    const i = chatIntent(), q = document.getElementById('anCustomQ'), h = document.getElementById('cuChatModeHint');
+    if (q) q.placeholder = CHAT_HOLD[i]; if (h) h.textContent = CHAT_HINTS[i];
+}
+document.addEventListener('DOMContentLoaded', customChatModeChanged);
+// Put a query (from the chat's "query" answer or a plan proposal) into the review box: the same box and Run button as always.
+function customShowQuery(q) {
+    Object.assign(CUSTOM, { mode: q.mode, title: q.title, question: q.question });
+    document.getElementById('anCustomAi').style.display = '';
+    document.getElementById('anCustomTitle').textContent = q.title;
+    document.getElementById('anCustomModeTag').textContent = q.mode.toUpperCase();
+    document.getElementById('anCustomExpl').textContent = q.explanation || '';
+    document.getElementById('anCustomSql').value = q.sql;
+    document.getElementById('anCustomOut').style.display = 'block';
+}
 function chatDraw(entry) {
     const box = document.getElementById('cuChatLog'); if (!box) return null;
     const el = document.createElement('div'); el.className = 'cu-msg ' + entry.role;
     if (entry.role === 'assistant' && entry.title) { const t = document.createElement('strong'); t.textContent = entry.title; el.appendChild(t); if (entry.mode) { const g = document.createElement('span'); g.className = 'an-tag'; g.style.marginLeft = '6px'; g.textContent = entry.mode.toUpperCase(); el.appendChild(g); } el.appendChild(document.createElement('br')); }
     el.appendChild(document.createTextNode(entry.text || ''));
+    if (entry.proposal) {   // plan mode: a query the assistant suggests; nothing runs until the person presses Use this query and then Run
+        const pr = entry.proposal, tt = document.createElement('strong'); tt.style.cssText = 'display:block; margin-top:6px;'; tt.textContent = 'Proposed query: ' + pr.title; el.appendChild(tt);
+        if (pr.explanation) { const ex = document.createElement('span'); ex.className = 'cu-msg-note'; ex.textContent = pr.explanation; el.appendChild(ex); }
+        const code = document.createElement('pre'); code.textContent = pr.sql; el.appendChild(code);
+        const use = document.createElement('button'); use.type = 'button'; use.className = 'btn-primary cu-msg-use'; use.textContent = 'Use this query';
+        use.onclick = () => { customShowQuery({ mode: pr.mode, title: pr.title, explanation: pr.explanation, sql: pr.sql, question: pr.question || pr.title }); customStatus('The proposed query is in the box below: review or edit it, then press Run this query.'); const o = document.getElementById('anCustomOut'); if (o && o.scrollIntoView) o.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
+        el.appendChild(use);
+    }
     if (entry.note) { const n = document.createElement('span'); n.className = 'cu-msg-note'; n.textContent = entry.note; el.appendChild(n); }
     box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
 }
@@ -8097,29 +8132,31 @@ function customChatReset() {
 }
 async function customGenerate() {
     if (CHAT.busy) return;
-    const btn = document.getElementById('anCustomGenBtn'), qEl = document.getElementById('anCustomQ'), mode = demoMode(), q = qEl.value.trim();
+    const btn = document.getElementById('anCustomGenBtn'), qEl = document.getElementById('anCustomQ'), mode = demoMode(), q = qEl.value.trim(), intent = chatIntent();
     if (q.length < 5) { customStatus('Write your question in a few words.', true); return; }
     CHAT.busy = true; btn.disabled = true;
     chatAdd({ role: 'user', text: q }); qEl.value = '';
-    const pending = chatDraw({ role: 'pending', text: `Asking the model for a ${mode.toUpperCase()} query (up to a minute)...` });
-    customStatus(`Asking the model for a ${mode.toUpperCase()} query (up to a minute)...`);
+    const wait = intent === 'plan' ? `Thinking about ${mode.toUpperCase()} possibilities (up to a minute)...` : `Asking the model for a ${mode.toUpperCase()} query (up to a minute)...`;
+    const pending = chatDraw({ role: 'pending', text: wait });
+    customStatus(wait);
     try {
         const messages = CHAT.msgs.slice(-CHAT_MAX_SENT).concat([{ role: 'user', content: q }]);
-        const r = await anPost('/api/analytics/custom/chat', { messages, mode, intent: 'query' });
-        if (!r.success) throw new Error(r.error || 'Could not generate the query');
-        Object.assign(CUSTOM, { mode: r.mode, title: r.title, question: q });
-        document.getElementById('anCustomAi').style.display = '';
-        document.getElementById('anCustomTitle').textContent = r.title;
-        document.getElementById('anCustomModeTag').textContent = r.mode.toUpperCase();
-        document.getElementById('anCustomExpl').textContent = r.explanation || '';
-        document.getElementById('anCustomSql').value = r.sql;
-        document.getElementById('anCustomOut').style.display = 'block';
-        // what the assistant "said", as the model will see it next time: the explanation and the query (clipped to the server's limit for assistant turns)
-        const said = ((r.explanation ? r.explanation + '\n' : '') + 'SQL: ' + r.sql).slice(0, 2900);
-        CHAT.msgs.push({ role: 'user', content: q }, { role: 'assistant', content: said });
+        const r = await anPost('/api/analytics/custom/chat', { messages, mode, intent });
+        if (!r.success) throw new Error(r.error || (intent === 'plan' ? 'The assistant could not answer' : 'Could not generate the query'));
         if (pending) pending.remove();
-        chatAdd({ role: 'assistant', title: r.title, mode: r.mode, text: r.explanation || 'Here is a query for that question.', note: 'The query is in the box below: review or edit it, then press Run this query.' });
-        customStatus('Review the query, then run it.');
+        if (intent === 'plan') {
+            const pr = r.proposal ? { title: r.proposal.title, explanation: r.proposal.explanation || '', sql: r.proposal.sql, mode: r.mode, question: q } : null;
+            // as the model will see it next time: the reply, and the query it proposed (clipped to the server's limit for assistant turns)
+            CHAT.msgs.push({ role: 'user', content: q }, { role: 'assistant', content: (r.reply + (pr ? '\nProposed SQL: ' + pr.sql : '')).slice(0, 2900) });
+            chatAdd({ role: 'assistant', text: r.reply, proposal: pr, note: r.note || '' });
+            customStatus(pr ? 'The assistant proposed a query: press Use this query to review and run it.' : '');
+        } else {
+            customShowQuery({ mode: r.mode, title: r.title, explanation: r.explanation, sql: r.sql, question: q });
+            // what the assistant "said", as the model will see it next time: the explanation and the query
+            CHAT.msgs.push({ role: 'user', content: q }, { role: 'assistant', content: ((r.explanation ? r.explanation + '\n' : '') + 'SQL: ' + r.sql).slice(0, 2900) });
+            chatAdd({ role: 'assistant', title: r.title, mode: r.mode, text: r.explanation || 'Here is a query for that question.', note: 'The query is in the box below: review or edit it, then press Run this query.' });
+            customStatus('Review the query, then run it.');
+        }
     } catch (e) {
         if (pending) pending.remove();
         chatAdd({ role: 'error', text: 'Error: ' + e.message });

@@ -106,3 +106,12 @@ Edited:
 Not changed: the By disease / By department / Examples tabs (Examples' "Use as my question" still fills the input). The "Help me plan" mode is 4C; chat history in saved sessions is 4D (the conversation is kept in memory only, so it is lost when the page reloads).
 Tests: all inline scripts in index.html pass a syntax check; the panel and chat code were run in jsdom with a fake server call (Enter vs Shift+Enter, loading bubble, follow-up context, error hand-back, history limit, New chat). Not tested in a real browser or with a real model.
 New database tables: none. New environment variables: none. Deleted files: none.
+
+# Chunk 4C (planning assistant in the chat)
+
+Edited:
+- index.html: a mode switch above the chat input: **Run query** (as 4B) and **Help me plan**. In plan mode the message goes to `POST /api/analytics/custom/chat` with `intent: 'plan'`; the assistant's reply is shown in the chat and, when it proposes a query, the proposal (title, explanation, SQL) is shown with a **Use this query** button. The button moves the query into the usual review box (same editor, mode tag and Run button), where it can be edited and is checked again before it runs. Nothing runs by itself, and a proposal on its own never changes the editor. A proposal the server refused is not offered (the reply stays, with the server's note). Both modes share one conversation, so you can plan first and then ask for the query. The input hint and placeholder change with the mode. The editor-filling code was moved into one helper, `customShowQuery()`, used by both modes.
+- README.md: one sentence about the switch.
+Not changed: server code (the plan intent came with 4A). Chat history is still lost on reload until 4D.
+Tests: inline scripts pass a syntax check; the chat code was run in jsdom with a fake server (plan reply with and without a proposal, Use this query fills the editor, a proposal alone does not, switching back to Run query keeps the conversation, previous 4B checks). Not tested in a real browser or with a real model.
+New database tables: none. New environment variables: none. Deleted files: none.
