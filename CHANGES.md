@@ -55,3 +55,20 @@ Edited:
 
 Edited:
 - index.html: "Drill-down mode" checkbox at the top of the Output section (default off). When on, custom-query runs send `drilldown: true`; each result gets an expandable list of case IDs per group with "Copy (one per line)" and "Copy (comma separated)". Off = output unchanged.
+
+# Chunk 3C-4 (drill-down for equity check, region x payer mix, treatment patterns)
+
+Catalog drill-down (3C) finds case IDs by rewriting a section's top-level `count(...)` SQL. Sections that count inside a CTE or a UNION could not be rewritten and showed "not available". 3C-4 adds a per-section hook for those.
+
+Edited:
+- analytics.js:
+  - `S(name, title, sql, drill)` takes an optional 4th argument `{ keys, sql }`: the columns that identify a row, and a companion query (own parameter list) returning those columns plus `__dd_ids` and `__dd_n`. `DD_AGG()` builds the ID aggregate (capped at 500, same as custom runs).
+  - `runSections` uses the hook when a section has one; a hook that throws only makes that section "not available". `drilldownMatch` matches on `keys` when given.
+  - Drill-down added to: Equity check (V2 and V4: patients per group), Region x payer mix (V2: patients per state and payer), Treatment patterns (V1, V2 and V4 "by drug": patients per drug, plus the "ANY first-line drug" row in V1 and V2).
+  - Selftest extended: hook ID count equals the displayed count, empty group, failing hook.
+- No change to index.html: it already renders any section that reports drill-down.
+
+Result (mock-pool audit of all 38 catalog analytics, 250 sections): 191 sections now have case IDs (was 182).
+Left without case IDs on purpose (they are not counts of patients per group): 48 V4/V5 statistical tables (rates, curves, rankings, ratios), 8 summary tables with no FROM-level grouping, and 3 record-level coverage tables in Data quality (counts of records, not patients).
+Tests: node analytics.js --selftest, knowledge, evidence, security selftests pass. Not run against real PostgreSQL or in a browser.
+New database tables: none. New environment variables: none. Deleted files: none.

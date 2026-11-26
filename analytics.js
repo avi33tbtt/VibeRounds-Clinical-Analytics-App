@@ -291,8 +291,9 @@ function drilldownSql(sql) {
 }
 
 function drilldownMatch(rows, dd, ddRows) {
-  const keyOf = (row, skip) => JSON.stringify(Object.keys(row).filter(k => !skip.has(k) && k !== '__dd_ids' && k !== '__dd_n').map(k => ddClean(row[k])));
-  const skip = new Set(dd.countCols), map = new Map();
+  // dd.keys (optional, set by a section's own `drill` hook): match rows on exactly these columns instead of "every non-count column"
+  const keyOf = (row, skip) => JSON.stringify((dd.keys || Object.keys(row).filter(k => !skip.has(k) && k !== '__dd_ids' && k !== '__dd_n')).map(k => ddClean(row[k])));
+  const skip = new Set(dd.countCols || []), map = new Map();
   for (const r of ddRows) map.set(keyOf(r, skip), { ids: (r.__dd_ids || []).map(String), total: Number(r.__dd_n) || 0 });
   return rows.slice(0, DD_MAX_GROUPS).map(row => {
     const hit = map.get(keyOf(row, skip));
@@ -850,10 +851,15 @@ module.exports = function extend(k) {
   STRAT.housing = `COALESCE(${ext('housing-instability', 'valueBoolean')}, 'Unknown')`;
   STRAT.food = `COALESCE(${ext('food-insecurity', 'valueBoolean')}, 'Unknown')`;
   const EVENT = { ed: `en.cls = 'EMER'`, imp: `en.cls = 'IMP'` };
-  const equity = (a, c, extra) => {
+  const equityB = (a, c, extra) => {
     const g = STRAT[a.by] || STRAT.race, ev = EVENT[a.event] || EVENT.ed;
     return `${c.with},
-      b AS (SELECT p.patient_id, ${g} AS grp, EXISTS (SELECT 1 FROM en WHERE en.patient_id = p.patient_id AND ${ev} ${extra}) AS hit FROM p),
+      b AS (SELECT p.patient_id, ${g} AS grp, EXISTS (SELECT 1 FROM en WHERE en.patient_id = p.patient_id AND ${ev} ${extra}) AS hit FROM p)`;
+  };
+  // drill-down: the patients behind each group's `patients` count
+  const equityDrill = (a, c, extra) => ({ keys: ['group'], sql: () => `${equityB(a, c, extra)} SELECT grp AS "group", ${DD_AGG()} FROM b GROUP BY grp` });
+  const equity = (a, c, extra) => {
+    return `${equityB(a, c, extra)},
       g AS (SELECT grp, count(*)::int AS patients, count(*) FILTER (WHERE hit)::int AS with_event FROM b GROUP BY grp),
       rf AS (SELECT with_event::numeric / patients AS rate FROM g ORDER BY patients DESC LIMIT 1)
       SELECT grp AS "group", patients, with_event, ${pct('with_event', 'patients')} AS rate_pct,
@@ -869,8 +875,8 @@ module.exports = function extend(k) {
       { name: 'by', label: 'Stratify by', type: 'select', default: 'race', options: [{ value: 'race', label: 'Race' }, { value: 'ethnicity', label: 'Ethnicity' }, { value: 'gender', label: 'Gender' }, { value: 'payer', label: 'Payer' }, { value: 'income', label: 'Income band' }, { value: 'housing', label: 'Housing instability' }, { value: 'food', label: 'Food insecurity' }] },
       { name: 'event', label: 'Event', type: 'select', default: 'ed', options: [{ value: 'ed', label: 'ED visit' }, { value: 'imp', label: 'Inpatient stay' }] }
     ],
-    v3: (a, c) => [S('disparity', 'Rate by group (all time)', () => equity(a, c, ''))],
-    v4: (a, c) => [S('disparity', 'Rate by group (last 12 months)', () => equity(a, c, `AND en.start_date > (SELECT d FROM ref) - interval '12 months'`))]
+    v3: (a, c) => [S('disparity', 'Rate by group (all time)', () => equity(a, c, ''), equityDrill(a, c, ''))],
+    v4: (a, c) => [S('disparity', 'Rate by group (last 12 months)', () => equity(a, c, `AND en.start_date > (SELECT d FROM ref) - interval '12 months'`), equityDrill(a, c, `AND en.start_date > (SELECT d FROM ref) - interval '12 months'`))]
   });
 
   // ---- Step D.4: chronic candidates from recurrence (V4) ---------------------------------------
@@ -1378,7 +1384,10 @@ module.exports = function extend(k) {
       g AS (SELECT state, payer, count(*)::int AS patients FROM b GROUP BY 1, 2)
       SELECT state, payer, patients, ${pct('patients', 'sum(patients) OVER (PARTITION BY state)')} AS pct_of_state,
         ${pct('patients', 'sum(patients) OVER ()')} AS pct_of_all_patients
-      FROM g ORDER BY state, patients DESC, payer`)]
+      FROM g ORDER BY state, patients DESC, payer`,
+      { keys: ['state', 'payer'], sql: () => `${c.with},
+      b AS (SELECT patient_id, COALESCE(pj->'address'->0->>'state', 'Unknown') AS state, ${STRAT.payer} AS payer FROM p)
+      SELECT state, payer, ${DD_AGG()} FROM b GROUP BY state, payer` })]
   });
 
   // ---- Step 3.7: Vaccination coverage (V2 and V4) ---------------------------------------
@@ -2263,7 +2272,11 @@ const ombPath = (kind, field) => `jsonb_path_query_first(pj, '$.extension[*] ? (
 const RACE = `COALESCE(${ombPath('race', 'ombCategory')}, ${ombPath('race', 'text')}, 'Unknown')`;
 const ETHN = `COALESCE(${ombPath('ethnicity', 'ombCategory')}, ${ombPath('ethnicity', 'text')}, 'Unknown')`;
 
-const S = (name, title, sql) => ({ name, title, sql });
+// drill (optional): { keys: [columns that identify a row], sql: q => companion SQL returning those columns plus __dd_ids (text[]) and __dd_n }.
+// Used by catalog drill-down for sections whose counts are not a plain top-level count(...) (CTE counts, UNION ALL). Own parameter list: it gets its own Q.
+const S = (name, title, sql, drill) => (drill ? { name, title, sql, drill } : { name, title, sql });
+const DD_IDS_CAP = 500;   // keep equal to DD_CAP (custom analytics, above): the response reports DD_CAP as the cap
+const DD_AGG = (col = 'patient_id') => `(array_agg(DISTINCT ${col}::text))[1:${DD_IDS_CAP}] AS __dd_ids, count(DISTINCT ${col})::int AS __dd_n`;
 const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const validDate = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 const codesOf = (args, fallback) => (args.code ? String(args.code).split(',').map(s => s.trim()).filter(Boolean) : fallback);
@@ -2539,17 +2552,27 @@ def({
   id: 'treatment_patterns', category: 'Medications', title: 'Treatment patterns (condition to first-line drugs)',
   description: 'Share of patients with a condition who receive the expected first-line drugs. V4 adds time from diagnosis to first prescription and flags drugs started before the diagnosis.',
   params: [{ name: 'concept', label: 'Condition', type: 'select', options: () => Object.keys(T.TREATMENT_MAP).map(k => ({ value: k, label: T.CONDITIONS[k].display })), default: 'diabetes' }],
-  v1: (a, c) => { const t = tm(a, c); return [S('by_drug', `${t.c.display}: patients with first-line drug mentioned`, (q) => `${c.with}, ${conceptCte(q, [{ key: t.key, label: t.c.display, terms: t.c.terms }])},
+  v1: (a, c) => { const t = tm(a, c);
+    const pre = (q) => `${c.with}, ${conceptCte(q, [{ key: t.key, label: t.c.display, terms: t.c.terms }])},
       cp AS (SELECT DISTINCT patient_id FROM (${hitsSql(['dx', 'en'])}) h),
       concepts2 AS (SELECT * FROM (VALUES ${t.meds.map(m => `(${q.add(m.key, 'text')},${q.add(m.display, 'text')},${q.add(POS(m.terms), 'text')},${q.add(NEG(m.terms), 'text')})`).join(',')}) v(key,label,pos,neg)),
-      rp AS (SELECT DISTINCT r.patient_id, c.label FROM (SELECT patient_id, ${TXT.rx} AS txt FROM rx) r JOIN concepts2 c ON r.txt ~* c.pos AND r.txt !~* c.neg WHERE r.patient_id IN (SELECT patient_id FROM cp))
+      rp AS (SELECT DISTINCT r.patient_id, c.label FROM (SELECT patient_id, ${TXT.rx} AS txt FROM rx) r JOIN concepts2 c ON r.txt ~* c.pos AND r.txt !~* c.neg WHERE r.patient_id IN (SELECT patient_id FROM cp))`;
+    return [S('by_drug', `${t.c.display}: patients with first-line drug mentioned`, (q) => `${pre(q)}
       SELECT label AS drug, count(*)::int AS patients_on_drug, (SELECT count(*) FROM cp)::int AS patients_with_condition, ${pct('count(*)', '(SELECT count(*) FROM cp)')} AS pct FROM rp GROUP BY label
-      UNION ALL SELECT 'ANY first-line drug', count(DISTINCT patient_id)::int, (SELECT count(*) FROM cp)::int, ${pct('count(DISTINCT patient_id)', '(SELECT count(*) FROM cp)')} FROM rp ORDER BY patients_on_drug DESC`)]; },
-  v3: (a, c) => { const t = tm(a, c); return [S('by_drug', `${t.c.display}: patients with first-line drug codes`, (q) => `${c.with}, ${medValues(q, t.meds)},
+      UNION ALL SELECT 'ANY first-line drug', count(DISTINCT patient_id)::int, (SELECT count(*) FROM cp)::int, ${pct('count(DISTINCT patient_id)', '(SELECT count(*) FROM cp)')} FROM rp ORDER BY patients_on_drug DESC`,
+      { keys: ['drug'], sql: (q) => `${pre(q)}
+      SELECT label AS drug, ${DD_AGG()} FROM rp GROUP BY label
+      UNION ALL SELECT 'ANY first-line drug', ${DD_AGG()} FROM rp` })]; },
+  v3: (a, c) => { const t = tm(a, c);
+    const pre = (q) => `${c.with}, ${medValues(q, t.meds)},
       cp AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${q.add(t.c.code, 'text')}),
-      rp AS (SELECT DISTINCT patient_id, code FROM rx WHERE code IN (SELECT code FROM mv) AND patient_id IN (SELECT patient_id FROM cp))
+      rp AS (SELECT DISTINCT patient_id, code FROM rx WHERE code IN (SELECT code FROM mv) AND patient_id IN (SELECT patient_id FROM cp))`;
+    return [S('by_drug', `${t.c.display}: patients with first-line drug codes`, (q) => `${pre(q)}
       SELECT mv.label AS drug, count(rp.patient_id)::int AS patients_on_drug, (SELECT count(*) FROM cp)::int AS patients_with_condition, ${pct('count(rp.patient_id)', '(SELECT count(*) FROM cp)')} AS pct FROM mv LEFT JOIN rp ON rp.code = mv.code GROUP BY mv.label
-      UNION ALL SELECT 'ANY first-line drug', count(DISTINCT patient_id)::int, (SELECT count(*) FROM cp)::int, ${pct('count(DISTINCT patient_id)', '(SELECT count(*) FROM cp)')} FROM rp ORDER BY patients_on_drug DESC`)]; },
+      UNION ALL SELECT 'ANY first-line drug', count(DISTINCT patient_id)::int, (SELECT count(*) FROM cp)::int, ${pct('count(DISTINCT patient_id)', '(SELECT count(*) FROM cp)')} FROM rp ORDER BY patients_on_drug DESC`,
+      { keys: ['drug'], sql: (q) => `${pre(q)}
+      SELECT mv.label AS drug, ${DD_AGG('rp.patient_id')} FROM mv LEFT JOIN rp ON rp.code = mv.code GROUP BY mv.label
+      UNION ALL SELECT 'ANY first-line drug', ${DD_AGG()} FROM rp` })]; },
   v4: (a, c) => { const t = tm(a, c); return [
     S('time_to_treatment', `${t.c.display}: time from first diagnosis to first first-line prescription`, (q) => `${c.with}, ${medValues(q, t.meds)},
       fd AS (SELECT patient_id, min(onset_date) AS d FROM dx WHERE code = ${q.add(t.c.code, 'text')} AND onset_date IS NOT NULL GROUP BY patient_id),
@@ -2565,7 +2588,12 @@ def({
       fd AS (SELECT patient_id, min(onset_date) AS d FROM dx WHERE code = ${q.add(t.c.code, 'text')} AND onset_date IS NOT NULL GROUP BY patient_id)
       SELECT mv.label AS drug, count(*)::int AS patients, percentile_cont(0.5) WITHIN GROUP (ORDER BY (f.d - fd.d)::float8)::float8 AS median_days_from_diagnosis
       FROM (SELECT patient_id, code, min(prescribed_date::date) AS d FROM rx WHERE prescribed_date IS NOT NULL GROUP BY 1,2) f
-      JOIN fd ON fd.patient_id = f.patient_id JOIN mv ON mv.code = f.code GROUP BY mv.label ORDER BY patients DESC`)]; }
+      JOIN fd ON fd.patient_id = f.patient_id JOIN mv ON mv.code = f.code GROUP BY mv.label ORDER BY patients DESC`,
+      { keys: ['drug'], sql: (q) => `${c.with}, ${medValues(q, t.meds)},
+      fd AS (SELECT patient_id, min(onset_date) AS d FROM dx WHERE code = ${q.add(t.c.code, 'text')} AND onset_date IS NOT NULL GROUP BY patient_id)
+      SELECT mv.label AS drug, ${DD_AGG('f.patient_id')}
+      FROM (SELECT patient_id, code, min(prescribed_date::date) AS d FROM rx WHERE prescribed_date IS NOT NULL GROUP BY 1,2) f
+      JOIN fd ON fd.patient_id = f.patient_id JOIN mv ON mv.code = f.code GROUP BY mv.label` })]; }
 });
 
 // ---- 7. Encounter utilization ----------------------------------------------------
@@ -2986,11 +3014,14 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
       const rows = r.rows.map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, clean(v)])));
       const sec = { name: s.name, title: s.title, columns: rows.length ? Object.keys(rows[0]) : (r.fields || []).map(f => f.name), rows };
       if (drilldown === true) {   // optional: companion query with the same grouping that also lists the patient ids behind each count; any failure just means "not available" for this section
-        const DD = customAnalytic, d = DD.drilldownSql(sql);
+        const DD = customAnalytic;
+        let d, dq = null;
+        if (s.drill) { try { dq = new Q(); d = { sql: s.drill.sql(dq, ctx), keys: s.drill.keys, countCols: [] }; } catch (e) { d = { error: 'drill-down hook failed (' + String(e.message).slice(0, 100) + ')' }; } }
+        else d = DD.drilldownSql(sql);
         if (d.error) sec.drilldown = { available: false, reason: d.error };
         else {
           try {
-            const dr = (await pool.query(d.sql, q.params)).rows.slice(0, DD.DD_MAX_GROUPS);
+            const dr = (await pool.query(d.sql, dq ? dq.params : q.params)).rows.slice(0, DD.DD_MAX_GROUPS);
             sec.drilldown = { available: true, cap: DD.DD_CAP, rows: DD.drilldownMatch(rows, d, dr) };
           } catch (e) { sec.drilldown = { available: false, reason: 'case ids not available for this section (' + String(e.message).slice(0, 120) + ')' }; }
         }
@@ -3393,7 +3424,18 @@ async function modeDispatchSelftest() {
       assert.strictEqual(r2.sections[0].drilldown.rows[0].ids.length, r2.sections[0].rows[0].n, 'id count equals displayed count');
       assert.strictEqual(r2.sections[1].drilldown.available, false);
       r2 = await e2.run({ id: '__dd_probe', mode: 'v2' }); assert.strictEqual(r2.sections[0].drilldown, undefined, 'off by default');
-    } finally { CATALOG.splice(CATALOG.indexOf(dd), 1); }
+      // a section's own drill hook (counts computed in a CTE or a UNION, which the SQL parser cannot follow): keyed on the hook's columns, own parameters
+      const hookPool = { query: async (sql, params) => /information_schema/.test(sql) ? { rows: [{ table_name: 'fhir_patient_a' }] } : /FROM cohorts/.test(sql) ? { rows: [] }
+        : /__dd_ids/.test(sql) ? { rows: [{ grp: 'a', __dd_ids: ['1', '2'], __dd_n: 2 }, { grp: 'b', __dd_ids: null, __dd_n: 0 }], seenParams: params } : /WITH g AS/.test(sql) ? { rows: [{ grp: 'a', patients: 2, share: 1.5 }, { grp: 'b', patients: 0, share: 0 }] } : { rows: [{ n: 7, d: null }] } };
+      CATALOG.push({ id: '__dd_hook', title: 'DDH', category: 'test', description: '', params: [], v3: () => [
+        { name: 'h', title: 'h', sql: () => 'WITH g AS (SELECT 1) SELECT grp, patients, share FROM g', drill: { keys: ['grp'], sql: q => { q.add('x'); return 'SELECT grp, __dd_ids, __dd_n FROM g'; } } },
+        { name: 'bad', title: 'bad', sql: () => 'WITH g AS (SELECT 1) SELECT grp, patients, share FROM g', drill: { keys: ['grp'], sql: () => { throw new Error('boom'); } } }] });
+      const r3 = await createEngine(hookPool).run({ id: '__dd_hook', mode: 'v2', drilldown: true });
+      assert.strictEqual(r3.sections[0].drilldown.available, true);
+      assert.strictEqual(r3.sections[0].drilldown.rows[0].ids.length, r3.sections[0].rows[0].patients, 'hook: id count equals displayed count');
+      assert.strictEqual(r3.sections[0].drilldown.rows[1].ids.length, 0, 'hook: empty group has no ids'); assert.strictEqual(r3.sections[0].drilldown.rows[0].truncated, false);
+      assert.strictEqual(r3.sections[1].drilldown.available, false, 'hook that throws just means not available');
+    } finally { CATALOG.splice(CATALOG.indexOf(dd), 1); const hk = CATALOG.findIndex(x => x.id === '__dd_hook'); if (hk >= 0) CATALOG.splice(hk, 1); }
   } finally { CATALOG.splice(CATALOG.indexOf(fake), 1); }
   console.log('analytics.js mode-dispatch self-test: all checks passed');
 }
