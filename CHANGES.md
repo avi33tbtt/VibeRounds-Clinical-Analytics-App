@@ -15,3 +15,25 @@ Kept on purpose:
 
 Tests passed: knowledge, analytics, evidence, synthetic, research (node <file>.js --selftest)
 Not run: smoke test (needs a running server and a database)
+
+---
+
+# Changes: Chunk 2 (save and open sessions in the database)
+
+## 2A: sessions table and API
+Edited:
+- server.js: new table saved_sessions (id, name, owner_id, owner, payload JSONB, created_at, updated_at) in SCHEMA_SQL, so startup and /api/init-schema both create it; new routes GET/POST /api/sessions and GET/PUT/DELETE /api/sessions/:id, owner-only; payload capped at 100 MB in the handler
+- security.js: 'saved_sessions' added to the SQL guard forbidden list so custom SQL cannot read other users' sessions
+
+The table is named saved_sessions because `sessions` already holds sign-in tokens.
+Tests: node security.js --selftest passes; routes checked with an in-memory Postgres emulator. Not run against real PostgreSQL.
+
+## 2B: frontend saves to the API
+Edited:
+- index.html: "Save session" (anSessionSave) now reads existing names from GET /api/sessions, then POSTs a new session or PUTs over a same-named one. The saved payload has the same shape as before (runs, steps, decisions, cohort, population, counts). New helper ansApi(). Status text now says "to the database". Also the Capabilities sentence no longer mentions the disease module (Chunk 1).
+Note: "Open saved session" and Delete still read IndexedDB until 2C, so sessions saved from 2B on will not appear in the Open panel until 2C is done.
+Tests: all inline scripts in index.html pass a syntax check; re-running the patch is refused. Not tested in a browser.
+
+New database table: saved_sessions (created automatically at startup)
+New environment variables: none
+Deleted files: none (see Chunk 1 above)

@@ -1642,7 +1642,7 @@ label{color:var(--ink-2)}
                     </li>
 <li><strong>Layer 3 - Analytics (three paths):</strong> 
     <ul>
-        <li><strong>Analytics catalog (Node.js):</strong> 14 analytics, each in up to five methods (V1 text, V2 codes, V3 enriched codes, V4 codes + time, V5 enriched codes + time), run on the active cohort. The Dashboard runs all of them at once, and <em>Analytics readiness</em> reports which ones the loaded data can support. Special V4 analytics include the inpatient trajectory and the disease module (diabetes, hypertension).</li>
+        <li><strong>Analytics catalog (Node.js):</strong> 14 analytics, each in up to five methods (V1 text, V2 codes, V3 enriched codes, V4 codes + time, V5 enriched codes + time), run on the active cohort. The Dashboard runs all of them at once, and <em>Analytics readiness</em> reports which ones the loaded data can support. A special V4 analytic is the inpatient trajectory.</li>
         <li><strong>Custom analytics in plain English (LLM-built query):</strong> For free-hand questions the catalog does not cover, describe the analysis in English; an LLM writes one read-only SQL query for the selected mode (V1, V2 or V4), you review and can edit it, and then it runs as fixed SQL. The LLM only drafts the query: running it is deterministic (no LLM call), and the SQL is shown with every result. Only the question is sent to the model, never patient data.</li>
         <li><strong>AI assistant (optional, your own OpenRouter key):</strong> fills PICO/PECO study forms from a plain-English question, suggests studies, explains results, flags findings, proposes the next analytic from the catalog and compares A vs B. It never runs SQL itself. The <strong>AI researcher</strong> chains it: for 1 to 20 rounds it runs an analytic (catalog, or a plain-English question drafted as a read-only query), asks for an insight and next suggestions, writes a summary and runs the top suggestion, with optional pause-to-review of AI-written queries. Every AI route is audit-logged.</li>
         <li><strong>Data exploration:</strong> a patient data explorer, a cohort knowledge graph built from the data (co-occurrence, lift, typical order), a SNOMED CT query builder that writes cohort SQL with descendants and ancestors, and reviewer decisions (<code>concept_overrides</code>) that adjust chronic lists, first-line drugs, risky pairs and lab limits.</li>
@@ -7818,7 +7818,7 @@ function clearAnalyticsHistory() {
 
 // ---- Save session / Open saved session ----
 // A session is the whole Output section (every run) plus the research assistant's step cards and your choices, stored under a name in this
-// browser's IndexedDB (no size limit worth worrying about, unlike localStorage). Nothing is sent to the server. Only what is already in the
+// database (saved_sessions table, via /api/sessions; only the signed-in owner can see it). Only what is already in the
 // Output section is kept: aggregated tables and charts, never patient ids.
 const ANS = { db: null, DB: 'vibe-rounds-sessions', STORE: 'sessions' };
 function ansDb() {
@@ -7843,6 +7843,13 @@ async function ansTx(mode, fn) {
     });
 }
 const ansAll = () => ansTx('readonly', s => s.getAll()).then(l => (l || []).sort((a, b) => String(b.saved_at).localeCompare(String(a.saved_at))));
+async function ansApi(method, url, body) {
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const text = await res.text();
+    let j; try { j = JSON.parse(text); } catch (e) { throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`); }
+    if (!res.ok || j.success === false) throw new Error(j.error || `HTTP ${res.status}`);
+    return j;
+}
 function ansStatus(text, cls) { const st = document.getElementById('anUploadStatus'); if (st) { st.className = 'status-output' + (cls ? ' ' + cls : ''); st.textContent = text; } }
 function ansSnapshot(name, id) {
     const steps = CAT.research.steps.map(s => { const c = Object.assign({}, s); delete c.el; c.at = (s.at instanceof Date ? s.at : new Date(s.at)).toISOString(); return c; });
@@ -7853,16 +7860,17 @@ async function anSessionSave() {
     if (!CAT.history.length) { ansStatus('There is nothing to save yet: run an analytic first.', 'error'); return; }
     const btn = document.getElementById('anSessSave');
     try {
-        const sessions = await ansAll();
+        const sessions = (await ansApi('GET', '/api/sessions')).sessions;   // names only (no payloads)
         const suggested = 'Session ' + new Date().toLocaleString();
         const name = (prompt('Name this session:', suggested) || '').trim().slice(0, 80);
         if (!name) return;
         const same = sessions.find(s => s.name.toLowerCase() === name.toLowerCase());
         if (same && !confirm(`A session named "${same.name}" already exists. Replace it?`)) return;
         btn.disabled = true;
-        const snap = ansSnapshot(name, same ? same.id : 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-        await ansTx('readwrite', s => s.put(snap));
-        ansStatus(`Saved session "${name}" (${snap.run_count} run${snap.run_count === 1 ? '' : 's'}${snap.step_count ? `, ${snap.step_count} assistant step${snap.step_count === 1 ? '' : 's'}` : ''}) in this browser.`, 'success');
+        const snap = ansSnapshot(name, same ? same.id : null);   // same payload shape as before; the server assigns the id
+        if (same) await ansApi('PUT', '/api/sessions/' + same.id, { name, payload: snap });
+        else await ansApi('POST', '/api/sessions', { name, payload: snap });
+        ansStatus(`Saved session "${name}" (${snap.run_count} run${snap.run_count === 1 ? '' : 's'}${snap.step_count ? `, ${snap.step_count} assistant step${snap.step_count === 1 ? '' : 's'}` : ''}) to the database.`, 'success');
         if (!document.getElementById('anSessPanel').hidden) anSessionRenderPanel();
     } catch (e) { ansStatus('Could not save the session: ' + e.message, 'error'); }
     finally { btn.disabled = false; }
