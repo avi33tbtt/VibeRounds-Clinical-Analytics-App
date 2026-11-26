@@ -393,6 +393,19 @@ const SCHEMA_SQL = `
       CREATE INDEX IF NOT EXISTS idx_fhir_medication_batch ON fhir_medication(ingestion_batch_id);
       CREATE INDEX IF NOT EXISTS idx_fhir_allergy_patient_id ON fhir_allergy(patient_id);
       CREATE INDEX IF NOT EXISTS idx_fhir_allergy_batch ON fhir_allergy(ingestion_batch_id);
+
+      -- Saved analytics sessions (output, settings, query). Named saved_sessions because \`sessions\` is the sign-in token table.
+      -- owner_id is the users.id of the signed-in person (no foreign key: users is created later, by auth.ready()).
+      CREATE TABLE IF NOT EXISTS saved_sessions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        owner_id INTEGER NOT NULL,
+        owner VARCHAR(255) NOT NULL,
+        payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_saved_sessions_owner ON saved_sessions(owner_id, updated_at DESC);
 `;
 
 // Startup also seeds the hello-world messages table
@@ -420,6 +433,88 @@ app.post('/api/init-schema', async (req, res) => {
   } catch (err) {
     console.error('Schema init error:', err);
     res.status(500).json({ error: 'Schema initialization failed', details: err.message });
+  }
+});
+
+// ---- Saved sessions (Chunk 2A) ----
+// Each person sees and changes only their own rows (owner_id = signed-in user). Sign-in is enforced by the global gate,
+// so req.user is always set here. The list endpoint returns metadata only; the payload comes from GET /:id.
+const SESSION_MAX_BYTES = 100 * 1024 * 1024;   // per-session payload cap (the global parser limit is much higher, for FHIR imports)
+function sessionInput(body) {
+  const name = String((body && body.name) || '').trim().slice(0, 200);
+  if (!name) return { error: 'Session name is required.' };
+  const payload = body && body.payload;
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return { error: 'Session payload must be an object.' };
+  const json = JSON.stringify(payload);
+  if (json.length > SESSION_MAX_BYTES) return { error: 'Session is too large to save (limit 100 MB).' };
+  return { name, json };
+}
+const sessionId = req => (/^\d{1,9}$/.test(req.params.id) ? parseInt(req.params.id, 10) : null);
+
+app.get('/api/sessions', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, name, created_at, updated_at FROM saved_sessions WHERE owner_id = $1 ORDER BY updated_at DESC', [req.user.id]);
+    res.json({ success: true, sessions: r.rows });
+  } catch (err) {
+    console.error('Error listing sessions:', err);
+    res.status(500).json({ success: false, error: 'Failed to list sessions' });
+  }
+});
+
+app.get('/api/sessions/:id', async (req, res) => {
+  try {
+    const id = sessionId(req);
+    if (id === null) return res.status(404).json({ success: false, error: 'Session not found' });
+    const r = await pool.query('SELECT id, name, payload, created_at, updated_at FROM saved_sessions WHERE id = $1 AND owner_id = $2', [id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, error: 'Session not found' });
+    res.json({ success: true, session: r.rows[0] });
+  } catch (err) {
+    console.error('Error fetching session:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch session' });
+  }
+});
+
+app.post('/api/sessions', async (req, res) => {
+  try {
+    const inp = sessionInput(req.body);
+    if (inp.error) return res.status(400).json({ success: false, error: inp.error });
+    const r = await pool.query(
+      'INSERT INTO saved_sessions (name, owner_id, owner, payload) VALUES ($1, $2, $3, $4::jsonb) RETURNING id, name, created_at, updated_at',
+      [inp.name, req.user.id, req.user.email, inp.json]);
+    res.status(201).json({ success: true, session: r.rows[0] });
+  } catch (err) {
+    console.error('Error saving session:', err);
+    res.status(500).json({ success: false, error: 'Failed to save session' });
+  }
+});
+
+app.put('/api/sessions/:id', async (req, res) => {
+  try {
+    const id = sessionId(req);
+    if (id === null) return res.status(404).json({ success: false, error: 'Session not found' });
+    const inp = sessionInput(req.body);
+    if (inp.error) return res.status(400).json({ success: false, error: inp.error });
+    const r = await pool.query(
+      'UPDATE saved_sessions SET name = $1, payload = $2::jsonb, updated_at = now() WHERE id = $3 AND owner_id = $4 RETURNING id, name, created_at, updated_at',
+      [inp.name, inp.json, id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, error: 'Session not found' });
+    res.json({ success: true, session: r.rows[0] });
+  } catch (err) {
+    console.error('Error updating session:', err);
+    res.status(500).json({ success: false, error: 'Failed to update session' });
+  }
+});
+
+app.delete('/api/sessions/:id', async (req, res) => {
+  try {
+    const id = sessionId(req);
+    if (id === null) return res.status(404).json({ success: false, error: 'Session not found' });
+    const r = await pool.query('DELETE FROM saved_sessions WHERE id = $1 AND owner_id = $2 RETURNING id', [id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, error: 'Session not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting session:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete session' });
   }
 });
 

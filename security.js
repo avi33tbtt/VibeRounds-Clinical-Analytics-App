@@ -34,7 +34,7 @@ const FORBIDDEN = [
   'comment', 'lock', 'listen', 'notify', 'unlisten', 'begin', 'commit', 'rollback', 'savepoint', 'into', 'security',
   'set_config', 'pg_sleep', 'nextval', 'setval', 'lastval', 'dblink', 'lo_import', 'lo_export', 'lo_create', 'lo_unlink',
   'pg_terminate_backend', 'pg_cancel_backend', 'pg_reload_conf', 'pg_rotate_logfile', 'pg_switch_wal',
-  'users', 'sessions', 'audit_log', 'app_settings', 'information_schema'
+  'users', 'sessions', 'saved_sessions', 'audit_log', 'app_settings', 'information_schema'
 ];
 const FORBIDDEN_RE = new RegExp(`(?<![A-Za-z0-9_])(?:${FORBIDDEN.join('|')})(?![A-Za-z0-9_])`, 'i');
 const FORBIDDEN_PREFIX_RE = /(?<![A-Za-z0-9_])(?:pg_[a-z_]+|lo_[a-z_]+|current_setting)(?![A-Za-z0-9_])/i;   // pg_read_file, pg_ls_dir, pg_catalog tables, lo_* ...
