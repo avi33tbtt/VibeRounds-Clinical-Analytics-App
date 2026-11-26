@@ -306,23 +306,88 @@ function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askM
     res.json({ success: true, examples: EXAMPLES, ideas: { disease: DISEASE_IDEAS, department: DEPARTMENT_IDEAS } });
   });
 
+
+  // ---- drill-down: turn "count by group" SQL into a companion query that also lists the case (patient) ids ----
+  const DD_CAP = 500, DD_MAX_GROUPS = 200;
+  // Scan the SQL at nesting depth 0 (ignoring strings, comments and anything in parentheses). Returns { sql, countCols } or { error }.
+  function drilldownSql(sql) {
+    const t = String(sql || '').trim().replace(/;+\s*$/, ''), n = t.length, kw = [];
+    let depth = 0, i = 0, itemStart = -1, selIdx = -1, fromIdx = -1; const commas = [];
+    while (i < n) {
+      const ch = t[i];
+      if (ch === "'" || ch === '"') { const q = ch; i++; while (i < n && !(t[i] === q && t[i + 1] !== q)) i += (t[i] === q ? 2 : 1); i++; continue; }
+      if (ch === '-' && t[i + 1] === '-') { while (i < n && t[i] !== '\n') i++; continue; }
+      if (ch === '/' && t[i + 1] === '*') { const e = t.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue; }
+      if (ch === '(') { depth++; i++; continue; }
+      if (ch === ')') { depth--; i++; continue; }
+      if (depth === 0 && /[A-Za-z_]/.test(ch) && !/[A-Za-z0-9_.]/.test(t[i - 1] || ' ')) {
+        let j = i; while (j < n && /[A-Za-z0-9_]/.test(t[j])) j++;
+        const w = t.slice(i, j).toLowerCase();
+        if (w === 'select') { if (selIdx >= 0) return { error: 'more than one top-level SELECT' }; selIdx = j; }
+        else if (w === 'union' || w === 'intersect' || w === 'except') return { error: 'set operations are not supported' };
+        else if (w === 'from' && selIdx >= 0 && fromIdx < 0) fromIdx = i;
+        kw.push(w); i = j; continue;
+      }
+      if (ch === ',' && depth === 0 && selIdx >= 0 && fromIdx < 0) commas.push(i);
+      i++;
+    }
+    if (selIdx < 0 || fromIdx < 0) return { error: 'no SELECT ... FROM found' };
+    const list = t.slice(selIdx, fromIdx);
+    if (/^\s*distinct\b/i.test(list)) return { error: 'SELECT DISTINCT is not supported' };
+    const bounds = [selIdx, ...commas, fromIdx], items = [];
+    for (let k = 0; k < bounds.length - 1; k++) items.push(t.slice(k === 0 ? bounds[k] : bounds[k] + 1, bounds[k + 1]).trim());
+    const countCols = [];
+    for (const it of items) {
+      const m = /^count\s*\([\s\S]*\)\s*(?:::\s*\w+\s*)?(?:(?:as\s+)?("?)(\w+)\1)?$/i.exec(it);
+      if (m) countCols.push(m[2] && !/^(over|filter)$/i.test(m[2]) ? m[2] : 'count');
+    }
+    if (!countCols.length) return { error: 'no count(...) column to drill into' };
+    return { sql: `${t.slice(0, fromIdx).trimEnd()}, (array_agg(DISTINCT patient_id::text))[1:${DD_CAP}] AS __dd_ids, count(DISTINCT patient_id)::int AS __dd_n ${t.slice(fromIdx)}`, countCols };
+  }
+
+  function drilldownMatch(rows, dd, ddRows) {
+    const keyOf = (row, skip) => JSON.stringify(Object.keys(row).filter(k => !skip.has(k) && k !== '__dd_ids' && k !== '__dd_n').map(k => clean(row[k])));
+    const skip = new Set(dd.countCols), map = new Map();
+    for (const r of ddRows) map.set(keyOf(r, skip), { ids: (r.__dd_ids || []).map(String), total: Number(r.__dd_n) || 0 });
+    return rows.slice(0, DD_MAX_GROUPS).map(row => {
+      const hit = map.get(keyOf(row, skip));
+      return hit ? { ids: hit.ids, total: hit.total, truncated: hit.total > hit.ids.length } : null;
+    });
+  }
+
   async function runOne(x) {
     const mode = String(x.mode || '').toLowerCase(), c = checkQuery(x.sql, mode);
     if (!c.ok) throw bad(c.error);
     const ctx = await engine.resolveScope(scopeOf(x));
     const client = await readPool.connect();
-    let rows, fields;
+    let rows, fields, ddRows = null, ddInfo = null, ddNote = null;
     try {
       await client.query('BEGIN READ ONLY');
       await client.query(`SET LOCAL statement_timeout = ${TIMEOUT_MS}`);
       const r = await client.query(`${ctx.with}, custom_q AS (${c.sql}) SELECT * FROM custom_q LIMIT ${MAX_ROWS + 1}`);
       rows = r.rows; fields = r.fields || [];
+      if (x.drilldown === true) {   // optional companion query: same grouping, plus the patient ids behind each count (read-only, same guard, own savepoint)
+        const d = drilldownSql(c.sql);
+        if (d.error) ddNote = d.error;
+        else {
+          const cc = checkQuery(d.sql, mode);
+          if (!cc.ok) ddNote = cc.error;
+          else {
+            try {
+              await client.query('SAVEPOINT dd');
+              ddRows = (await client.query(`${ctx.with}, custom_q AS (${cc.sql}) SELECT * FROM custom_q LIMIT ${DD_MAX_GROUPS + 1}`)).rows; ddInfo = d;
+            } catch (e) { await client.query('ROLLBACK TO SAVEPOINT dd').catch(() => {}); ddNote = 'case ids not available for this query (' + String(e.message).slice(0, 120) + ')'; }
+          }
+        }
+      }
     } catch (e) {
       throw bad(`The query could not run: ${String(e.message).slice(0, 300)}`, 400);
     } finally { await client.query('ROLLBACK').catch(() => {}); client.release(); }
     const truncated = rows.length > MAX_ROWS; rows = rows.slice(0, MAX_ROWS).map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, clean(v)])));
+    let drilldown;
+    if (x.drilldown === true) drilldown = ddInfo ? { available: true, cap: DD_CAP, rows: drilldownMatch(rows, ddInfo, ddRows) } : { available: false, reason: ddNote || 'not available' };
     const title = String(x.title || 'Custom analytic').replace(/[\u0000-\u001f]/g, ' ').slice(0, 80) || 'Custom analytic';
-    return { success: true, id: 'custom_query', title, mode, methodInfo: methodInfo[mode], custom: { sql: c.sql, question: String(x.question || '').slice(0, MAX_Q), truncated },
+    return { success: true, id: 'custom_query', title, mode, methodInfo: methodInfo[mode], custom: { sql: c.sql, question: String(x.question || '').slice(0, MAX_Q), truncated }, ...(drilldown ? { drilldown } : {}),
       scope: { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf },
       sections: [{ name: 'result', title: truncated ? `Result (first ${MAX_ROWS} rows)` : 'Result', columns: rows.length ? Object.keys(rows[0]) : fields.map(f => f.name), rows }] };
   }
@@ -408,7 +473,7 @@ module.exports.selftest = () => {
   return (async () => {
     const express = require('express'), app = express(); app.use(express.json());
     const seen = { sqls: [], asked: 0 };
-    const mkPool = () => ({ connect: async () => ({ query: async sql => { seen.sqls.push(sql); if (/custom_q/.test(sql)) return { rows: [{ n: 3n, d: new Date('2024-01-02') }], fields: [{ name: 'n' }] }; return { rows: [] }; }, release() {} }) });
+    const mkPool = () => ({ connect: async () => ({ query: async sql => { seen.sqls.push(sql); if (/__dd_ids/.test(sql)) return { rows: [{ n: 3n, d: new Date('2024-01-02'), __dd_ids: ['a', 'b', 'c'], __dd_n: 3 }] }; if (/custom_q/.test(sql)) return { rows: [{ n: 3n, d: new Date('2024-01-02') }], fields: [{ name: 'n' }] }; return { rows: [] }; }, release() {} }) });
     register(app, { engine: { resolveScope: async () => ({ with: 'WITH p AS (SELECT 1)', patients: 5, cohort: null, suffixes: ['b'], asOf: '2024-01-01' }) }, pool: {}, readPool: mkPool(),
       fail: (res, l, e) => res.status(e.status || 500).json({ success: false, error: e.message }), scopeOf: x => x,
       methodInfo: { v1: 'i1', v2: 'i2', v3: 'i3', v4: 'i4', v5: 'i5' }, getConfig: async () => ({ apiKey: 'k', model: 'm' }),
@@ -420,6 +485,15 @@ module.exports.selftest = () => {
     r = await post('/api/analytics/custom/run', { sql: r.body.sql, mode: 'v1', title: 'T' });
     assert.strictEqual(r.code, 200); assert.deepStrictEqual(r.body.sections[0].rows, [{ n: 3, d: '2024-01-02' }]); assert.strictEqual(r.body.id, 'custom_query');
     assert.ok(seen.sqls[0] === 'BEGIN READ ONLY' && /statement_timeout/.test(seen.sqls[1]) && /LIMIT 1001/.test(seen.sqls[2]) && seen.sqls.at(-1) === 'ROLLBACK', 'read-only transaction with timeout and row cap');
+    // drill-down: ids per group, count matches, off by default, unsupported shapes degrade gracefully
+    const ddSql = 'SELECT d, count(*)::int AS n FROM p GROUP BY d';
+    r = await post('/api/analytics/custom/run', { sql: ddSql, mode: 'v1', drilldown: true });
+    assert.strictEqual(r.code, 200); assert.strictEqual(r.body.drilldown.available, true);
+    assert.strictEqual(r.body.drilldown.rows[0].ids.length, r.body.sections[0].rows[0].n, 'id count equals displayed count'); assert.strictEqual(r.body.drilldown.rows[0].truncated, false);
+    assert.ok(seen.sqls.some(q => /array_agg\(DISTINCT patient_id::text\)/.test(q)) && seen.sqls.includes('SAVEPOINT dd'));
+    r = await post('/api/analytics/custom/run', { sql: ddSql, mode: 'v1' }); assert.strictEqual(r.body.drilldown, undefined, 'off by default');
+    r = await post('/api/analytics/custom/run', { sql: 'SELECT count(*)::int AS n FROM p UNION ALL SELECT count(*)::int AS n FROM p', mode: 'v1', drilldown: true });
+    assert.strictEqual(r.code, 200); assert.strictEqual(r.body.drilldown.available, false);
     r = await post('/api/analytics/custom/run', { sql: 'SELECT count(*) FROM dx WHERE code = 1', mode: 'v1' }); assert.strictEqual(r.code, 400);
     r = await post('/api/analytics/custom/generate', { question: 'hi', mode: 'v1' }); assert.strictEqual(r.code, 400);
     r = await post('/api/analytics/custom/generate', { question: 'a fine question', mode: 'v9' }); assert.strictEqual(r.code, 400);

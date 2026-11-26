@@ -44,3 +44,9 @@ Tests: node --check server.js; all inline scripts in index.html pass a syntax ch
 New database table: saved_sessions (created automatically at startup)
 New environment variables: none
 Deleted files: none (see Chunk 1 above)
+
+# Chunk 3A (drilldown data from custom run)
+
+Edited:
+- analytics.js: POST /api/analytics/custom/run accepts optional `drilldown: true`. The response then has a top-level `drilldown` field with the patient_ids behind each count (capped at 500 per group, `truncated` flag, max 200 groups). Runs a read-only companion query through the same SQL guard, inside the same read-only transaction (savepoint, so a failure never breaks the main result). Selftest extended.
+- PROGRESS.md: added.
