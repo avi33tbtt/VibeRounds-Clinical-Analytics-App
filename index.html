@@ -3552,7 +3552,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
                 <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
                     <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Save the whole section as a session in this browser and open it again later, or download it as JSON and upload that file to view it again.</div>
-                    <label id="anDrillBar" style="display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:10px;" title="When on, new custom-query runs also list the case (patient) IDs behind each group count, with a Copy button. Applies to runs started after you switch it on."><input type="checkbox" id="anDrillToggle" onchange="ANDD.on = this.checked"> <span><strong>Drill-down mode</strong> <span class="an-muted">(show case IDs for each group of a custom query; applies to the next run)</span></span></label>
+                    <label id="anDrillBar" style="display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:10px;" title="When on, new custom-query and catalog runs also list the case (patient) IDs behind each group count, with a Copy button. Applies to runs started after you switch it on."><input type="checkbox" id="anDrillToggle" onchange="ANDD.on = this.checked"> <span><strong>Drill-down mode</strong> <span class="an-muted">(show case IDs for each group of a custom query or catalog analytic; applies to the next run)</span></span></label>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
                         <button class="btn-primary" id="anSessSave" onclick="anSessionSave()" title="Saves every run below, the research assistant's steps and your choices as a named session in the database.">Save session</button>
                         <button class="btn-secondary" id="anSessOpen" onclick="anSessionTogglePanel()" title="Lists your saved sessions so you can open one.">Open saved session</button>
@@ -7919,12 +7919,13 @@ async function runCatalogAnalytic(modes) {
         let run = null, failed = 0;                              // one run block, on the active cohort (or all patients when none is active)
         for (const mode of modes) {
             const args = readParams('anParams', a.params, mode);
-            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, anScope()));
+            const r = await anPost('/api/analytics/catalog/run', Object.assign({ id: a.id, mode, args }, ANDD.on ? { drilldown: true } : {}, anScope()));
             r.mode = r.mode || mode;
             r.args = args; // the form values used (context for the plain-language explanation, Step 4.10)
             if (!r.success) failed++;
             if (!run) run = anStartRun(`${a.title} (${modes.map(m => m.toUpperCase()).join(', ')})`);
             run.add(r);
+            anDrillAttach(run, r);
         }
         status.className = 'status-output ' + (failed ? 'error' : 'success');
         status.textContent = `Done: ${a.title}${failed ? ` (${failed} failed)` : ''}`;
@@ -8090,24 +8091,40 @@ function anDrillCopyFallback(text, done) {
     try { document.execCommand('copy'); done(); } catch (e) { /* nothing more to try */ } ta.remove();
 }
 function anDrillAttach(run, r) {
-    const d = r && r.drilldown; if (!d || !run || !run.body) return;
+    if (!r || !run || !run.body) return;
+    // custom runs carry one top-level drilldown (it belongs to sections[0]); catalog runs carry one per section
+    const secs = (r.sections || []), parts = [];
+    if (r.drilldown) parts.push({ title: '', rows: (secs[0] && secs[0].rows) || [], d: r.drilldown, custom: true });
+    secs.forEach(s => { if (s && s.drilldown) parts.push({ title: s.title || s.name || '', rows: s.rows || [], d: s.drilldown }); });
+    if (!parts.length) return;
     const box = document.createElement('div'); box.className = 'an-drill'; box.style.cssText = 'margin-top:10px; font-size:13px;';
-    const rows = (r.sections && r.sections[0] && r.sections[0].rows) || [];
-    if (!d.available) { box.innerHTML = `<div class="an-muted">Drill-down: case IDs are not available for this query (${escapeHtml(d.reason || 'unknown reason')}).</div>`; run.body.appendChild(box); return; }
     box.innerHTML = '<div style="font-weight:600; margin-bottom:4px;">Drill-down: case IDs by group</div>';
-    rows.forEach((row, i) => {
-        const g = d.rows[i]; if (!g) return;
-        const label = Object.values(row).map(v => v == null ? '' : String(v)).join(' · ');
-        const det = document.createElement('details'); det.style.cssText = 'margin:2px 0;';
-        det.innerHTML = `<summary style="cursor:pointer;">${escapeHtml(label)} <span class="an-muted">· ${g.total} case${g.total === 1 ? '' : 's'}</span></summary>
-            <div style="margin:6px 0 8px 14px;"><div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;"><button type="button" class="btn-secondary an-dd-nl">Copy (one per line)</button><button type="button" class="btn-secondary an-dd-cm">Copy (comma separated)</button></div>
-            <div class="an-muted" style="margin-bottom:4px;">${g.truncated ? `Showing the first ${g.ids.length} of ${g.total} case IDs.` : `${g.ids.length} case ID${g.ids.length === 1 ? '' : 's'}.`}</div>
-            <div style="max-height:160px; overflow:auto; font-family:monospace; font-size:12px; word-break:break-all;">${g.ids.map(escapeHtml).join(', ')}</div></div>`;
-        det.querySelector('.an-dd-nl').onclick = e => anDrillCopy(e.target, g.ids, '\n');
-        det.querySelector('.an-dd-cm').onclick = e => anDrillCopy(e.target, g.ids, ',');
-        box.appendChild(det);
+    let skipped = 0, shown = 0;
+    parts.forEach(p => {
+        if (!p.d.available) {
+            if (p.custom) { box.innerHTML += `<div class="an-muted">Case IDs are not available for this query (${escapeHtml(p.d.reason || 'unknown reason')}).</div>`; shown++; }
+            else skipped++;
+            return;
+        }
+        const wrap = document.createElement('div'); wrap.style.cssText = 'margin:6px 0;';
+        if (p.title) { const h = document.createElement('div'); h.className = 'an-muted'; h.style.cssText = 'font-weight:600; margin-top:6px;'; h.textContent = p.title; wrap.appendChild(h); }
+        let n = 0;
+        p.rows.forEach((row, i) => {
+            const g = p.d.rows[i]; if (!g) return;
+            const label = Object.values(row).map(v => v == null ? '' : String(v)).join(' · ');
+            const det = document.createElement('details'); det.style.cssText = 'margin:2px 0;';
+            det.innerHTML = `<summary style="cursor:pointer;">${escapeHtml(label)} <span class="an-muted">· ${g.total} case${g.total === 1 ? '' : 's'}</span></summary>
+                <div style="margin:6px 0 8px 14px;"><div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;"><button type="button" class="btn-secondary an-dd-nl">Copy (one per line)</button><button type="button" class="btn-secondary an-dd-cm">Copy (comma separated)</button></div>
+                <div class="an-muted" style="margin-bottom:4px;">${g.truncated ? `Showing the first ${g.ids.length} of ${g.total} case IDs.` : `${g.ids.length} case ID${g.ids.length === 1 ? '' : 's'}.`}</div>
+                <div style="max-height:160px; overflow:auto; font-family:monospace; font-size:12px; word-break:break-all;">${g.ids.map(escapeHtml).join(', ')}</div></div>`;
+            det.querySelector('.an-dd-nl').onclick = e => anDrillCopy(e.target, g.ids, '\n');
+            det.querySelector('.an-dd-cm').onclick = e => anDrillCopy(e.target, g.ids, ',');
+            wrap.appendChild(det); n++;
+        });
+        if (n) { box.appendChild(wrap); shown++; }
     });
-    if (box.children.length > 1) run.body.appendChild(box);
+    if (skipped) { const m = document.createElement('div'); m.className = 'an-muted'; m.style.marginTop = '6px'; m.textContent = `${skipped} table${skipped === 1 ? '' : 's'} in this result ${skipped === 1 ? 'has' : 'have'} no per-group case IDs (not a count by group).`; box.appendChild(m); }
+    if (shown || skipped) run.body.appendChild(box);
 }
 async function customRun() {
     const sql = document.getElementById('anCustomSql').value.trim();
