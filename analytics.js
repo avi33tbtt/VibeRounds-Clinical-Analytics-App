@@ -404,6 +404,10 @@ function register(app, { engine, pool, readPool, fail, scopeOf, methodInfo, askM
 
 module.exports = register;
 module.exports.checkQuery = checkQuery;
+module.exports.drilldownSql = drilldownSql;
+module.exports.drilldownMatch = drilldownMatch;
+module.exports.DD_CAP = DD_CAP;
+module.exports.DD_MAX_GROUPS = DD_MAX_GROUPS;
 module.exports.buildMessages = buildMessages;
 module.exports.parseReply = parseReply;
 module.exports.cleanQuestion = cleanQuestion;
@@ -2973,14 +2977,25 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
   }
 
   const clean = v => (typeof v === 'bigint' ? Number(v) : v instanceof Date ? v.toISOString().slice(0, 10) : v);
-  async function runSections(sections, ctx) {
+  async function runSections(sections, ctx, drilldown = false) {
     const out = [];
     for (const s of sections) {
       const q = new Q();
       const sql = s.sql(q, ctx);
       const r = await pool.query(sql, q.params);
       const rows = r.rows.map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, clean(v)])));
-      out.push({ name: s.name, title: s.title, columns: rows.length ? Object.keys(rows[0]) : (r.fields || []).map(f => f.name), rows });
+      const sec = { name: s.name, title: s.title, columns: rows.length ? Object.keys(rows[0]) : (r.fields || []).map(f => f.name), rows };
+      if (drilldown === true) {   // optional: companion query with the same grouping that also lists the patient ids behind each count; any failure just means "not available" for this section
+        const DD = customAnalytic, d = DD.drilldownSql(sql);
+        if (d.error) sec.drilldown = { available: false, reason: d.error };
+        else {
+          try {
+            const dr = (await pool.query(d.sql, q.params)).rows.slice(0, DD.DD_MAX_GROUPS);
+            sec.drilldown = { available: true, cap: DD.DD_CAP, rows: DD.drilldownMatch(rows, d, dr) };
+          } catch (e) { sec.drilldown = { available: false, reason: 'case ids not available for this section (' + String(e.message).slice(0, 120) + ')' }; }
+        }
+      }
+      out.push(sec);
     }
     return out;
   }
@@ -3003,7 +3018,7 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
     return out;
   }
 
-  async function run({ id, mode = 'v2', args = {}, ...scopeOpts }) {
+  async function run({ id, mode = 'v2', args = {}, drilldown = false, ...scopeOpts }) {
     const a = CATALOG.find(x => x.id === id);
     if (!a) throw httpErr(404, `Unknown analytic '${id}'`);
     if (!MODES.includes(mode)) throw httpErr(400, `Mode '${mode}' is not supported (use ${MODES.join(', ')})`);
@@ -3035,7 +3050,7 @@ function createEngine(pool, { sanitizeBatchId = s => String(s).replace(/[^a-zA-Z
       }
       useArgs = normalizeConcept(args, display, mode, learned);
     }
-    const sections = await runSections(a[FN[mode]](useArgs, ctx), ctx);
+    const sections = await runSections(a[FN[mode]](useArgs, ctx), ctx, drilldown);
     const scope = { patients: ctx.patients, cohort: ctx.cohort, population: ctx.population, batches: ctx.suffixes.map(s => s || '(legacy tables)'), asOf: ctx.asOf };
     if (ENRICHED.has(mode)) scope.enrich = { domains: ctx.enrich.domains, version: ctx.enrich.version, share: await enrichShare(ctx) };
     return { success: true, id, title: a.title, mode, methodInfo: METHOD_INFO[mode], scope, sections };
@@ -3213,7 +3228,7 @@ function register(app, pool, helpers = {}) {
   app.post('/api/analytics/catalog/run', async (req, res) => {
     try {
       const b = req.body || {};
-      res.json(await engine.run({ id: b.id, mode: b.mode, args: b.args || {}, ...scopeOf(b), enrich: b.enrich }));
+      res.json(await engine.run({ id: b.id, mode: b.mode, args: b.args || {}, ...scopeOf(b), enrich: b.enrich, drilldown: b.drilldown === true }));
     }
     catch (err) { fail(res, 'Analytics run', err); }
   });
@@ -3365,6 +3380,20 @@ async function modeDispatchSelftest() {
     const only = CATALOG.find(a => a.id === 'learned_terms');
     if (only) await assert.rejects(() => eng.run({ id: 'learned_terms', mode: 'v4' }), e => e.status === 400 && /no V4 version/.test(e.message));
     if (only) await assert.rejects(() => eng.run({ id: 'learned_terms', mode: 'v3' }), e => e.status === 400 && /no V3 version/.test(e.message));
+    // catalog drill-down: companion query per section; ids count equals the displayed count; off by default; ungroupable sections say so
+    const dd = { id: '__dd_probe', title: 'DD', category: 'test', description: '', params: [], v3: () => [
+      { name: 'g', title: 'g', sql: () => 'SELECT gender, count(*)::int AS n FROM p GROUP BY gender' }, { name: 'u', title: 'u', sql: () => 'SELECT 1 AS x' }] };
+    CATALOG.push(dd);
+    try {
+      const ddPool = { query: async sql => /information_schema/.test(sql) ? { rows: [{ table_name: 'fhir_patient_a' }] } : /FROM cohorts/.test(sql) ? { rows: [] }
+        : /__dd_ids/.test(sql) ? { rows: [{ gender: 'f', __dd_ids: ['1', '2', '3'], __dd_n: 3 }] } : /GROUP BY gender/.test(sql) ? { rows: [{ gender: 'f', n: 3 }] } : { rows: [{ n: 7, d: null, x: 1 }] } };
+      const e2 = createEngine(ddPool);
+      let r2 = await e2.run({ id: '__dd_probe', mode: 'v2', drilldown: true });
+      assert.strictEqual(r2.sections[0].drilldown.available, true);
+      assert.strictEqual(r2.sections[0].drilldown.rows[0].ids.length, r2.sections[0].rows[0].n, 'id count equals displayed count');
+      assert.strictEqual(r2.sections[1].drilldown.available, false);
+      r2 = await e2.run({ id: '__dd_probe', mode: 'v2' }); assert.strictEqual(r2.sections[0].drilldown, undefined, 'off by default');
+    } finally { CATALOG.splice(CATALOG.indexOf(dd), 1); }
   } finally { CATALOG.splice(CATALOG.indexOf(fake), 1); }
   console.log('analytics.js mode-dispatch self-test: all checks passed');
 }
