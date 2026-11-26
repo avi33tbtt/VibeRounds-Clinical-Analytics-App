@@ -438,7 +438,7 @@ app.post('/api/init-schema', async (req, res) => {
 
 // ---- Saved sessions (Chunk 2A) ----
 // Each person sees and changes only their own rows (owner_id = signed-in user). Sign-in is enforced by the global gate,
-// so req.user is always set here. The list endpoint returns metadata only; the payload comes from GET /:id.
+// so req.user is always set here. The list endpoint returns metadata and a few summary fields only; the payload comes from GET /:id.
 const SESSION_MAX_BYTES = 100 * 1024 * 1024;   // per-session payload cap (the global parser limit is much higher, for FHIR imports)
 function sessionInput(body) {
   const name = String((body && body.name) || '').trim().slice(0, 200);
@@ -453,7 +453,7 @@ const sessionId = req => (/^\d{1,9}$/.test(req.params.id) ? parseInt(req.params.
 
 app.get('/api/sessions', async (req, res) => {
   try {
-    const r = await pool.query('SELECT id, name, created_at, updated_at FROM saved_sessions WHERE owner_id = $1 ORDER BY updated_at DESC', [req.user.id]);
+    const r = await pool.query("SELECT id, name, created_at, updated_at, payload->>'run_count' AS run_count, payload->>'step_count' AS step_count, payload->>'cohort' AS cohort, payload->>'population' AS population FROM saved_sessions WHERE owner_id = $1 ORDER BY updated_at DESC", [req.user.id]);
     res.json({ success: true, sessions: r.rows });
   } catch (err) {
     console.error('Error listing sessions:', err);

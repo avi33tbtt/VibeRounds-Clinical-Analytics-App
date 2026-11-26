@@ -34,6 +34,13 @@ Edited:
 Note: "Open saved session" and Delete still read IndexedDB until 2C, so sessions saved from 2B on will not appear in the Open panel until 2C is done.
 Tests: all inline scripts in index.html pass a syntax check; re-running the patch is refused. Not tested in a browser.
 
+## 2C: open, list, delete from the database; IndexedDB removed
+Edited:
+- index.html: the Open saved session panel lists from GET /api/sessions, opens through new anSessionOpenById() (GET /api/sessions/:id, then the existing anSessionOpen), and deletes with DELETE /api/sessions/:id. Removed all IndexedDB code (ANS, ansDb, ansTx, ansAll). Button tooltips and panel text now say the database.
+- server.js: GET /api/sessions also returns run_count, step_count, cohort and population (read from the payload) so the list rows look as before.
+Not done: the optional "import my old browser sessions" button (sessions saved in the old IndexedDB are not migrated).
+Tests: node --check server.js; all inline scripts in index.html pass a syntax check; routes re-checked with the in-memory Postgres emulator. Not tested in a browser or real PostgreSQL.
+
 New database table: saved_sessions (created automatically at startup)
 New environment variables: none
 Deleted files: none (see Chunk 1 above)

@@ -3552,8 +3552,8 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
                     <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Save the whole section as a session in this browser and open it again later, or download it as JSON and upload that file to view it again.</div>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
-                        <button class="btn-primary" id="anSessSave" onclick="anSessionSave()" title="Saves every run below, the research assistant's steps and your choices as a named session in this browser.">Save session</button>
-                        <button class="btn-secondary" id="anSessOpen" onclick="anSessionTogglePanel()" title="Lists the sessions saved in this browser so you can open one.">Open saved session</button>
+                        <button class="btn-primary" id="anSessSave" onclick="anSessionSave()" title="Saves every run below, the research assistant's steps and your choices as a named session in the database.">Save session</button>
+                        <button class="btn-secondary" id="anSessOpen" onclick="anSessionTogglePanel()" title="Lists your saved sessions so you can open one.">Open saved session</button>
                         <button class="btn-secondary" onclick="anDownloadOutput()">Download output JSON</button>
                         <button class="btn-secondary" onclick="document.getElementById('anUploadInput').click()">Upload output JSON</button>
                         <input type="file" id="anUploadInput" accept=".json,application/json" style="display:none" onchange="anUploadOutput(this)">
@@ -7820,29 +7820,6 @@ function clearAnalyticsHistory() {
 // A session is the whole Output section (every run) plus the research assistant's step cards and your choices, stored under a name in this
 // database (saved_sessions table, via /api/sessions; only the signed-in owner can see it). Only what is already in the
 // Output section is kept: aggregated tables and charts, never patient ids.
-const ANS = { db: null, DB: 'vibe-rounds-sessions', STORE: 'sessions' };
-function ansDb() {
-    return new Promise((resolve, reject) => {
-        if (ANS.db) return resolve(ANS.db);
-        if (!window.indexedDB) return reject(new Error('This browser does not allow saved sessions (IndexedDB is not available, for example in a private window).'));
-        let q; try { q = indexedDB.open(ANS.DB, 1); } catch (e) { return reject(new Error('Browser storage is blocked: ' + e.message)); }
-        q.onupgradeneeded = () => { if (!q.result.objectStoreNames.contains(ANS.STORE)) q.result.createObjectStore(ANS.STORE, { keyPath: 'id' }); };
-        q.onsuccess = () => { ANS.db = q.result; ANS.db.onclose = () => { ANS.db = null; }; resolve(ANS.db); };
-        q.onerror = () => reject(q.error || new Error('Could not open browser storage.'));
-        q.onblocked = () => reject(new Error('Browser storage is busy: close other tabs of this app and try again.'));
-    });
-}
-async function ansTx(mode, fn) {
-    const db = await ansDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(ANS.STORE, mode), store = tx.objectStore(ANS.STORE);
-        let out; try { out = fn(store); } catch (e) { return reject(e); }
-        tx.oncomplete = () => resolve(out && 'result' in out ? out.result : undefined);
-        tx.onerror = () => reject(tx.error || new Error('Browser storage failed.'));
-        tx.onabort = () => reject(tx.error || new Error('Browser storage could not save this (it may be full).'));
-    });
-}
-const ansAll = () => ansTx('readonly', s => s.getAll()).then(l => (l || []).sort((a, b) => String(b.saved_at).localeCompare(String(a.saved_at))));
 async function ansApi(method, url, body) {
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
     const text = await res.text();
@@ -7884,26 +7861,32 @@ async function anSessionRenderPanel() {
     const p = document.getElementById('anSessPanel'), e = escapeHtml;
     p.innerHTML = '<span class="an-muted">Loading saved sessions...</span>';
     try {
-        const list = await ansAll();
+        const list = (await ansApi('GET', '/api/sessions')).sessions;
         const head = '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;"><strong>Saved sessions</strong><button type="button" class="btn-secondary" data-a="close">Close</button></div>';
         if (!list.length) { p.innerHTML = head + '<div class="an-muted">No saved sessions yet. Use <em>Save session</em> to keep the current Output.</div>'; }
         else {
-            p.innerHTML = head + '<div class="an-muted" style="margin-bottom:6px;">Kept in this browser only. Opening a session replaces what is in the Output section now.</div>' +
+            p.innerHTML = head + '<div class="an-muted" style="margin-bottom:6px;">Saved in the database under your sign-in. Opening a session replaces what is in the Output section now.</div>' +
                 list.map(s => `<div data-id="${e(s.id)}" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--line, #e5e5e5);">
-                    <div><strong>${e(s.name)}</strong><div class="an-muted">${new Date(s.saved_at).toLocaleString()} · ${Number(s.run_count) || 0} run${s.run_count === 1 ? '' : 's'}${s.step_count ? ` · ${Number(s.step_count)} assistant step${s.step_count === 1 ? '' : 's'}` : ''}${s.cohort ? ` · Cohort: ${e(s.cohort)}` : ''}${s.population ? ` · ${e(s.population)}` : ''}</div></div>
+                    <div><strong>${e(s.name)}</strong><div class="an-muted">${new Date(s.updated_at).toLocaleString()} · ${Number(s.run_count) || 0} run${Number(s.run_count) === 1 ? '' : 's'}${s.step_count ? ` · ${Number(s.step_count)} assistant step${Number(s.step_count) === 1 ? '' : 's'}` : ''}${s.cohort ? ` · Cohort: ${e(s.cohort)}` : ''}${s.population ? ` · ${e(s.population)}` : ''}</div></div>
                     <div style="display:flex; gap:8px;"><button type="button" class="btn-primary" data-a="open">Open</button><button type="button" class="btn-secondary" data-a="delete">Delete</button></div></div>`).join('');
         }
         p.querySelector('[data-a=close]').onclick = () => { p.hidden = true; };
         p.querySelectorAll('[data-id]').forEach(row => {
-            const id = row.dataset.id, s = list.find(x => x.id === id);
-            row.querySelector('[data-a=open]').onclick = () => anSessionOpen(s);
+            const id = row.dataset.id, s = list.find(x => String(x.id) === id);
+            row.querySelector('[data-a=open]').onclick = () => anSessionOpenById(s);
             row.querySelector('[data-a=delete]').onclick = async () => {
                 if (!confirm(`Delete the saved session "${s.name}"? This cannot be undone.`)) return;
-                try { await ansTx('readwrite', st => st.delete(id)); ansStatus(`Deleted session "${s.name}".`, 'success'); anSessionRenderPanel(); }
+                try { await ansApi('DELETE', '/api/sessions/' + encodeURIComponent(id)); ansStatus(`Deleted session "${s.name}".`, 'success'); anSessionRenderPanel(); }
                 catch (err) { ansStatus('Could not delete the session: ' + err.message, 'error'); }
             };
         });
     } catch (err) { p.innerHTML = `<span class="an-muted" style="color:#c62828;">Could not read saved sessions: ${e(err.message)}</span>`; }
+}
+async function anSessionOpenById(meta) {
+    try {
+        const row = (await ansApi('GET', '/api/sessions/' + encodeURIComponent(meta.id))).session;
+        anSessionOpen(Object.assign({}, row.payload, { id: row.id, name: row.name }));
+    } catch (e) { ansStatus('Could not open the session: ' + e.message, 'error'); }
 }
 function anSessionOpen(s) {
     if (!s || !Array.isArray(s.runs)) { ansStatus('That saved session is damaged and cannot be opened.', 'error'); return; }
