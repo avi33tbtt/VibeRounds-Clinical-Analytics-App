@@ -241,24 +241,42 @@ function checkPlan(items, mode) {
 
 // ---- examples (served to the Examples tab; every query is checked against its own mode in the self-test) ------------
 const DM = "'44054006'", HTN = "'38341003'";
+// Three ready-to-run questions for one disease (age band and sex, comorbidities, new cases per year). code = SNOMED; others = [[code, label], ...]
+const diseaseSet = (key, disease, code, others) => {
+  const c = `'${code}'`, vals = others.map(([cd, l]) => `('${cd}', '${l}')`).join(', ');
+  return [
+    { id: `ex_${key}_age_sex`, disease, group: 'Disease questions', mode: 'v2', title: `${disease} by age band and sex`,
+      question: `Show patients with ${disease.toLowerCase()} by age band and gender.`,
+      shows: 'Uses the SNOMED code and the birth date for age (no event dates).',
+      sql: `WITH d AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${c}), a AS (SELECT gender, extract(year FROM age((SELECT d FROM ref), birth_date))::int AS yrs FROM p JOIN d USING (patient_id)) SELECT CASE WHEN yrs < 40 THEN 'under 40' WHEN yrs < 60 THEN '40-59' WHEN yrs < 75 THEN '60-74' ELSE '75+' END AS age_band, gender, count(*)::int AS patients FROM a GROUP BY 1, 2 ORDER BY 1, 2` },
+    { id: `ex_${key}_comorb`, disease, group: 'Disease questions', mode: 'v2', title: `Comorbidities of ${disease.toLowerCase()}`,
+      question: `Among patients with ${disease.toLowerCase()}, what share also has ${others.map(o => o[1].toLowerCase()).join(', ')}?`,
+      shows: 'A denominator (the disease group) and a percentage per other condition. Replace the code list with your own conditions.',
+      sql: `WITH d AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${c}), tot AS (SELECT count(*) AS n FROM d) SELECT c.label AS condition, count(DISTINCT dx.patient_id)::int AS patients, round(100.0 * count(DISTINCT dx.patient_id) / NULLIF((SELECT n FROM tot), 0), 1) AS pct_of_group FROM dx JOIN d USING (patient_id) JOIN (VALUES ${vals}) AS c(cd, label) ON dx.code = c.cd GROUP BY 1 ORDER BY 2 DESC` },
+    { id: `ex_${key}_new_year`, disease, group: 'Trends over time', mode: 'v4', title: `New ${disease.toLowerCase()} diagnoses per year`,
+      question: `How many patients were first diagnosed with ${disease.toLowerCase()} in each year?`,
+      shows: 'First diagnosis date per patient, then counted by year.',
+      sql: `SELECT extract(year FROM first_dx)::int AS year, count(*)::int AS new_patients FROM (SELECT patient_id, min(onset_date) AS first_dx FROM dx WHERE code = ${c} AND onset_date IS NOT NULL GROUP BY 1) f GROUP BY 1 ORDER BY 1` }
+  ];
+};
 const EXAMPLES = [
-  { id: 'ex_dm_gender_text', group: 'Counting and who', mode: 'v1', title: 'Patients mentioning diabetes, by gender',
+  { id: 'ex_dm_gender_text', disease: 'Type 2 diabetes', group: 'Counting and who', mode: 'v1', title: 'Patients mentioning diabetes, by gender',
     question: 'How many patients mention diabetes in their records, by gender?',
     shows: 'Text matching only: finds the word in the diagnosis text, so it also catches uncoded mentions. Swap "diabetes" for your own condition.',
     sql: "SELECT gender, count(DISTINCT patient_id)::int AS patients FROM p JOIN dx USING (patient_id) WHERE j->'code'->'coding'->0->>'display' ILIKE '%diabetes%' GROUP BY 1 ORDER BY 2 DESC" },
-  { id: 'ex_dm_age_sex', group: 'Counting and who', mode: 'v2', title: 'Diabetes by age band and sex',
+  { id: 'ex_dm_age_sex', disease: 'Type 2 diabetes', group: 'Counting and who', mode: 'v2', title: 'Diabetes by age band and sex',
     question: 'Show patients with type 2 diabetes by age band and gender.',
     shows: 'Uses the SNOMED code and the birth date for age (no event dates).',
     sql: `WITH dm AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${DM}), a AS (SELECT gender, extract(year FROM age((SELECT d FROM ref), birth_date))::int AS yrs FROM p JOIN dm USING (patient_id)) SELECT CASE WHEN yrs < 40 THEN 'under 40' WHEN yrs < 60 THEN '40-59' WHEN yrs < 75 THEN '60-74' ELSE '75+' END AS age_band, gender, count(*)::int AS patients FROM a GROUP BY 1, 2 ORDER BY 1, 2` },
-  { id: 'ex_htn_drugs_text', group: 'Medicines', mode: 'v1', title: 'Drugs among patients with hypertension',
+  { id: 'ex_htn_drugs_text', disease: 'Hypertension', group: 'Medicines', mode: 'v1', title: 'Drugs among patients with hypertension',
     question: 'Which drugs are most common among patients whose records mention hypertension?',
     shows: 'Joins two kinds of record (diagnoses and medications) through the patient, using display text on both sides.',
     sql: "WITH h AS (SELECT DISTINCT patient_id FROM dx WHERE j->'code'->'coding'->0->>'display' ILIKE '%hypertens%') SELECT rx.j->'medicationCodeableConcept'->'coding'->0->>'display' AS drug, count(DISTINCT rx.patient_id)::int AS patients FROM rx JOIN h USING (patient_id) GROUP BY 1 ORDER BY 2 DESC LIMIT 10" },
-  { id: 'ex_dm_comorb', group: 'Disease questions', mode: 'v2', title: 'Comorbidities of diabetes',
+  { id: 'ex_dm_comorb', disease: 'Type 2 diabetes', group: 'Disease questions', mode: 'v2', title: 'Comorbidities of diabetes',
     question: 'Among patients with diabetes, what share also has hypertension, kidney disease, heart failure or obesity?',
     shows: 'A denominator (the diabetes group) and a percentage per other condition. Replace the code list with your own conditions.',
     sql: `WITH dm AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${DM}), tot AS (SELECT count(*) AS n FROM dm) SELECT c.label AS condition, count(DISTINCT dx.patient_id)::int AS patients, round(100.0 * count(DISTINCT dx.patient_id) / NULLIF((SELECT n FROM tot), 0), 1) AS pct_of_diabetes FROM dx JOIN dm USING (patient_id) JOIN (VALUES ('38341003', 'Hypertension'), ('709044004', 'Chronic kidney disease'), ('84114007', 'Heart failure'), ('414916001', 'Obesity')) AS c(cd, label) ON dx.code = c.cd GROUP BY 1 ORDER BY 2 DESC` },
-  { id: 'ex_dm_a1c_gender', group: 'Disease questions', mode: 'v2', title: 'HbA1c in diabetes, by gender',
+  { id: 'ex_dm_a1c_gender', disease: 'Type 2 diabetes', group: 'Disease questions', mode: 'v2', title: 'HbA1c in diabetes, by gender',
     question: 'For patients with diabetes, what is the average HbA1c per patient and the share with an average of 8 or more, by gender?',
     shows: 'Lab values (LOINC 4548-4) averaged per patient first, then summarised by group.',
     sql: `WITH dm AS (SELECT DISTINCT patient_id FROM dx WHERE code = ${DM}), per AS (SELECT patient_id, avg(value) AS mean_a1c FROM ob WHERE code = '4548-4' AND value IS NOT NULL GROUP BY 1) SELECT gender, count(*)::int AS patients, round(avg(mean_a1c), 1) AS avg_hba1c, round(100.0 * count(*) FILTER (WHERE mean_a1c >= 8) / NULLIF(count(*), 0), 1) AS pct_avg_8_plus FROM p JOIN dm USING (patient_id) JOIN per USING (patient_id) GROUP BY 1 ORDER BY 1` },
@@ -274,22 +292,25 @@ const EXAMPLES = [
     question: 'What are the most common allergy substances and how severe are they?',
     shows: 'A single-table summary; no joins needed.',
     sql: 'SELECT substance, severity, count(DISTINCT patient_id)::int AS patients FROM al GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 15' },
-  { id: 'ex_dm_new_year', group: 'Trends over time', mode: 'v4', title: 'New diabetes diagnoses per year',
+  { id: 'ex_dm_new_year', disease: 'Type 2 diabetes', group: 'Trends over time', mode: 'v4', title: 'New diabetes diagnoses per year',
     question: 'How many patients were first diagnosed with diabetes in each year?',
     shows: 'First diagnosis date per patient, then counted by year.',
     sql: `SELECT extract(year FROM first_dx)::int AS year, count(*)::int AS new_patients FROM (SELECT patient_id, min(onset_date) AS first_dx FROM dx WHERE code = ${DM} AND onset_date IS NOT NULL GROUP BY 1) f GROUP BY 1 ORDER BY 1` },
-  { id: 'ex_a1c_control', group: 'Disease questions', mode: 'v4', title: 'HbA1c control in the last 12 months',
+  { id: 'ex_a1c_control', disease: 'Type 2 diabetes', group: 'Disease questions', mode: 'v4', title: 'HbA1c control in the last 12 months',
     question: 'Among patients with diabetes, what share had their latest HbA1c in the last 12 months below 7, and what share was 9 or more?',
     shows: 'Latest value per patient inside a time window; patients with no recent test are left out (a care gap you could count separately).',
     sql: `WITH latest AS (SELECT DISTINCT ON (ob.patient_id) ob.patient_id, ob.value FROM ob JOIN (SELECT DISTINCT patient_id FROM dx WHERE code = ${DM}) dm USING (patient_id) WHERE ob.code = '4548-4' AND ob.value IS NOT NULL AND ob.effective_date::date > (SELECT d FROM ref) - interval '12 months' AND ob.effective_date::date <= (SELECT d FROM ref) ORDER BY ob.patient_id, ob.effective_date DESC) SELECT count(*)::int AS tested_patients, round(100.0 * count(*) FILTER (WHERE value < 7) / NULLIF(count(*), 0), 1) AS pct_below_7, round(100.0 * count(*) FILTER (WHERE value >= 9) / NULLIF(count(*), 0), 1) AS pct_9_plus FROM latest` },
-  { id: 'ex_time_to_drug', group: 'Medicines', mode: 'v4', title: 'Days from diagnosis to first metformin',
+  { id: 'ex_time_to_drug', disease: 'Type 2 diabetes', group: 'Medicines', mode: 'v4', title: 'Days from diagnosis to first metformin',
     question: 'How many days pass between a diabetes diagnosis and the first metformin prescription?',
     shows: 'Time-to-event: two first dates per patient, compared.',
     sql: `WITH d1 AS (SELECT patient_id, min(onset_date)::date AS d0 FROM dx WHERE code = ${DM} AND onset_date IS NOT NULL GROUP BY 1), m1 AS (SELECT patient_id, min(prescribed_date)::date AS m0 FROM rx WHERE code = '861007' AND prescribed_date IS NOT NULL GROUP BY 1) SELECT count(*)::int AS patients, round((percentile_cont(0.5) WITHIN GROUP (ORDER BY (m0 - d0)))::numeric, 0) AS median_days FROM d1 JOIN m1 USING (patient_id) WHERE m0 >= d0` },
   { id: 'ex_ed_month', group: 'Trends over time', mode: 'v4', title: 'Emergency visits per month',
     question: 'How many emergency visits and patients per month over the last 24 months?',
     shows: 'Department-style activity trend using the encounter class.',
-    sql: "SELECT date_trunc('month', start_date)::date AS month, count(*)::int AS visits, count(DISTINCT patient_id)::int AS patients FROM en WHERE cls = 'EMER' AND start_date IS NOT NULL AND start_date::date > (SELECT d FROM ref) - interval '24 months' GROUP BY 1 ORDER BY 1" }
+    sql: "SELECT date_trunc('month', start_date)::date AS month, count(*)::int AS visits, count(DISTINCT patient_id)::int AS patients FROM en WHERE cls = 'EMER' AND start_date IS NOT NULL AND start_date::date > (SELECT d FROM ref) - interval '24 months' GROUP BY 1 ORDER BY 1" },
+  // Chunk 5B: hypertension, heart failure (5C adds asthma, COPD, chronic kidney disease)
+  ...diseaseSet('htn', 'Hypertension', '38341003', [['44054006', 'Diabetes'], ['709044004', 'Chronic kidney disease'], ['84114007', 'Heart failure'], ['55822004', 'Hyperlipidemia'], ['414916001', 'Obesity']]),
+  ...diseaseSet('hf', 'Heart failure', '84114007', [['38341003', 'Hypertension'], ['53741008', 'Coronary artery disease'], ['49436004', 'Atrial fibrillation'], ['709044004', 'Chronic kidney disease'], ['44054006', 'Diabetes']]),
 ];
 const DISEASE_IDEAS = ['Type 2 diabetes', 'Hypertension', 'Heart failure', 'Chronic kidney disease', 'COPD', 'Asthma', 'Depression', 'Atrial fibrillation'];
 const DEPARTMENT_IDEAS = ['Cardiology', 'Endocrinology', 'Nephrology', 'Pulmonology', 'Emergency medicine', 'Psychiatry', 'Oncology', 'Primary care'];
@@ -545,6 +566,7 @@ module.exports.selftest = () => {
   for (const ex of EXAMPLES) assert.ok(checkQuery(ex.sql, ex.mode).ok, `example ${ex.id} must pass in ${ex.mode}: ${JSON.stringify(checkQuery(ex.sql, ex.mode))}`);
   assert.ok(new Set(EXAMPLES.map(e => e.id)).size === EXAMPLES.length && ['v1', 'v2', 'v4'].every(m => EXAMPLES.some(e => e.mode === m)));
   assert.ok(EXAMPLES.some(e => e.group === 'Disease questions') && EXAMPLES.some(e => e.group === 'Department questions'));
+  assert.ok(['Type 2 diabetes', 'Hypertension', 'Heart failure'].every(d => EXAMPLES.filter(e => e.disease === d && e.group === 'Disease questions').length >= 2 && EXAMPLES.some(e => e.disease === d && e.mode === 'v4')), 'each 5B disease has age/sex, comorbidity and new-case examples');
   // disease / department plans
   assert.strictEqual(cleanSubject('  Type 2   diabetes '), 'Type 2 diabetes');
   assert.throws(() => cleanSubject('x'), e => e.status === 400); assert.throws(() => cleanSubject("a; DROP TABLE x"), e => e.status === 400); assert.throws(() => cleanSubject('y'.repeat(81)), e => e.status === 400);

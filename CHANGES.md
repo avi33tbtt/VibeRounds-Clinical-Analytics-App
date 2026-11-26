@@ -127,3 +127,7 @@ Edited:
 Not changed: server and database (the payload is JSONB; `saved_sessions` as in Chunk 2). Output JSON downloads do not include the chat.
 Tests: inline scripts pass a syntax check; jsdom round trip with a fake server (chat in both modes, snapshot as JSON, reset, restore, buttons, follow-up carries restored context, malformed and hostile payloads ignored or clipped, text never parsed as HTML). Not tested in a real browser or against a real database. Please try: chat in both modes, Save session, reload the page, Open the session.
 New database tables: none. New environment variables: none. Deleted files: none.
+
+# Chunk 5B (runnable examples: diabetes, hypertension, heart failure)
+- analytics.js: `disease` field on examples; helper `diseaseSet()` generating age/sex (V2), comorbidity (V2) and new-cases-per-year (V4) queries; added Hypertension and Heart failure sets; existing diabetes and hypertension examples tagged; one selftest assertion.
+- No new database tables, environment variables or deleted files.
