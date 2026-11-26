@@ -7785,7 +7785,7 @@ function anImportRuns(runsData, tag) {
         if (!r || !Array.isArray(r.items)) { bad++; return; }
         const run = anStartRun(String(r.label || 'Run'), { imported: true, tag, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
             cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-        r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'pts', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+        r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'pts', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') { run.results.push(it.d); try { anDrillAttach(run, it.d); } catch (e) { /* case IDs are an extra: never block opening a run */ } } } });
         if (Number(run.n) > maxN) maxN = Number(run.n);
         n++;
     });
@@ -7833,7 +7833,7 @@ function ansStatus(text, cls) { const st = document.getElementById('anUploadStat
 function ansSnapshot(name, id) {
     const steps = CAT.research.steps.map(s => { const c = Object.assign({}, s); delete c.el; c.at = (s.at instanceof Date ? s.at : new Date(s.at)).toISOString(); return c; });
     const data = JSON.parse(JSON.stringify({ runs: anSerializeRuns(), steps, decisions: CAT.research.decisions }));   // plain copy: later changes to the page cannot alter it
-    return Object.assign({ id, name, saved_at: new Date().toISOString(), cohort: anActiveCohortName(), population: anPopulationLabel(), run_count: data.runs.length, step_count: steps.length }, data);
+    return Object.assign({ id, name, saved_at: new Date().toISOString(), cohort: anActiveCohortName(), population: anPopulationLabel(), run_count: data.runs.length, step_count: steps.length, drilldown: { on: ANDD.on === true } }, data);   // the case IDs themselves are already inside the saved run items
 }
 async function anSessionSave() {
     if (!CAT.history.length) { ansStatus('There is nothing to save yet: run an analytic first.', 'error'); return; }
@@ -7895,6 +7895,7 @@ function anSessionOpen(s) {
     if (CAT.history.length && !confirm(`Opening "${s.name}" replaces the ${CAT.history.length} run${CAT.history.length === 1 ? '' : 's'} now in the Output section. Save the current output first if you want to keep it. Continue?`)) return;
     try {
         anResetOutput();
+        ANDD.on = !!(s.drilldown && s.drilldown.on); { const t = document.getElementById('anDrillToggle'); if (t) t.checked = ANDD.on; }   // sessions saved before 3D have no drilldown field: toggle off
         const { n, bad } = anImportRuns(JSON.parse(JSON.stringify(s.runs)), 'saved');
         CAT.research.decisions = Array.isArray(s.decisions) ? JSON.parse(JSON.stringify(s.decisions)) : [];
         (Array.isArray(s.steps) ? s.steps : []).forEach(st => {

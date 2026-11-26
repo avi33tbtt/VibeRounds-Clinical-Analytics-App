@@ -72,3 +72,13 @@ Result (mock-pool audit of all 38 catalog analytics, 250 sections): 191 sections
 Left without case IDs on purpose (they are not counts of patients per group): 48 V4/V5 statistical tables (rates, curves, rankings, ratios), 8 summary tables with no FROM-level grouping, and 3 record-level coverage tables in Data quality (counts of records, not patients).
 Tests: node analytics.js --selftest, knowledge, evidence, security selftests pass. Not run against real PostgreSQL or in a browser.
 New database tables: none. New environment variables: none. Deleted files: none.
+
+# Chunk 3D (keep drill-down state in sessions)
+
+Edited:
+- index.html:
+  - A saved session now records the Drill-down toggle (`payload.drilldown.on`). Opening a session sets the toggle (and its checkbox) back; sessions saved before 3D have no such field and open with it off.
+  - The case IDs themselves were already stored inside each saved run (the run result carries them), so nothing extra is fetched or stored for them. When a saved session or an uploaded output file is opened, the "Drill-down: case IDs by group" box (expandable groups, Copy buttons) is now drawn again for every result that has IDs.
+Not changed: no server or database change (the payload is JSONB). Output JSON downloads do not store the toggle; their case IDs still show when the file is uploaded.
+Tests: all 19 inline scripts in index.html pass a syntax check; the import path was checked with a small harness (re-attach called only for results). Not tested in a browser. Please try: turn drill-down on, run a custom query and one catalog analytic, Save session, clear the page, Open the session: the toggle is on and the case ID lists are back.
+New database tables: none. New environment variables: none. Deleted files: none.
