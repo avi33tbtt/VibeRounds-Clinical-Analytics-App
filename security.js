@@ -665,7 +665,7 @@ const RULES = [
   ['POST',   /^\/api\/research\/run-step$/, 'research.step', 'analytics', { capture: 'research' }],  // one analytic of an AI study plan
   ['POST',   /^\/api\/research\/(plan)$/, 'ai.request', 'external'],                         // cohort aggregates (codes and counts) go to an external model
   ['POST',   /^\/api\/(?:ai|pico)\/([a-z-]+)$/, 'ai.request', 'external'],          // text / statistics sent to an external model
-  ['POST',   /^\/api\/analytics\/custom\/(generate)$/, 'ai.request', 'external'],     // the question text is sent to an external model
+  ['POST',   /^\/api\/analytics\/custom\/(generate|chat)$/, 'ai.request', 'external'],     // the question text is sent to an external model
   ['GET',    /^\/api\/explorer\/patients$/, 'phi.list', 'phi', { query: true }],
   ['GET',    /^\/api\/explorer\/patient$/, 'phi.view', 'phi', { query: true }],
   ['GET',    /^\/api\/kg\/cohort$/, 'phi.cohort_graph', 'phi', { query: true }],

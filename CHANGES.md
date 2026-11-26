@@ -82,3 +82,18 @@ Edited:
 Not changed: no server or database change (the payload is JSONB). Output JSON downloads do not store the toggle; their case IDs still show when the file is uploaded.
 Tests: all 19 inline scripts in index.html pass a syntax check; the import path was checked with a small harness (re-attach called only for results). Not tested in a browser. Please try: turn drill-down on, run a custom query and one catalog analytic, Save session, clear the page, Open the session: the toggle is on and the case ID lists are back.
 New database tables: none. New environment variables: none. Deleted files: none.
+
+# Chunk 4A (custom analytics chat endpoint)
+
+New route: `POST /api/analytics/custom/chat  { messages: [{ role: 'user' | 'assistant', content }], mode, intent: 'query' | 'plan' }`
+- Uses the same model settings and key as generate/plan (`getConfig`, `askModel`); the key stays on the server. The server keeps no chat: the client sends the whole conversation each time (max 20 messages, 600 characters per user message, 12,000 in all; the last message must be from the user).
+- `intent: 'query'` returns the same `{ title, explanation, sql, model }` as `/generate`, using the conversation as context. The query is checked exactly like a free-hand query, with one automatic repair, else HTTP 422.
+- `intent: 'plan'` returns `{ reply, proposal: { title, explanation, sql } | null, note }`. A proposed query is only passed on if it passes the same checks (one repair); otherwise it is dropped, `proposal` is null and `note` says why, and the reply is still returned.
+- The model is told the views (p, dx, ob, rx, pr, en, al, im, ref) with their columns, the rules of the chosen mode, and (V2/V4) the known codes. User turns are passed to the model as quoted data.
+Edited:
+- analytics.js: system prompt split into `querySystem(mode, format)` (generate unchanged); new `cleanChat`, `buildChatMessages`, `parsePlanReply`; the new route; selftests (validation, both intents, repair, dropped proposal, bad input never reaches the model).
+- security.js: the chat route is audit-logged as `ai.request` (external), like generate.
+Not changed: index.html (the chat screen is 4B), database, environment variables.
+Tests: node analytics.js --selftest and node security.js --selftest pass. Not run against a real model or server. Try with curl once signed in, for example:
+  curl -b cookies.txt -H 'content-type: application/json' -d '{"mode":"v1","intent":"plan","messages":[{"role":"user","content":"What can I ask about asthma?"}]}' http://localhost:PORT/api/analytics/custom/chat
+Note: /custom/plan is not in the ai.request audit rule (only generate was); worth adding later.
