@@ -131,3 +131,7 @@ New database tables: none. New environment variables: none. Deleted files: none.
 # Chunk 5B (runnable examples: diabetes, hypertension, heart failure)
 - analytics.js: `disease` field on examples; helper `diseaseSet()` generating age/sex (V2), comorbidity (V2) and new-cases-per-year (V4) queries; added Hypertension and Heart failure sets; existing diabetes and hypertension examples tagged; one selftest assertion.
 - No new database tables, environment variables or deleted files.
+
+# Chunk 5C (runnable examples: asthma, COPD, chronic kidney disease)
+- analytics.js: three more diseaseSet() sets (9 queries); selftest assertion covers all six diseases.
+- No new tables, environment variables or deleted files.

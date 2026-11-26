@@ -311,6 +311,10 @@ const EXAMPLES = [
   // Chunk 5B: hypertension, heart failure (5C adds asthma, COPD, chronic kidney disease)
   ...diseaseSet('htn', 'Hypertension', '38341003', [['44054006', 'Diabetes'], ['709044004', 'Chronic kidney disease'], ['84114007', 'Heart failure'], ['55822004', 'Hyperlipidemia'], ['414916001', 'Obesity']]),
   ...diseaseSet('hf', 'Heart failure', '84114007', [['38341003', 'Hypertension'], ['53741008', 'Coronary artery disease'], ['49436004', 'Atrial fibrillation'], ['709044004', 'Chronic kidney disease'], ['44054006', 'Diabetes']]),
+  // Chunk 5C: asthma, COPD, chronic kidney disease
+  ...diseaseSet('asthma', 'Asthma', '195967001', [['13645005', 'COPD'], ['414916001', 'Obesity'], ['38341003', 'Hypertension'], ['35489007', 'Depression']]),
+  ...diseaseSet('copd', 'COPD', '13645005', [['195967001', 'Asthma'], ['84114007', 'Heart failure'], ['49436004', 'Atrial fibrillation'], ['233604007', 'Pneumonia'], ['38341003', 'Hypertension']]),
+  ...diseaseSet('ckd', 'Chronic kidney disease', '709044004', [['44054006', 'Diabetes'], ['38341003', 'Hypertension'], ['84114007', 'Heart failure'], ['271737000', 'Anemia'], ['55822004', 'Hyperlipidemia']]),
 ];
 const DISEASE_IDEAS = ['Type 2 diabetes', 'Hypertension', 'Heart failure', 'Chronic kidney disease', 'COPD', 'Asthma', 'Depression', 'Atrial fibrillation'];
 const DEPARTMENT_IDEAS = ['Cardiology', 'Endocrinology', 'Nephrology', 'Pulmonology', 'Emergency medicine', 'Psychiatry', 'Oncology', 'Primary care'];
@@ -566,7 +570,7 @@ module.exports.selftest = () => {
   for (const ex of EXAMPLES) assert.ok(checkQuery(ex.sql, ex.mode).ok, `example ${ex.id} must pass in ${ex.mode}: ${JSON.stringify(checkQuery(ex.sql, ex.mode))}`);
   assert.ok(new Set(EXAMPLES.map(e => e.id)).size === EXAMPLES.length && ['v1', 'v2', 'v4'].every(m => EXAMPLES.some(e => e.mode === m)));
   assert.ok(EXAMPLES.some(e => e.group === 'Disease questions') && EXAMPLES.some(e => e.group === 'Department questions'));
-  assert.ok(['Type 2 diabetes', 'Hypertension', 'Heart failure'].every(d => EXAMPLES.filter(e => e.disease === d && e.group === 'Disease questions').length >= 2 && EXAMPLES.some(e => e.disease === d && e.mode === 'v4')), 'each 5B disease has age/sex, comorbidity and new-case examples');
+  assert.ok(['Type 2 diabetes', 'Hypertension', 'Heart failure', 'Asthma', 'COPD', 'Chronic kidney disease'].every(d => EXAMPLES.filter(e => e.disease === d && e.group === 'Disease questions').length >= 2 && EXAMPLES.some(e => e.disease === d && e.mode === 'v4')), 'each 5B/5C disease has age/sex, comorbidity and new-case examples');
   // disease / department plans
   assert.strictEqual(cleanSubject('  Type 2   diabetes '), 'Type 2 diabetes');
   assert.throws(() => cleanSubject('x'), e => e.status === 400); assert.throws(() => cleanSubject("a; DROP TABLE x"), e => e.status === 400); assert.throws(() => cleanSubject('y'.repeat(81)), e => e.status === 400);
