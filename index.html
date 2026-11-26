@@ -3550,8 +3550,10 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
 
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
                 <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
-                    <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Download the whole section as JSON, or upload a file you downloaded earlier to view it again.</div>
+                    <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Save the whole section as a session in this browser and open it again later, or download it as JSON and upload that file to view it again.</div>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
+                        <button class="btn-primary" id="anSessSave" onclick="anSessionSave()" title="Saves every run below, the research assistant's steps and your choices as a named session in this browser.">Save session</button>
+                        <button class="btn-secondary" id="anSessOpen" onclick="anSessionTogglePanel()" title="Lists the sessions saved in this browser so you can open one.">Open saved session</button>
                         <button class="btn-secondary" onclick="anDownloadOutput()">Download output JSON</button>
                         <button class="btn-secondary" onclick="document.getElementById('anUploadInput').click()">Upload output JSON</button>
                         <input type="file" id="anUploadInput" accept=".json,application/json" style="display:none" onchange="anUploadOutput(this)">
@@ -3563,6 +3565,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                         <span id="anHistoryCount" class="an-muted"></span>
                     </div>
                     <div id="anUploadStatus" class="status-output" style="margin-top:8px; min-height:18px;"></div>
+                    <div id="anSessPanel" hidden style="margin-top:8px; padding:10px 12px; border:1px solid var(--line, #ddd); border-radius:6px; font-size:13px;"></div>
                     <div id="anInsAllOut"></div>
                     <div id="anAssist" class="assist" hidden></div>
                     <div id="anEmpty" class="an-muted" style="margin-top:10px;">No output yet. Run an analytic above, or show a knowledge graph.</div>
@@ -7600,7 +7603,7 @@ function anStartRun(label, opts) {
     const wrap = document.createElement('div');
     wrap.className = 'an-run-block'; run.wrap = wrap;
     wrap.classList.toggle('is-imported', !!run.imported);
-    wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><div><strong>Run #${run.n}</strong> <span class="an-muted">· ${escapeHtml(label)}</span>${run.imported ? ' <span class="an-tag">uploaded</span>' : ''}</div><div class="an-vis-btns"><button class="btn-secondary an-vis-charts" onclick="ancToggleRun(this, 'charts')" title="Hide or show the charts of this run">Hide charts</button><button class="btn-secondary an-vis-tables" onclick="ancToggleRun(this, 'tables')" title="Hide or show the tables of this run">Hide tables</button><button class="btn-secondary an-run-ins" title="Sends this run's result tables to the AI model (OpenRouter) and shows its insights">✨ Insights (AI)</button><button class="btn-secondary an-run-remove" title="Remove this run">✖ Remove</button></div></div><div class="an-run-meta an-muted" style="font-size:12px; margin:4px 0 8px;"></div><div class="an-run-body"></div><div class="an-run-ins-out"></div>`;
+    wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><div><strong>Run #${run.n}</strong> <span class="an-muted">· ${escapeHtml(label)}</span>${run.imported ? ` <span class="an-tag">${escapeHtml(opts.tag || 'uploaded')}</span>` : ''}</div><div class="an-vis-btns"><button class="btn-secondary an-vis-charts" onclick="ancToggleRun(this, 'charts')" title="Hide or show the charts of this run">Hide charts</button><button class="btn-secondary an-vis-tables" onclick="ancToggleRun(this, 'tables')" title="Hide or show the tables of this run">Hide tables</button><button class="btn-secondary an-run-ins" title="Sends this run's result tables to the AI model (OpenRouter) and shows its insights">✨ Insights (AI)</button><button class="btn-secondary an-run-remove" title="Remove this run">✖ Remove</button></div></div><div class="an-run-meta an-muted" style="font-size:12px; margin:4px 0 8px;"></div><div class="an-run-body"></div><div class="an-run-ins-out"></div>`;
     run.body = wrap.querySelector('.an-run-body');
     wrap.querySelector('.an-run-ins').onclick = () => anInsights(run, wrap);
     wrap.querySelector('.an-run-ins').insertAdjacentHTML('afterend', ' <button type="button" class="an-run-sug">Suggest next steps</button>');
@@ -7752,9 +7755,12 @@ function anReorder() {
         .concat(CAT.research.steps.filter(st => st.el && st.el.isConnected).map(st => ({ el: st.el, t: st.at.getTime() })));
     items.sort((a, b) => b.t - a.t).forEach(x => out.appendChild(x.el));
 }
+function anSerializeRuns() {
+    return CAT.history.map(r => ({ n: r.n, label: r.label, ran_at: r.ranAt, cohort: r.cohort, population: r.population, patients: r.patients, params: r.params, modes: r.modes, items: r.items }));
+}
 function anDownloadOutput() {
     if (!CAT.history.length) { alert('There is no output to download yet.'); return; }
-    const runs = CAT.history.map(r => ({ n: r.n, label: r.label, ran_at: r.ranAt, cohort: r.cohort, population: r.population, patients: r.patients, params: r.params, modes: r.modes, items: r.items }));
+    const runs = anSerializeRuns();
     vrDownloadJSON('output', { format: 'vibe-rounds-output', version: 2, exported_at: new Date().toISOString(), run_count: runs.length, runs }, 'Output');
 }
 // Output files written before the five-mode rename (version 1) used v3 for what is now V2 (codes): map it when such a file is read.
@@ -7770,6 +7776,21 @@ function anLegacyModes(x, depth) {
     }
     return x;
 }
+// Draws saved runs into the Output section (shared by Upload output JSON and Open saved session). `tag` is the small label on each run.
+function anImportRuns(runsData, tag) {
+    let n = 0, bad = 0, maxN = 0;
+    (runsData || []).slice().reverse().slice(0, 500).forEach(r => {
+        if (!r || !Array.isArray(r.items)) { bad++; return; }
+        const run = anStartRun(String(r.label || 'Run'), { imported: true, tag, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
+            cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
+        r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'pts', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
+        if (Number(run.n) > maxN) maxN = Number(run.n);
+        n++;
+    });
+    CAT.runSeq = Math.max(CAT.runSeq || 0, maxN);   // runs started after loading continue the numbering instead of repeating it
+    anReorder(); anSyncLast(); anUpdateHistoryBar();
+    return { n, bad };
+}
 async function anUploadOutput(input) {
     const st = document.getElementById('anUploadStatus'), f = input.files && input.files[0];
     const say = (t, c) => { st.className = 'status-output' + (c ? ' ' + c : ''); st.textContent = t; };
@@ -7779,25 +7800,120 @@ async function anUploadOutput(input) {
         const d = JSON.parse(await f.text());
         if (!d || d.format !== 'vibe-rounds-output' || !Array.isArray(d.runs)) throw new Error('This is not an output file downloaded from this section.');
         if (!(Number(d.version) >= 2)) anLegacyModes(d.runs);
-        let n = 0, bad = 0;
-        d.runs.slice().reverse().slice(0, 500).forEach(r => {
-            if (!r || !Array.isArray(r.items)) { bad++; return; }
-            const run = anStartRun(String(r.label || 'Run'), { imported: true, append: true, n: r.n, ranAt: isNaN(new Date(r.ran_at)) ? new Date().toISOString() : r.ran_at,
-                cohort: !('cohort' in r) ? undefined : (r.cohort == null ? null : String(r.cohort)), population: r.population == null ? '' : String(r.population), patients: r.patients, params: r.params && typeof r.params === 'object' ? r.params : {}, modes: Array.isArray(r.modes) ? r.modes : [] });
-            r.items.forEach(it => { if (it && ['result', 'compare', 'all', 'kg', 'ckg', 'pw', 'ptc', 'pts', 'air'].includes(it.t)) { run.addItem(it.t, it.d); if (it.t === 'result') run.results.push(it.d); } });
-            n++;
-        });
-        anReorder(); anSyncLast(); anUpdateHistoryBar();
+        const { n, bad } = anImportRuns(d.runs, 'uploaded');
         say(`Loaded ${n} run${n === 1 ? '' : 's'} from ${f.name}${bad ? ` (${bad} skipped)` : ''}.`, 'success');
     } catch (e) { say('Could not load the file: ' + e.message, 'error'); }
     input.value = '';
 }
-function clearAnalyticsHistory() {
-    if (CAT.history.length && !confirm('Remove all runs from the Output section?')) return;
+function anResetOutput() {
     document.getElementById('anResults').innerHTML = '';
     CAT.history = []; CAT.last = null;
     CAT.research.steps = []; CAT.research.decisions = [];   // the step cards were cleared with the output: start the assistant fresh
     anUpdateHistoryBar();
+}
+function clearAnalyticsHistory() {
+    if (CAT.history.length && !confirm('Remove all runs from the Output section?')) return;
+    anResetOutput();
+}
+
+// ---- Save session / Open saved session ----
+// A session is the whole Output section (every run) plus the research assistant's step cards and your choices, stored under a name in this
+// browser's IndexedDB (no size limit worth worrying about, unlike localStorage). Nothing is sent to the server. Only what is already in the
+// Output section is kept: aggregated tables and charts, never patient ids.
+const ANS = { db: null, DB: 'vibe-rounds-sessions', STORE: 'sessions' };
+function ansDb() {
+    return new Promise((resolve, reject) => {
+        if (ANS.db) return resolve(ANS.db);
+        if (!window.indexedDB) return reject(new Error('This browser does not allow saved sessions (IndexedDB is not available, for example in a private window).'));
+        let q; try { q = indexedDB.open(ANS.DB, 1); } catch (e) { return reject(new Error('Browser storage is blocked: ' + e.message)); }
+        q.onupgradeneeded = () => { if (!q.result.objectStoreNames.contains(ANS.STORE)) q.result.createObjectStore(ANS.STORE, { keyPath: 'id' }); };
+        q.onsuccess = () => { ANS.db = q.result; ANS.db.onclose = () => { ANS.db = null; }; resolve(ANS.db); };
+        q.onerror = () => reject(q.error || new Error('Could not open browser storage.'));
+        q.onblocked = () => reject(new Error('Browser storage is busy: close other tabs of this app and try again.'));
+    });
+}
+async function ansTx(mode, fn) {
+    const db = await ansDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(ANS.STORE, mode), store = tx.objectStore(ANS.STORE);
+        let out; try { out = fn(store); } catch (e) { return reject(e); }
+        tx.oncomplete = () => resolve(out && 'result' in out ? out.result : undefined);
+        tx.onerror = () => reject(tx.error || new Error('Browser storage failed.'));
+        tx.onabort = () => reject(tx.error || new Error('Browser storage could not save this (it may be full).'));
+    });
+}
+const ansAll = () => ansTx('readonly', s => s.getAll()).then(l => (l || []).sort((a, b) => String(b.saved_at).localeCompare(String(a.saved_at))));
+function ansStatus(text, cls) { const st = document.getElementById('anUploadStatus'); if (st) { st.className = 'status-output' + (cls ? ' ' + cls : ''); st.textContent = text; } }
+function ansSnapshot(name, id) {
+    const steps = CAT.research.steps.map(s => { const c = Object.assign({}, s); delete c.el; c.at = (s.at instanceof Date ? s.at : new Date(s.at)).toISOString(); return c; });
+    const data = JSON.parse(JSON.stringify({ runs: anSerializeRuns(), steps, decisions: CAT.research.decisions }));   // plain copy: later changes to the page cannot alter it
+    return Object.assign({ id, name, saved_at: new Date().toISOString(), cohort: anActiveCohortName(), population: anPopulationLabel(), run_count: data.runs.length, step_count: steps.length }, data);
+}
+async function anSessionSave() {
+    if (!CAT.history.length) { ansStatus('There is nothing to save yet: run an analytic first.', 'error'); return; }
+    const btn = document.getElementById('anSessSave');
+    try {
+        const sessions = await ansAll();
+        const suggested = 'Session ' + new Date().toLocaleString();
+        const name = (prompt('Name this session:', suggested) || '').trim().slice(0, 80);
+        if (!name) return;
+        const same = sessions.find(s => s.name.toLowerCase() === name.toLowerCase());
+        if (same && !confirm(`A session named "${same.name}" already exists. Replace it?`)) return;
+        btn.disabled = true;
+        const snap = ansSnapshot(name, same ? same.id : 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+        await ansTx('readwrite', s => s.put(snap));
+        ansStatus(`Saved session "${name}" (${snap.run_count} run${snap.run_count === 1 ? '' : 's'}${snap.step_count ? `, ${snap.step_count} assistant step${snap.step_count === 1 ? '' : 's'}` : ''}) in this browser.`, 'success');
+        if (!document.getElementById('anSessPanel').hidden) anSessionRenderPanel();
+    } catch (e) { ansStatus('Could not save the session: ' + e.message, 'error'); }
+    finally { btn.disabled = false; }
+}
+function anSessionTogglePanel() {
+    const p = document.getElementById('anSessPanel');
+    if (!p.hidden) { p.hidden = true; return; }
+    p.hidden = false; anSessionRenderPanel();
+}
+async function anSessionRenderPanel() {
+    const p = document.getElementById('anSessPanel'), e = escapeHtml;
+    p.innerHTML = '<span class="an-muted">Loading saved sessions...</span>';
+    try {
+        const list = await ansAll();
+        const head = '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;"><strong>Saved sessions</strong><button type="button" class="btn-secondary" data-a="close">Close</button></div>';
+        if (!list.length) { p.innerHTML = head + '<div class="an-muted">No saved sessions yet. Use <em>Save session</em> to keep the current Output.</div>'; }
+        else {
+            p.innerHTML = head + '<div class="an-muted" style="margin-bottom:6px;">Kept in this browser only. Opening a session replaces what is in the Output section now.</div>' +
+                list.map(s => `<div data-id="${e(s.id)}" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--line, #e5e5e5);">
+                    <div><strong>${e(s.name)}</strong><div class="an-muted">${new Date(s.saved_at).toLocaleString()} · ${Number(s.run_count) || 0} run${s.run_count === 1 ? '' : 's'}${s.step_count ? ` · ${Number(s.step_count)} assistant step${s.step_count === 1 ? '' : 's'}` : ''}${s.cohort ? ` · Cohort: ${e(s.cohort)}` : ''}${s.population ? ` · ${e(s.population)}` : ''}</div></div>
+                    <div style="display:flex; gap:8px;"><button type="button" class="btn-primary" data-a="open">Open</button><button type="button" class="btn-secondary" data-a="delete">Delete</button></div></div>`).join('');
+        }
+        p.querySelector('[data-a=close]').onclick = () => { p.hidden = true; };
+        p.querySelectorAll('[data-id]').forEach(row => {
+            const id = row.dataset.id, s = list.find(x => x.id === id);
+            row.querySelector('[data-a=open]').onclick = () => anSessionOpen(s);
+            row.querySelector('[data-a=delete]').onclick = async () => {
+                if (!confirm(`Delete the saved session "${s.name}"? This cannot be undone.`)) return;
+                try { await ansTx('readwrite', st => st.delete(id)); ansStatus(`Deleted session "${s.name}".`, 'success'); anSessionRenderPanel(); }
+                catch (err) { ansStatus('Could not delete the session: ' + err.message, 'error'); }
+            };
+        });
+    } catch (err) { p.innerHTML = `<span class="an-muted" style="color:#c62828;">Could not read saved sessions: ${e(err.message)}</span>`; }
+}
+function anSessionOpen(s) {
+    if (!s || !Array.isArray(s.runs)) { ansStatus('That saved session is damaged and cannot be opened.', 'error'); return; }
+    if (CAT.history.length && !confirm(`Opening "${s.name}" replaces the ${CAT.history.length} run${CAT.history.length === 1 ? '' : 's'} now in the Output section. Save the current output first if you want to keep it. Continue?`)) return;
+    try {
+        anResetOutput();
+        const { n, bad } = anImportRuns(JSON.parse(JSON.stringify(s.runs)), 'saved');
+        CAT.research.decisions = Array.isArray(s.decisions) ? JSON.parse(JSON.stringify(s.decisions)) : [];
+        (Array.isArray(s.steps) ? s.steps : []).forEach(st => {
+            const step = JSON.parse(JSON.stringify(st)); step.at = isNaN(new Date(st.at)) ? new Date() : new Date(st.at);
+            CAT.research.steps.push(step); asRenderStep(step);
+        });
+        anReorder();
+        const box = document.getElementById('anAssist'); if (box && CAT.research.steps.length) box.hidden = false;
+        document.getElementById('anSessPanel').hidden = true;
+        const osec = document.getElementById('outputSection'); if (osec && osec.tagName === 'DETAILS') osec.open = true;
+        ansStatus(`Opened session "${s.name}": ${n} run${n === 1 ? '' : 's'}${CAT.research.steps.length ? `, ${CAT.research.steps.length} assistant step${CAT.research.steps.length === 1 ? '' : 's'}` : ''}${bad ? ` (${bad} skipped)` : ''}.`, 'success');
+    } catch (err) { ansStatus('Could not open the session: ' + err.message, 'error'); }
 }
 
 async function runCatalogAnalytic(modes) {
