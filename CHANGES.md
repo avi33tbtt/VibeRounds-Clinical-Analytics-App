@@ -135,3 +135,7 @@ New database tables: none. New environment variables: none. Deleted files: none.
 # Chunk 5C (runnable examples: asthma, COPD, chronic kidney disease)
 - analytics.js: three more diseaseSet() sets (9 queries); selftest assertion covers all six diseases.
 - No new tables, environment variables or deleted files.
+
+# Chunk 5D (disease examples run directly)
+- index.html: By disease tab lists ready-made queries per disease with a Run button (loads the SQL, switches mode, runs it, drill-down honoured); AI plan kept in a collapsed section; Examples tab grouped by disease. New functions customRenderDiseaseEx, customExampleRun.
+- No new tables, environment variables or deleted files.

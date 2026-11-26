@@ -3008,12 +3008,17 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                             </div>
 
                             <div class="cu-panel" id="cuPanel-disease" hidden>
-                                <div class="cu-row" style="margin-top:0;">
+                                <div class="an-muted">Pick a disease to see ready-made queries. <strong>Run</strong> loads the query and runs it at once; the result opens in the Output (with case IDs if drill-down is on).</div>
+                                <div class="cu-chips" id="cuDiseasePick"></div>
+                                <div id="cuDiseaseEx" style="margin-top:4px;"></div>
+                                <details style="margin-top:10px;"><summary class="an-muted" style="cursor:pointer;">Another disease: ask the AI to plan analytics</summary>
+                                <div class="cu-row" style="margin-top:6px;">
                                     <input id="cuDisease" class="cu-input" type="text" maxlength="80" placeholder="Disease, e.g. Type 2 diabetes" aria-label="Disease name">
                                     <button id="cuDiseaseBtn" class="btn-secondary" onclick="customPlan('disease')">Plan analytics</button>
                                 </div>
                                 <div class="cu-chips" id="cuDiseaseIdeas"></div>
                                 <div class="an-muted" style="margin-top:6px;">The AI plans 4 to 6 analytics for the disease: how many patients and who, comorbidities, drugs, monitoring labs, care use and (in V4) trends. You review each query and run one or all.</div>
+                                </details>
                             </div>
 
                             <div class="cu-panel" id="cuPanel-department" hidden>
@@ -8270,7 +8275,7 @@ const CUSTOM_EX = { loaded: false, examples: [], ideas: { disease: [], departmen
 function customTab(name) {
     document.querySelectorAll('#cuTabs .cu-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     ['ask', 'disease', 'department', 'examples'].forEach(t => { const p = document.getElementById('cuPanel-' + t); if (p) p.hidden = t !== name; });
-    if (name === 'examples') customLoadExamples();
+    if (name === 'examples' || name === 'disease') customLoadExamples();
     if (name === 'disease' || name === 'department') customRenderIdeas();
 }
 function customRenderIdeas() {
@@ -8288,15 +8293,37 @@ async function customLoadExamples() {
         if (!r.success) throw new Error(r.error || 'Could not load examples');
         Object.assign(CUSTOM_EX, { loaded: true, examples: r.examples, ideas: r.ideas || CUSTOM_EX.ideas });
         customRenderIdeas();
+        const gkey = ex => ex.disease || ex.group, keys = [...new Set(r.examples.map(gkey))];
+        const order = keys.flatMap(k => r.examples.map((ex, i) => i).filter(i => gkey(r.examples[i]) === k));
         let last = '';
-        box.innerHTML = r.examples.map((ex, i) => {
-            const head = ex.group !== last ? `<div class="cu-group">${escapeHtml(ex.group)}</div>` : ''; last = ex.group;
+        box.innerHTML = order.map(i => {
+            const ex = r.examples[i];
+            const head = gkey(ex) !== last ? `<div class="cu-group">${escapeHtml(gkey(ex))}</div>` : ''; last = gkey(ex);
             return `${head}<div class="cu-card"><h4>${escapeHtml(ex.title)} <span class="an-badge an-${escapeHtml(ex.mode)}">${escapeHtml(ex.mode.toUpperCase())}</span></h4>
                 <div><em>${escapeHtml(ex.question)}</em></div><div class="an-muted" style="margin-top:2px;">${escapeHtml(ex.shows)}</div>
                 <div class="cu-row"><button class="btn-primary" data-ex="${i}" data-act="load">Load query</button><button class="btn-secondary" data-ex="${i}" data-act="ask">Use as my question</button></div>
                 <details style="margin-top:6px;"><summary class="an-muted" style="cursor:pointer;">See the query</summary><pre>${escapeHtml(ex.sql)}</pre></details></div>`;
         }).join('');
+        customRenderDiseaseEx();
     } catch (e) { box.innerHTML = `<span class="an-muted" style="color:#c62828;">Error: ${escapeHtml(e.message)}</span>`; }
+}
+// By disease tab: one chip per disease that has examples, then its ready-to-run queries
+function customRenderDiseaseEx(sel) {
+    const pick = document.getElementById('cuDiseasePick'), box = document.getElementById('cuDiseaseEx'); if (!pick || !box) return;
+    const names = [...new Set(CUSTOM_EX.examples.map(e => e.disease).filter(Boolean))];
+    if (!names.length) { pick.innerHTML = ''; box.innerHTML = '<span class="an-muted">Loading examples...</span>'; return; }
+    CUSTOM_EX.disease = names.includes(sel) ? sel : (names.includes(CUSTOM_EX.disease) ? CUSTOM_EX.disease : names[0]);
+    pick.innerHTML = names.map(n => `<button type="button" class="cu-chip" data-dz="${escapeHtml(n)}" aria-pressed="${n === CUSTOM_EX.disease}"${n === CUSTOM_EX.disease ? ' style="border-color:var(--accent); color:var(--accent);"' : ''}>${escapeHtml(n)}</button>`).join('');
+    box.innerHTML = CUSTOM_EX.examples.map((ex, i) => ex.disease === CUSTOM_EX.disease ? `<div class="cu-card"><h4>${escapeHtml(ex.title)} <span class="an-badge an-${escapeHtml(ex.mode)}">${escapeHtml(ex.mode.toUpperCase())}</span></h4>
+        <div><em>${escapeHtml(ex.question)}</em></div><div class="an-muted" style="margin-top:2px;">${escapeHtml(ex.shows)}</div>
+        <div class="cu-row"><button class="btn-primary" data-ex-run="${i}">Run</button><button class="btn-secondary" data-ex="${i}" data-act="load">Load query only</button></div>
+        <details style="margin-top:6px;"><summary class="an-muted" style="cursor:pointer;">See the query</summary><pre>${escapeHtml(ex.sql)}</pre></details></div>` : '').join('');
+}
+async function customExampleRun(i) {   // load the example's SQL (switching mode) and run it straight away
+    const ex = CUSTOM_EX.examples[i]; if (!ex) return;
+    customExample(i, 'load');
+    if (CUSTOM.mode !== ex.mode || demoMode() !== ex.mode) return;   // customExample already said why
+    await customRun();
 }
 function customSetMode(mode) {
     const radio = document.querySelector(`input[name="analyticsMode"][value="${mode}"]`);
@@ -8366,7 +8393,9 @@ async function customRunPlan() {
 document.addEventListener('click', e => {
     const t = e.target.closest && e.target.closest('#anCustomBox button'); if (!t) return;
     if (t.classList.contains('cu-tab')) customTab(t.dataset.tab);
-    else if (t.classList.contains('cu-chip')) { document.getElementById(t.dataset.kind === 'disease' ? 'cuDisease' : 'cuDepartment').value = t.dataset.name; }
+    else if (t.classList.contains('cu-chip') && t.dataset.dz === undefined) { document.getElementById(t.dataset.kind === 'disease' ? 'cuDisease' : 'cuDepartment').value = t.dataset.name; }
+    else if (t.dataset.dz !== undefined) customRenderDiseaseEx(t.dataset.dz);
+    else if (t.dataset.exRun !== undefined) { t.disabled = true; customExampleRun(Number(t.dataset.exRun)).catch(err => customStatus('Error: ' + err.message, true)).finally(() => { t.disabled = false; }); }
     else if (t.dataset.ex !== undefined) customExample(Number(t.dataset.ex), t.dataset.act);
     else if (t.dataset.planRun !== undefined) { t.disabled = true; customStatus('Running...'); customRunPlanItem(Number(t.dataset.planRun)).then(ok => { if (ok) customStatus('Done. Result added to the Output.'); }).catch(err => customStatus('Error: ' + err.message, true)).finally(() => { t.disabled = false; }); }
 });
