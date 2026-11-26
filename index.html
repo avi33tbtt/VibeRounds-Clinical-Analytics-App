@@ -3405,10 +3405,11 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                             slot.className = 'air-a an-muted'; slot.textContent = 'Running...';
                         }
                         say(`Round ${round}: running the query...`, 'info');
-                        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode, title: g.title, question: q }, anScope()));
+                        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode, title: g.title, question: q }, ANDD.on ? { drilldown: true } : {}, anScope()));
                         r.mode = r.mode || mode; r.args = { question: q };
                         const run = anStartRun(`Custom: ${g.title} (${mode.toUpperCase()})`, { modes: [mode] });
                         run.add(r);
+                        anDrillAttach(run, r);
                         if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-generated${review ? ', reviewed by you' : ''})${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
                         if (!r.success) throw new Error(r.error || 'The query failed (see its Output block)');
                         asDecide({ kind: 'question', text: q, decision: 'ran' });
@@ -3551,6 +3552,7 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 <!-- Output: every analytic run and knowledge-graph view lands here, newest on top -->
                 <details class="an-collapse analytics-section" id="outputSection" style="margin-top:30px;"><summary class="an-sum"><h3 style="display:inline; margin:0;">Output</h3></summary>
                     <div class="an-muted" style="margin-bottom:10px;">Every analytics run and knowledge-graph view appears here with its cohort, population, date and time, and parameters. Newest on top. Save the whole section as a session in this browser and open it again later, or download it as JSON and upload that file to view it again.</div>
+                    <label id="anDrillBar" style="display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:10px;" title="When on, new custom-query runs also list the case (patient) IDs behind each group count, with a Copy button. Applies to runs started after you switch it on."><input type="checkbox" id="anDrillToggle" onchange="ANDD.on = this.checked"> <span><strong>Drill-down mode</strong> <span class="an-muted">(show case IDs for each group of a custom query; applies to the next run)</span></span></label>
                     <div id="anHistoryBar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px;">
                         <button class="btn-primary" id="anSessSave" onclick="anSessionSave()" title="Saves every run below, the research assistant's steps and your choices as a named session in the database.">Save session</button>
                         <button class="btn-secondary" id="anSessOpen" onclick="anSessionTogglePanel()" title="Lists your saved sessions so you can open one.">Open saved session</button>
@@ -8076,6 +8078,37 @@ async function customGenerate() {
     } catch (e) { customStatus('Error: ' + e.message, true); }
     finally { btn.disabled = false; }
 }
+// ---- Drill-down (custom query results): case IDs behind each group count ----
+const ANDD = { on: false };
+function anDrillCopy(btn, ids, sep) {
+    const text = ids.join(sep), done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = t; }, 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => anDrillCopyFallback(text, done));
+    else anDrillCopyFallback(text, done);
+}
+function anDrillCopyFallback(text, done) {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* nothing more to try */ } ta.remove();
+}
+function anDrillAttach(run, r) {
+    const d = r && r.drilldown; if (!d || !run || !run.body) return;
+    const box = document.createElement('div'); box.className = 'an-drill'; box.style.cssText = 'margin-top:10px; font-size:13px;';
+    const rows = (r.sections && r.sections[0] && r.sections[0].rows) || [];
+    if (!d.available) { box.innerHTML = `<div class="an-muted">Drill-down: case IDs are not available for this query (${escapeHtml(d.reason || 'unknown reason')}).</div>`; run.body.appendChild(box); return; }
+    box.innerHTML = '<div style="font-weight:600; margin-bottom:4px;">Drill-down: case IDs by group</div>';
+    rows.forEach((row, i) => {
+        const g = d.rows[i]; if (!g) return;
+        const label = Object.values(row).map(v => v == null ? '' : String(v)).join(' · ');
+        const det = document.createElement('details'); det.style.cssText = 'margin:2px 0;';
+        det.innerHTML = `<summary style="cursor:pointer;">${escapeHtml(label)} <span class="an-muted">· ${g.total} case${g.total === 1 ? '' : 's'}</span></summary>
+            <div style="margin:6px 0 8px 14px;"><div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;"><button type="button" class="btn-secondary an-dd-nl">Copy (one per line)</button><button type="button" class="btn-secondary an-dd-cm">Copy (comma separated)</button></div>
+            <div class="an-muted" style="margin-bottom:4px;">${g.truncated ? `Showing the first ${g.ids.length} of ${g.total} case IDs.` : `${g.ids.length} case ID${g.ids.length === 1 ? '' : 's'}.`}</div>
+            <div style="max-height:160px; overflow:auto; font-family:monospace; font-size:12px; word-break:break-all;">${g.ids.map(escapeHtml).join(', ')}</div></div>`;
+        det.querySelector('.an-dd-nl').onclick = e => anDrillCopy(e.target, g.ids, '\n');
+        det.querySelector('.an-dd-cm').onclick = e => anDrillCopy(e.target, g.ids, ',');
+        box.appendChild(det);
+    });
+    if (box.children.length > 1) run.body.appendChild(box);
+}
 async function customRun() {
     const sql = document.getElementById('anCustomSql').value.trim();
     if (!CUSTOM.mode || !sql) { customStatus('Generate a query first.', true); return; }
@@ -8083,10 +8116,11 @@ async function customRun() {
     try {
         customStatus('Running...');
         const view = document.getElementById('anCustomView').value, label = `Custom: ${CUSTOM.title} (${CUSTOM.mode.toUpperCase()})`;
-        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode: CUSTOM.mode, title: CUSTOM.title, question: CUSTOM.question }, anScope()));
+        const r = await anPost('/api/analytics/custom/run', Object.assign({ sql, mode: CUSTOM.mode, title: CUSTOM.title, question: CUSTOM.question }, ANDD.on ? { drilldown: true } : {}, anScope()));
         r.mode = r.mode || CUSTOM.mode; r.args = { question: CUSTOM.question };
         const run = anStartRun(label, { modes: [CUSTOM.mode] });
         run.add(r);
+        anDrillAttach(run, r);
         if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (${document.getElementById('anCustomAi').style.display === 'none' ? 'example' : 'AI-generated'}, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
         customView(run.wrap, view); CUSTOM.wraps.push(run.wrap);
         customStatus(r.success ? 'Done. Result added to the Output; change "Show as" to switch between table and chart.' : 'The query failed (see the Output).', !r.success);
@@ -8175,10 +8209,11 @@ async function customRunPlanItem(i) {
     const a = CUSTOM_PLAN.items[i], ta = document.getElementById('cuPlanSql' + i); if (!a || !ta) return false;
     if (demoMode() !== CUSTOM_PLAN.mode) { customStatus(`The mode changed to ${demoMode().toUpperCase()} since this plan was made in ${CUSTOM_PLAN.mode.toUpperCase()}: plan again so the queries follow the selected mode.`, true); return false; }
     const q = `${CUSTOM_PLAN.kind === 'disease' ? 'Disease' : 'Department'}: ${CUSTOM_PLAN.name}`;
-    const r = await anPost('/api/analytics/custom/run', Object.assign({ sql: ta.value.trim(), mode: CUSTOM_PLAN.mode, title: a.title, question: q }, anScope()));
+    const r = await anPost('/api/analytics/custom/run', Object.assign({ sql: ta.value.trim(), mode: CUSTOM_PLAN.mode, title: a.title, question: q }, ANDD.on ? { drilldown: true } : {}, anScope()));
     r.mode = r.mode || CUSTOM_PLAN.mode; r.args = { question: q };
     const run = anStartRun(`${q} · ${a.title} (${CUSTOM_PLAN.mode.toUpperCase()})`, { modes: [CUSTOM_PLAN.mode] });
     run.add(r);
+    anDrillAttach(run, r);
     if (r.success && r.custom) run.body.insertAdjacentHTML('beforeend', `<details style="margin-top:8px;"><summary class="an-muted" style="cursor:pointer;">Query used (AI-planned, reviewed by you)${r.custom.truncated ? ' · result cut to the first 1000 rows' : ''}</summary><pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0;">${escapeHtml(r.custom.sql)}</pre></details>`);
     customView(run.wrap, document.getElementById('anCustomView').value); CUSTOM.wraps.push(run.wrap);
     return !!r.success;

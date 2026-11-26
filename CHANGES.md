@@ -50,3 +50,8 @@ Deleted files: none (see Chunk 1 above)
 Edited:
 - analytics.js: POST /api/analytics/custom/run accepts optional `drilldown: true`. The response then has a top-level `drilldown` field with the patient_ids behind each count (capped at 500 per group, `truncated` flag, max 200 groups). Runs a read-only companion query through the same SQL guard, inside the same read-only transaction (savepoint, so a failure never breaks the main result). Selftest extended.
 - PROGRESS.md: added.
+
+# Chunk 3B (drilldown toggle and copy for custom results)
+
+Edited:
+- index.html: "Drill-down mode" checkbox at the top of the Output section (default off). When on, custom-query runs send `drilldown: true`; each result gets an expandable list of case IDs per group with "Copy (one per line)" and "Copy (comma separated)". Off = output unchanged.
