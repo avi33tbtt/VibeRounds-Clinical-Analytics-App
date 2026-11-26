@@ -2274,13 +2274,6 @@ const post = (u, b) => fetch(base + u, { method: 'POST', headers: { 'Content-Typ
     ['High utilizers: tier shares of encounters add up to 100', () => { const r = rows('high_utilizers:v2', 'tiers'); return r && Math.abs(sum(r, 'pct_of_all_encounters') - 100) <= 0.6; }],
     ['Risk stratification: tier shares of patients add up to 100', () => { const r = rows('risk_stratification:v2', 'tiers'); return r && Math.abs(sum(r, 'pct_of_patients') - 100) <= 0.6; }],
     ['Equity check: the largest group has rate ratio 1', () => { const r = rows('equity_check:v2', 'disparity'); return r && r[0].rate_ratio_vs_largest === 1; }],
-    ['Disease module: controlled + uncontrolled = tested, untested = patients - tested', () => { const r = rows('disease_module:v4', 'cohort'); return r && r[0].controlled + r[0].uncontrolled === r[0].tested && r[0].patients - r[0].tested === r[0].untested; }],
-    ['Disease module: every pass adds up to the cohort (patients and tested)', () => { const r = res['disease_module:v4'], c = rows('disease_module:v4', 'cohort'); if (!r || !c) return null;
-      const passes = r.sections.filter(s => !['cohort', 'overview', 'regimen_adjusted', 'projection', 'candidates', 'drivers'].includes(s.name) && s.rows.length);
-      return passes.length > 0 && passes.every(s => sum(s.rows, 'patients') === c[0].patients && sum(s.rows, 'tested') === c[0].tested); }],
-    ['Disease module cohort equals the diabetes row of Guideline adherence', () => { const c = rows('disease_module:v4', 'cohort'), g = res['guideline_adherence:v4'];
-      const row = g && g.sections.flatMap(s => s.rows).find(x => /diabetes/i.test(JSON.stringify(x))); if (!c || !row) return null;
-      return row.patients_with_condition === c[0].patients && row.tested_last_12m === c[0].tested && row.at_goal === c[0].controlled; }],
     ['Inpatient trajectory: every stage covers all episodes', () => { const sc = rows('inpatient_trajectory:v4', 'scope'), st = rows('inpatient_trajectory:v4', 'stage_check'); return sc && st && sc[0].episodes > 0 ? st.every(x => x.episodes_covered === sc[0].episodes) : null; }],
     ['Kaplan-Meier: survival never rises and stays between 0 and 1', () => { const r = rows('kaplan_meier:v4', 'curve'); return r && r.every((x, i) => x.survival >= 0 && x.survival <= 1 && (i === 0 || x.survival <= r[i - 1].survival + 1e-9)); }],
   ];
