@@ -2277,6 +2277,8 @@ WHERE code = '8480-6'   -- LOINC: systolic blood pressure
                 <!-- Patient data explorer -->
                 <style>
                 #anExplorer { scroll-margin-top: 150px; }
+                .an-case-link { color: var(--green-d); text-decoration: underline dotted; cursor: pointer; white-space: nowrap; }
+                .an-case-link:hover, .an-case-link:focus { text-decoration: underline; background: var(--green-l); outline: none; }
                 #anExplorer .pe-row { cursor: pointer; }
                 #anExplorer .pe-row:hover td, #anExplorer .pe-row:focus td { background: var(--green-l); }
                 #anExplorer .pe-row:focus { outline: 2px solid var(--green-d); outline-offset: -2px; }
@@ -8215,6 +8217,17 @@ function anDrillCopyFallback(text, done) {
     const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); done(); } catch (e) { /* nothing more to try */ } ta.remove();
 }
+// Click a case ID in a drill-down: open the Patient data explorer and load that patient's record.
+async function anOpenCase(id) {
+    const det = document.getElementById('anExplorer'); if (!det || !id) return;
+    try {
+        // peReload() hides the patient card, so when the explorer still has to do its first (or a stale) load, do it now and open the patient afterwards.
+        if (!PE.opened || PE.stale) { PE.opened = true; PE.stale = false; det.open = true; await peReload({ render: false }); }
+        else det.open = true;
+        await peOpen(id);
+        det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { /* peOpen shows its own error in the patient card */ }
+}
 function anDrillAttach(run, r) {
     if (!r || !run || !run.body) return;
     // custom runs carry one top-level drilldown (it belongs to sections[0]); catalog runs carry one per section
@@ -8241,7 +8254,8 @@ function anDrillAttach(run, r) {
             det.innerHTML = `<summary style="cursor:pointer;">${escapeHtml(label)} <span class="an-muted">· ${g.total} case${g.total === 1 ? '' : 's'}</span></summary>
                 <div style="margin:6px 0 8px 14px;"><div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;"><button type="button" class="btn-secondary an-dd-nl">Copy (one per line)</button><button type="button" class="btn-secondary an-dd-cm">Copy (comma separated)</button></div>
                 <div class="an-muted" style="margin-bottom:4px;">${g.truncated ? `Showing the first ${g.ids.length} of ${g.total} case IDs.` : `${g.ids.length} case ID${g.ids.length === 1 ? '' : 's'}.`}</div>
-                <div style="max-height:160px; overflow:auto; font-family:monospace; font-size:12px; word-break:break-all;">${g.ids.map(escapeHtml).join(', ')}</div></div>`;
+                <div class="an-dd-ids" style="max-height:160px; overflow:auto; font-family:monospace; font-size:12px; word-break:break-all; line-height:1.7;">${g.ids.map(id => `<a href="#anExplorer" class="an-case-link" data-id="${escapeHtml(id)}" title="Open ${escapeHtml(id)} in the Patient data explorer">${escapeHtml(id)}</a>`).join(', ')}</div></div>`;
+            det.querySelector('.an-dd-ids').onclick = e => { const a = e.target.closest && e.target.closest('.an-case-link'); if (a) { e.preventDefault(); anOpenCase(a.dataset.id); } };
             det.querySelector('.an-dd-nl').onclick = e => anDrillCopy(e.target, g.ids, '\n');
             det.querySelector('.an-dd-cm').onclick = e => anDrillCopy(e.target, g.ids, ',');
             wrap.appendChild(det); n++;
