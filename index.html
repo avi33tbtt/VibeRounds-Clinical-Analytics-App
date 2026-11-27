@@ -5752,6 +5752,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ['descendants', 'Include descendants', 'Picked concepts and everything more specific'],
         ['ancestors', 'Include ancestors', 'Picked concepts and everything more general']
     ];
+    // Domains whose records carry an active / inactive status (FHIR clinicalStatus or status): the rule card offers "Any" or "Active only" for these.
+    const STATUS_OPTS = {
+        dx: ['Diagnosis status', 'Any diagnosis, active or inactive', 'Only diagnoses that are active now (not resolved, inactive or in remission)'],
+        al: ['Allergy status', 'Any allergy, active or inactive', 'Only allergies that are active now'],
+        rx: ['Medication status', 'Any medication, current or past', 'Only medications that are active now (not stopped or completed)']
+    };
     const S = { status: null, ticked: new Set(), rules: [], seq: 1, out: null, opener: null };
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -5895,7 +5901,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rulesEl = $('sqRules');
     const ruleOf = el => { const c = el && el.closest('.sq-rule'); return c ? S.rules.find(r => String(r.id) === c.dataset.id) : null; };
     const cardOf = r => rulesEl.querySelector('[data-id="' + r.id + '"]');
-    const newRule = prev => ({ id: S.seq++, op: 'include', conn: 'AND', domain: prev ? prev.domain : builtKeys()[0], mode: 'exact', concepts: [], q: '', hits: null, exp: null, showCodes: false, sseq: 0, eseq: 0, open: 0, close: 0, gnot: false });
+    const newRule = prev => ({ id: S.seq++, op: 'include', conn: 'AND', domain: prev ? prev.domain : builtKeys()[0], mode: 'exact', status: 'any', concepts: [], q: '', hits: null, exp: null, showCodes: false, sseq: 0, eseq: 0, open: 0, close: 0, gnot: false });
 
     const seg = (k, opts, cur, label) => '<span class="sq-seg" role="group" aria-label="' + label + '">' + opts.map(o =>
         '<button type="button" data-act="seg" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (o[0] === cur) + '" class="sq-' + o[0].toLowerCase() + (o[0] === cur ? ' is-on' : '') + '">' + o[1] + '</button>').join('') + '</span>';
@@ -5916,12 +5922,14 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="sq-chips"></div>' +
             '<div class="sq-mode" role="radiogroup" aria-label="Match type">' + MODES.map(m =>
                 '<label class="sq-mode-opt"><input type="radio" name="sqmode' + r.id + '" data-f="mode" value="' + m[0] + '"' + (r.mode === m[0] ? ' checked' : '') + '><span>' + m[1] + '<small>' + m[2] + '</small></span></label>').join('') + '</div>' +
+            (STATUS_OPTS[r.domain] ? '<div class="sq-mode" role="radiogroup" aria-label="' + STATUS_OPTS[r.domain][0] + '">' + [['any', 'Any status', STATUS_OPTS[r.domain][1]], ['active', 'Active only', STATUS_OPTS[r.domain][2]]].map(m =>
+                '<label class="sq-mode-opt"><input type="radio" name="sqstatus' + r.id + '" data-f="status" value="' + m[0] + '"' + ((r.status || 'any') === m[0] ? ' checked' : '') + '><span>' + m[1] + '<small>' + m[2] + '</small></span></label>').join('') + '</div>' : '') +
             '<div class="sq-exp" aria-live="polite"></div></div>';
     }
     function logicText() {
         let depth = 0, ok = true, out = '';
         S.rules.forEach((r, i) => {
-            const nm = r.concepts.length ? (r.concepts[0].display || r.concepts[0].code) + (r.concepts.length > 1 ? ' +' + (r.concepts.length - 1) : '') : 'rule ' + (i + 1);
+            const nm = r.concepts.length ? (r.concepts[0].display || r.concepts[0].code) + (r.concepts.length > 1 ? ' +' + (r.concepts.length - 1) : '') + (r.status === 'active' && STATUS_OPTS[r.domain] ? ' [active]' : '') : 'rule ' + (i + 1);
             depth += (r.open || 0); out += (i ? ' ' + r.conn + ' ' : '') + (r.gnot && r.open ? 'NOT ' : '') + '('.repeat(r.open || 0) + (r.op === 'exclude' ? 'NOT ' : '') + nm;
             depth -= (r.close || 0); out += ')'.repeat(r.close || 0);
             if (depth < 0) ok = false;
@@ -6034,7 +6042,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     rulesEl.addEventListener('change', e => {
         const r = ruleOf(e.target); if (!r) return;
-        if (e.target.dataset.f === 'domain') { r.domain = e.target.value; r.concepts = []; r.hits = null; r.exp = null; r.q = ''; replaceCard(r); }
+        if (e.target.dataset.f === 'domain') { r.domain = e.target.value; if (!STATUS_OPTS[r.domain]) r.status = 'any'; r.concepts = []; r.hits = null; r.exp = null; r.q = ''; replaceCard(r); }
+        else if (e.target.dataset.f === 'status') { r.status = e.target.value === 'active' ? 'active' : 'any'; logicPreview(); }
         else if (e.target.dataset.f === 'mode') { r.mode = e.target.value; r.exp = null; renderExp(r); refreshExp(r); }
     });
     rulesEl.addEventListener('input', e => {
@@ -6062,7 +6071,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const btn = $('sqGenerate'); btn.disabled = true; btn.textContent = 'Generating...'; msg('');
         try {
             const d = await post('/api/snomed/query/build', Object.assign({
-                rules: S.rules.map((r, i) => ({ open: r.open, close: r.close, gnot: r.gnot, op: r.op, conn: i ? r.conn : null, domain: r.domain, mode: r.mode, codes: r.concepts.map(x => x.code) }))
+                rules: S.rules.map((r, i) => ({ open: r.open, close: r.close, gnot: r.gnot, op: r.op, conn: i ? r.conn : null, domain: r.domain, mode: r.mode, status: STATUS_OPTS[r.domain] ? r.status : 'any', codes: r.concepts.map(x => x.code) }))
             }, scopeParams()));
             S.out = d;
             $('sqCriteria').value = d.criteriaSql; $('sqFull').value = d.fullSql;

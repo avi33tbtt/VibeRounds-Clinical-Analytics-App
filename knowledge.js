@@ -386,6 +386,14 @@ const DOMAINS = {
   im: { label: 'Immunizations', table: 'immunization', code: 'vaccine_code',    system: J('vaccineCode', 'system'), display: `COALESCE(${J('vaccineCode', 'display')}, json_content->'vaccineCode'->>'text')` }
 };
 const MODES = ['exact', 'descendants', 'ancestors'];
+// Record status (optional per rule): "any" = every record, "active" = only records that are currently active.
+// Conditions and allergies keep it in FHIR clinicalStatus (active / recurrence / relapse count as active; inactive, remission, resolved do not);
+// medications keep it in status (active). A record with no status at all is kept (it is not known to be inactive).
+const STATUS = {
+  dx: { path: `json_content->'clinicalStatus'->'coding'->0->>'code'`, active: ['active', 'recurrence', 'relapse'], noun: 'active' },
+  al: { path: `json_content->'clinicalStatus'->'coding'->0->>'code'`, active: ['active', 'recurrence', 'relapse'], noun: 'active' },
+  rx: { path: `json_content->>'status'`, active: ['active'], noun: 'active' }
+};
 const TABLE_REF = /\bfhir_(patient|encounter|observation|diagnosis|procedure|medication|allergy|immunization)\b(?!_)/g;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -428,13 +436,15 @@ function combineGrouped(items) {
   return combine(stack[0].terms);
 }
 
-function predicate(domainKey, op, codes, comment) {
+function predicate(domainKey, op, codes, comment, status) {
   // No inline /* ... */ note: cohort criteria may not contain SQL comments (security.js refuses them, so a cohort saved with one
   // could never run). The rule labels are already written as -- comments in the full query header.
   const d = DOMAINS[domainKey], note = '';
   if (!codes.length) return (op === 'exclude' ? 'TRUE' : 'FALSE') + note;
   const list = codes.map(lit).join(', ');
-  const sub = `SELECT patient_id FROM fhir_${d.table} WHERE ${d.code} IN (${list})`;
+  const st = status === 'active' && STATUS[domainKey] ? STATUS[domainKey] : null;
+  const stSql = st ? ` AND COALESCE(lower(${st.path}), 'active') IN (${st.active.map(lit).join(', ')})` : '';
+  const sub = `SELECT patient_id FROM fhir_${d.table} WHERE ${d.code} IN (${list})${stSql}`;
   // NOT IN with a NULL patient_id would match nobody, so NULLs are filtered out of the excluded set.
   return (op === 'exclude' ? `patient_id NOT IN (${sub} AND patient_id IS NOT NULL)` : `patient_id IN (${sub})`) + note;
 }
@@ -645,16 +655,17 @@ function register(app, pool, opts = {}) {
       if (i > 0 && !['AND', 'OR'].includes(conn)) throw httpError(400, `Rule ${n}: choose AND or OR.`);
       const codes = Array.isArray(r.codes) ? r.codes : [];
       if (!codes.length) throw httpError(400, `Rule ${n}: pick at least one concept.`);
+      const status = r.status === 'active' && STATUS[r.domain] ? 'active' : 'any';
       const ex = await expand({ domain: r.domain, codes, mode: r.mode });
       const nm = (await pool.query(`SELECT code, display FROM snomed_dictionary WHERE domain = $1 AND code = ANY($2::text[])`, [r.domain, ex.selected])).rows;
       const names = ex.selected.map(c => { const f = nm.find(x => x.code === c); return f && f.display ? f.display : c; });
       const how = { exact: 'exact', descendants: '+ descendants', ancestors: '+ ancestors' }[r.mode];
-      const label = `${r.op === 'exclude' ? 'Exclude' : 'Include'} ${DOMAINS[r.domain].label}: ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` +${names.length - 3} more` : ''} ${how} -> ${ex.total} code${ex.total === 1 ? '' : 's'}`;
+      const label = `${r.op === 'exclude' ? 'Exclude' : 'Include'} ${DOMAINS[r.domain].label}: ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` +${names.length - 3} more` : ''} ${how}${status === 'active' ? ', active records only' : ''} -> ${ex.total} code${ex.total === 1 ? '' : 's'}`;
       if (!ex.total) warnings.push(`Rule ${n} (${names.join(', ')}) matches no code in your data, so it ${r.op === 'exclude' ? 'excludes nobody' : 'matches nobody'}.`);
       const open = Math.max(0, Math.min(3, parseInt(r.open, 10) || 0)), close = Math.max(0, Math.min(3, parseInt(r.close, 10) || 0)), gnot = !!r.gnot && open > 0;
-      items.push({ conn, open, close, gnot, text: predicate(r.domain, r.op, ex.codes.map(c => c.code), label) });
+      items.push({ conn, open, close, gnot, text: predicate(r.domain, r.op, ex.codes.map(c => c.code), label, status) });
       summary.push(`${i === 0 ? '' : conn + ' '}${gnot ? 'NOT ' : ''}${'('.repeat(open)}${label}${')'.repeat(close)}`);
-      perRule.push({ rule: n, domain: r.domain, op: r.op, mode: r.mode, selected: names, codes: ex.total });
+      perRule.push({ rule: n, domain: r.domain, op: r.op, mode: r.mode, status, selected: names, codes: ex.total });
     }
     const criteriaSql = combineGrouped(items);
     const sc = await resolveScope(body);
@@ -751,7 +762,7 @@ function register(app, pool, opts = {}) {
 
 module.exports = register;
 module.exports.DOMAINS = DOMAINS;
-module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, parseCsvLine, DEMO_EDGES, DEMO_NAMES };
+module.exports._test = { lit, commentSafe, combine, combineGrouped, predicate, STATUS, parseCsvLine, DEMO_EDGES, DEMO_NAMES };
 
 // ---------------------------------------------------------------------------------------------------------------------
 module.exports.selftest = () => {
@@ -765,6 +776,13 @@ module.exports.selftest = () => {
   assert.ok(/^patient_id IN \(SELECT patient_id FROM fhir_diagnosis WHERE code IN \('1', '2'\)\)$/.test(t.predicate('dx', 'include', ['1', '2'], '')));
   assert.ok(t.predicate('dx', 'exclude', ['1'], '').includes('NOT IN (') && t.predicate('dx', 'exclude', ['1'], '').includes('patient_id IS NOT NULL'));
   assert.ok(t.predicate('al', 'include', ['9'], '').includes("json_content->'code'->'coding'->0->>'code'"));
+  // status option: off by default, "active" adds a clinicalStatus / status filter inside the sub-select, only for domains that have one
+  assert.ok(!t.predicate('dx', 'include', ['1'], '', 'any').includes('clinicalStatus'));
+  assert.ok(t.predicate('dx', 'include', ['1'], '', 'active').includes("COALESCE(lower(json_content->'clinicalStatus'->'coding'->0->>'code'), 'active') IN ('active', 'recurrence', 'relapse')"));
+  assert.ok(/^patient_id NOT IN \(SELECT patient_id FROM fhir_diagnosis WHERE code IN \('1'\) AND COALESCE\(.*\) AND patient_id IS NOT NULL\)$/.test(t.predicate('dx', 'exclude', ['1'], '', 'active')));
+  assert.ok(t.predicate('rx', 'include', ['5'], '', 'active').includes("json_content->>'status'"));
+  assert.ok(!t.predicate('pr', 'include', ['5'], '', 'active').includes('COALESCE'), 'domains without a status ignore the option');
+  assert.ok(t.STATUS && t.STATUS.dx && !t.STATUS.pr);
   assert.strictEqual(t.combine([{ text: 'A' }]), 'A');
   assert.strictEqual(t.combine([{ text: 'A' }, { conn: 'AND', text: 'B' }, { conn: 'AND', text: 'C' }]), '(\n  A\n  AND B\n  AND C\n)');
   // mixed connectors nest strictly left to right: (A AND B) OR C
